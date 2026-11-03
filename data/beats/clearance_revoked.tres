@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="StoryBeat" format=3]
+
+[ext_resource type="Script" path="res://game/data/story_beat.gd" id="1_beat"]
+
+[resource]
+script = ExtResource("1_beat")
+id = "clearance_revoked"
+time = "02:40"
+line = "Reyka's lawyers were in a judge's office before you left the building. Your clearance is revoked, and badge readers won't take you. And he has an alibi, detective."
+speaker = "Captain Ruiz (call)"
+offscreen = false

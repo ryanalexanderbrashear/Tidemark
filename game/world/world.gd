@@ -50,8 +50,10 @@ func _ready() -> void:
 
 	Case.travel_requested.connect(_load_room)
 	Case.notice.connect(_hud.toast)
-	Case.killer_struck.connect(func() -> void:
-		_show_talk(Talk.say("Dispatch", "06:00. A second body in the Uptown arcades, a blank chip in her hand. The killer didn't wait for you. The case is still open.")))
+	# Deferred: a beat can fire from inside a dialogue choice, and the box closes
+	# after the choice returns.
+	Case.announcement.connect(func(who: String, text: String, at: String) -> void:
+		_announce.call_deferred(who, text, at))
 	Case.case_closed.connect(func(s: CaseSummary) -> void:
 		_show_screen(CaseScreens.summary(s, _start)))
 	_show_screen(CaseScreens.intro(_start))
@@ -61,7 +63,7 @@ func _ready() -> void:
 func _start() -> void:
 	_clear_screen()
 	Case.reset()
-	Case.travel("lab", 200.0, true)
+	Case.travel("lab", 200.0)
 	_hud.toast("Captain Ruiz has the case brief. The market is east, past Broker's Row.")
 	get_tree().paused = false
 
@@ -166,6 +168,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("case_board"):
 		get_tree().paused = true
 		_board.open_board()
+
+
+func _announce(who: String, text: String, at: String) -> void:
+	if not Case.closed:
+		_show_talk(Talk.say(who, at + ".  " + text))
 
 
 func _show_talk(t: Talk) -> void:

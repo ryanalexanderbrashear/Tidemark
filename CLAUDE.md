@@ -11,7 +11,8 @@ The design lives outside this repo, in Claude Docs and Alex's Google Drive desig
 - **The player can be wrong but is never locked out.** Every fact a gate depends on needs a route that survives the player's mistakes, including losing the badge. Keep `tests/case/test_case_paths.gd` covering each gate when you add one.
 - **Gates check evidence, not typed answers.** A knowledge gate only opens from facts on the board (or a clue the player holds), so prior knowledge can't skip ahead.
 - **Three clues per true fact,** two needed. A test enforces this.
-- **Wrong paths cost something real** (time on the case clock, clearance, intel at the end), never progress.
+- **Wrong paths cost something real** (clearance, a life, intel at the end), never progress.
+- **Time is a fixed timeline, not a resource.** The case clock is the time of the latest story beat reached (`data/beats/`). Walking, fighting, and failed theories never move it. Choices decide which beats happen (the raid schedules the off-screen beats that follow it), and each beat's time is set in data.
 - **Combat comes from the case:** a choice the player made or a clue they missed. Getting downed costs time, never a game over.
 
 ## Tech
@@ -23,7 +24,7 @@ The design lives outside this repo, in Claude Docs and Alex's Google Drive desig
 | Language | GDScript, statically typed (`project.godot` makes an untyped declaration an error) |
 | Tests | gdUnit4 6.2.2, vendored in `addons/gdUnit4/`; tests in `tests/` |
 | CI | GitHub Actions on Linux: import, script check, tests, boot |
-| Data | Clues and theories as text `.tres` resources, one per id, in `data/` |
+| Data | Clues, theories and story beats as text `.tres` resources, one per id, in `data/` |
 | Version control | Git LFS for images, audio, models and fonts (`.gitattributes`) |
 
 ## Working conventions

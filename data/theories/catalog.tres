@@ -13,4 +13,5 @@ requires = "chip"
 shown_by = PackedStringArray("chip")
 excludes = ""
 is_true = true
+beat_on_commit = "catalog_deduced"
 committed_line = "Fact: CS-14-07 is a catalog number. Your board flags a matching panel in the flood tunnels."

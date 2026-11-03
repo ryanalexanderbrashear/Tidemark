@@ -4,9 +4,11 @@ extends RefCounted
 
 const CLUES_DIR: String = "res://data/clues"
 const THEORIES_DIR: String = "res://data/theories"
+const BEATS_DIR: String = "res://data/beats"
 
 static var _clues: Dictionary[String, Clue] = {}
 static var _theories: Array[Theory] = []
+static var _beats: Dictionary[String, StoryBeat] = {}
 
 
 static func clue(id: String) -> Clue:
@@ -39,6 +41,20 @@ static func theories() -> Array[Theory]:
 	return _theories.duplicate()
 
 
+static func beat(id: String) -> StoryBeat:
+	_ensure_loaded()
+	return _beats.get(id) as StoryBeat
+
+
+## Every beat, in timeline order.
+static func timeline() -> Array[StoryBeat]:
+	_ensure_loaded()
+	var out: Array[StoryBeat] = []
+	out.assign(_beats.values())
+	out.sort_custom(func(a: StoryBeat, b: StoryBeat) -> bool: return a.minutes() < b.minutes())
+	return out
+
+
 static func _ensure_loaded() -> void:
 	if not _clues.is_empty():
 		return
@@ -50,6 +66,10 @@ static func _ensure_loaded() -> void:
 		var t: Theory = res as Theory
 		if t != null:
 			_theories.append(t)
+	for res: Resource in _load_dir(BEATS_DIR):
+		var b: StoryBeat = res as StoryBeat
+		if b != null:
+			_beats[b.id] = b
 	_theories.sort_custom(func(a: Theory, b: Theory) -> bool: return a.order < b.order)
 
 

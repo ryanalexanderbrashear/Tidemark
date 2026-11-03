@@ -58,13 +58,12 @@ func _process(delta: float) -> void:
 		_toast_left -= delta
 		if _toast_left <= 0.0:
 			_toast.modulate.a = 0.0
-	var left: int = Case.minutes_left()
-	if Case.is_set("second_victim"):
+	if Case.has_beat("second_victim"):
 		_bar.text = "%s  KILLER STRUCK AGAIN" % Case.clock_text(Case.minutes)
 		_bar.add_theme_color_override("font_color", UiTheme.BAD)
 	else:
-		_bar.text = "%s  %s to 06:00" % [Case.clock_text(Case.minutes), Case.duration_text(maxi(0, left))]
-		_bar.add_theme_color_override("font_color", UiTheme.BAD if left < 60 else UiTheme.WARN)
+		_bar.text = Case.clock_text(Case.minutes)
+		_bar.add_theme_color_override("font_color", UiTheme.WARN)
 	_badge.text = "BADGE " + ("ACTIVE" if Case.clearance else "REVOKED")
 	_badge.add_theme_color_override("font_color", UiTheme.OK if Case.clearance else UiTheme.BAD)
 	if detective != null:

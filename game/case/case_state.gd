@@ -6,32 +6,26 @@ extends Node
 
 signal clue_found(clue: Clue)
 signal facts_changed
-signal clock_changed(minutes: int)
+## A beat on the timeline happened. The clock now shows at least its time.
+signal beat_reached(beat: StoryBeat)
 signal clearance_changed(active: bool)
 ## A short line for the toast at the bottom of the screen.
 signal notice(text: String)
-signal killer_struck
+## A beat with a speaker: the world shows it as a dialogue box. `at` is the
+## beat's own time, which can be earlier than the clock for an off-screen beat.
+signal announcement(speaker: String, text: String, at: String)
 ## The world should load `room` and put the detective at `x`.
 signal travel_requested(room: String, x: float)
 signal case_closed(summary: CaseSummary)
 
-const START_MINUTES: int = 23 * 60
-## 06:00 the next morning. Past this, the killer strikes again (once).
-const DEADLINE_MINUTES: int = 30 * 60
-## After 01:30 the body is moved to the precinct morgue.
-const BODY_MOVED_MINUTES: int = 25 * 60 + 30
-
-const TRAVEL_MINUTES: int = 5
-const FAILED_THEORY_MINUTES: int = 30
-const OPTIC_MINUTES: int = 120
-const DOWNED_MINUTES: int = 90
-const FALLOUT_MINUTES: int = 60
-const WRONG_NAME_MINUTES: int = 15
-
 ## Where the detective wakes after being downed.
 const RECOVERY_ROOM: String = "lab"
 const RECOVERY_X: float = 200.0
+## Off-screen beats the wrong-suspect raid sets in motion (Alex, 2026-11-03:
+## the raid is what costs the second victim).
+const RAID_CONSEQUENCES: Array[String] = ["rig_cleared", "second_victim"]
 
+## The case clock: the time of the latest beat reached. Nothing else moves it.
 var minutes: int
 var clearance: bool
 var has_optic: bool
@@ -39,6 +33,8 @@ var optic_on: bool
 var room: String
 var clues: Array[String] = []
 var facts: Array[String] = []
+var beats: Array[String] = []
+var scheduled: Array[String] = []
 var flags: Dictionary[String, Variant] = {}
 ## Hostiles still standing, per room. Rooms not listed have none.
 var hostiles: Dictionary[String, int] = {}
@@ -50,32 +46,58 @@ func _ready() -> void:
 
 
 func reset() -> void:
-	minutes = START_MINUTES
 	clearance = true
 	has_optic = false
 	optic_on = false
 	room = RECOVERY_ROOM
 	clues.clear()
 	facts.clear()
+	beats.clear()
+	scheduled.clear()
 	flags.clear()
 	hostiles.clear()
 	closed = false
+	minutes = 0
+	reach("case_opens")
 
 
-# ---------- clock ----------
+# ---------- the timeline ----------
 
-func advance(by: int, why: String = "") -> void:
-	minutes += by
-	clock_changed.emit(minutes)
-	if why != "":
-		notice.emit("%s  (+%s)" % [why, duration_text(by)])
-	if not flag("second_victim") and minutes >= DEADLINE_MINUTES and not closed:
-		set_flag("second_victim")
-		killer_struck.emit()
+func has_beat(id: String) -> bool:
+	return beats.has(id)
 
 
-func minutes_left() -> int:
-	return DEADLINE_MINUTES - minutes
+## Marks a beat as happened and moves the clock up to its time (never back).
+## Then any scheduled off-screen beat whose time has come happens too.
+func reach(id: String) -> void:
+	var b: StoryBeat = CaseCatalog.beat(id)
+	assert(b != null, "Unknown beat %s" % id)
+	if beats.has(id):
+		return
+	beats.append(id)
+	scheduled.erase(id)
+	minutes = maxi(minutes, b.minutes())
+	_announce(b)
+	beat_reached.emit(b)
+	for later: String in scheduled.duplicate():
+		if CaseCatalog.beat(later).minutes() <= minutes:
+			reach(later)
+
+
+## Sets an off-screen beat to happen once the clock reaches its time.
+func schedule(id: String) -> void:
+	assert(CaseCatalog.beat(id) != null, "Unknown beat %s" % id)
+	if not beats.has(id) and not scheduled.has(id):
+		scheduled.append(id)
+
+
+func _announce(b: StoryBeat) -> void:
+	if b.line == "":
+		return
+	if b.speaker != "":
+		announcement.emit(b.speaker, b.line, b.time)
+	else:
+		notice.emit(b.line)
 
 
 static func clock_text(m: int) -> String:
@@ -83,16 +105,8 @@ static func clock_text(m: int) -> String:
 	return "%02d:%02d" % [day / 60, day % 60]
 
 
-static func duration_text(m: int) -> String:
-	if m >= 60 and m % 60 == 0:
-		return "%dh" % (m / 60)
-	if m >= 60:
-		return "%dh%02dm" % [m / 60, m % 60]
-	return "%dm" % m
-
-
 func body_in_morgue() -> bool:
-	return minutes >= BODY_MOVED_MINUTES or not clearance
+	return has_beat("body_removed")
 
 
 # ---------- clues and theories ----------
@@ -128,17 +142,18 @@ func visible_theories() -> Array[Theory]:
 	return out
 
 
-## Tries to commit a theory with the selected clues. A failure costs time.
+## Tries to commit a theory with the selected clues. A failure costs nothing
+## yet; the board just says it doesn't hold.
 func commit_theory(id: String, selected: Array[String]) -> TheoryCheck.Result:
 	var t: Theory = CaseCatalog.theory(id)
 	assert(t != null, "Unknown theory %s" % id)
 	var result: TheoryCheck.Result = TheoryCheck.evaluate(t, selected, clues)
-	if result == TheoryCheck.Result.NOT_ENOUGH or result == TheoryCheck.Result.DOESNT_FIT:
-		advance(FAILED_THEORY_MINUTES)
 	if result != TheoryCheck.Result.HOLDS:
 		return result
 	if not facts.has(id):
 		facts.append(id)
+		if t.beat_on_commit != "":
+			reach(t.beat_on_commit)
 	if t.excludes != "":
 		facts.erase(t.excludes)
 	facts_changed.emit()
@@ -172,6 +187,8 @@ func revoke_clearance() -> void:
 		return
 	clearance = false
 	clearance_changed.emit(false)
+	# Off the scene: the coroner takes the body if they haven't already.
+	reach("body_removed")
 
 
 func grant_optic() -> void:
@@ -186,12 +203,10 @@ func toggle_optic() -> bool:
 
 # ---------- rooms and hostiles ----------
 
-## Moves to a room. Travel takes time unless `free` (the opening scene).
-func travel(to: String, x: float, free: bool = false) -> void:
+## Moves to a room. Walking takes no time on the case clock.
+func travel(to: String, x: float) -> void:
 	room = to
 	_on_enter(to)
-	if not free:
-		advance(TRAVEL_MINUTES)
 	travel_requested.emit(to, x)
 
 
@@ -207,11 +222,11 @@ func spawn_hostiles(in_room: String, count: int) -> void:
 	hostiles[in_room] = count
 
 
-## The detective went down in a fight. They wake at the precinct, hours later.
-## Nobody they were fighting goes away, but nothing is lost either.
+## The detective went down in a fight. They wake at the precinct. Nobody they
+## were fighting goes away, but nothing is lost either.
 func player_downed() -> void:
-	travel(RECOVERY_ROOM, RECOVERY_X, true)
-	advance(DOWNED_MINUTES, "You wake up in the precinct infirmary")
+	travel(RECOVERY_ROOM, RECOVERY_X)
+	notice.emit("You wake up in the precinct infirmary.")
 
 
 func _on_enter(to: String) -> void:
@@ -233,7 +248,12 @@ func _on_enter(to: String) -> void:
 # ---------- ending ----------
 
 func close_case() -> CaseSummary:
+	# The night plays out: anything the player set in motion still happens.
+	var at: int = minutes
+	for id: String in scheduled.duplicate():
+		reach(id)
 	closed = true
 	var s: CaseSummary = CaseSummary.from_case(self)
+	s.closed_at = at
 	case_closed.emit(s)
 	return s

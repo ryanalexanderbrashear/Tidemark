@@ -2,13 +2,13 @@ class_name CaseBoard
 extends Control
 ## The case board: pick the clues that back a theory, then commit it. A theory
 ## holds with two or more clues that support it and nothing that doesn't. A
-## failed chain costs time. A wrong theory can still hold, and the game plays it out.
+## failed chain just doesn't hold. A wrong theory can still hold, and the game plays it out.
 
 signal closed
 
 const LINES: Dictionary[TheoryCheck.Result, String] = {
-	TheoryCheck.Result.NOT_ENOUGH: "Not enough holds it up. You burn 30 minutes chasing it.",
-	TheoryCheck.Result.DOESNT_FIT: "One of those doesn't fit. You burn 30 minutes before you see it.",
+	TheoryCheck.Result.NOT_ENOUGH: "Not enough holds it up.",
+	TheoryCheck.Result.DOESNT_FIT: "One of those doesn't fit.",
 	TheoryCheck.Result.MISSING_SUBJECT: "You don't have what that theory is about yet.",
 }
 

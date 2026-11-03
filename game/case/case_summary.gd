@@ -22,15 +22,14 @@ static func from_case(c: Node) -> CaseSummary:
 	var s: CaseSummary = CaseSummary.new()
 	s.closed_at = c.get("minutes")
 	s.clearance = c.get("clearance")
-	s.second_victim = c.call("is_set", "second_victim")
-	var raided: bool = c.call("is_set", "raided")
+	s.second_victim = c.call("has_beat", "second_victim")
+	var rig_gone: bool = c.call("has_beat", "rig_cleared")
 	s.intel = ["list", "rig", "print"]
-	if raided:
+	if rig_gone:
 		s.intel.erase("rig")
-		s.costs.append("While you dealt with Reyka's lawyers, the killer came back and cleared out the wiping rig.")
+		s.costs.append("03:30. While you dealt with Reyka's lawyers, the killer came back and cleared out the wiping rig.")
 	if s.second_victim:
-		s.intel.erase("print")
-		s.costs.append("You got here after 06:00. The killer took the print kit, and someone else paid for the delay.")
+		s.costs.append("04:00. The killer struck again in Uptown while you were on the wrong man.")
 	var held: Array[String] = c.get("facts")
 	for id: String in held:
 		var t: Theory = CaseCatalog.theory(id)

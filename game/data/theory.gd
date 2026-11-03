@@ -24,5 +24,7 @@ extends Resource
 ## Whether the statement is actually true in the case. The game never tells the
 ## player; it's for tests and the end-of-case summary.
 @export var is_true: bool = true
+## A timeline beat that happens when this theory is committed, or "".
+@export var beat_on_commit: String = ""
 ## What the board says when the theory is committed.
 @export_multiline var committed_line: String = ""

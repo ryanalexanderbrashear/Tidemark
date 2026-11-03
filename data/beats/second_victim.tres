@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="StoryBeat" format=3]
+
+[ext_resource type="Script" path="res://game/data/story_beat.gd" id="1_beat"]
+
+[resource]
+script = ExtResource("1_beat")
+id = "second_victim"
+time = "04:00"
+line = "A second body in the Uptown arcades, a blank chip in her hand. While you were on Reyka, the killer moved again. The case is still open."
+speaker = "Dispatch"
+offscreen = true

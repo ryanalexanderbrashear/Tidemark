@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="StoryBeat" format=3]
+
+[ext_resource type="Script" path="res://game/data/story_beat.gd" id="1_beat"]
+
+[resource]
+script = ExtResource("1_beat")
+id = "dead_drop_found"
+time = "03:00"
+line = "Panel CS-14-07 opens on a crawlspace."
+speaker = ""
+offscreen = false

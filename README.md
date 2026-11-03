@@ -25,13 +25,13 @@ Open `project.godot` in Godot and press F5.
 
 ### The loop being tested
 
-- **Case board.** Pick clues, pick a theory, commit. A theory holds when two or more of the picked clues support it and none of them doesn't belong. A failed chain costs 30 minutes. A wrong theory with misleading support ("Reyka was there when Vale died") holds, and the game plays it out.
+- **Case board.** Pick clues, pick a theory, commit. A theory holds when two or more of the picked clues support it and none of them doesn't belong. A chain that doesn't hold just doesn't commit. A wrong theory with misleading support ("Reyka was there when Vale died") holds, and the game plays it out.
 - **Ability gate.** The lab turns a heat-damaged sample (or the body, once it reaches the morgue) into a thermal optic. With it on, a market wall shows a heat-sealed door into Cold Storage, and the body gives up a time of death.
 - **Knowledge gates.** The fixer only offers the back room once "Vale sold a memory that wasn't hers" is a fact, and you still have to name the buyer. The dead drop is one of several identical tunnel panels, and it only becomes usable once the etching is deduced to be a catalog number.
 - **Badge gate and its loss.** Your badge opens the crime scene and the market cams. Kicking in Reyka's door on the wrong theory gets it revoked. From then on the people in the market (the tech, the fixer) are the way around.
-- **The clock.** The case starts at 23:00. Travel, failed theories, the lab and getting downed all take time. Reach 06:00 and the killer strikes again. The case goes on, but you recover less at the dead drop.
+- **The timeline.** The night is a fixed timeline of story beats in `data/beats/`, each at a set time (the coroner takes the body at 00:30, the dead drop is found at 03:00). The clock shows the latest beat reached; walking, fighting and the board never move it. Some beats only happen because of a choice: the raid on Reyka (02:00) leads to the lawyers revoking your clearance (02:40), the killer clearing the wiping rig out of the dead drop (03:30), a second victim (04:00), and finding the dead drop later (04:30).
 
-The case's rules live in `game/case/` and are covered by tests that play the clean path, the wrong-suspect path, a no-badge-from-the-start path and the clock running out (`tests/case/`).
+The case's rules live in `game/case/` and are covered by tests that play the clean path, the wrong-suspect path, a no-badge-from-the-start path and the timeline (`tests/case/`).
 
 ## Run the checks
 
@@ -49,11 +49,11 @@ CI (`.github/workflows/ci.yml`) runs the import, the script check, the tests and
 
 ```
 game/
-  data/      resource schemas: Clue, Theory
+  data/      resource schemas: Clue, Theory, StoryBeat
   case/      the running case (the Case autoload), the board's check, dialogue (Talk), the Drowned Market's rooms and spots
   world/     the main scene's room builder, the detective, hostiles, bolts, grey-box drawing
   ui/        HUD, dialogue box, case board, intro and summary screens
-data/        clues/ and theories/ as .tres, one per id
+data/        clues/, theories/ and beats/ as .tres, one per id
 scenes/      main.tscn
 tests/       gdUnit4 tests
 editor/ci/   CI-only scripts

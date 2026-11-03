@@ -142,7 +142,7 @@ func _build_spots() -> void:
 	_spot("tech", "market", Spot.Kind.PERSON, "Maintenance tech", 1990, "a4e57a", _tech, Vector2(40, 60), 360)
 	_spot("heat_door", "market", Spot.Kind.HEAT_DOOR, "Heat-sealed door", 2260, "ff7a2f", _heat_door, Vector2(70, 110)).visible_when = func() -> bool: return Case.has_optic and Case.optic_on
 	# Vale's stall
-	_spot("stall_exit", "stall", Spot.Kind.DOOR, "Exit", 40, "ff5a6e", func() -> Talk: return _go("market", 455), DOOR)
+	_spot("stall_exit", "stall", Spot.Kind.DOOR, "Exit", 40, "ff5a6e", _stall_exit, DOOR)
 	_spot("ledger", "stall", Spot.Kind.OBJECT, "Ledger", 280, "ffd27f", _ledger)
 	_spot("body", "stall", Spot.Kind.BODY, "The body", 500, "ff5a6e", _body, Vector2(80, 24))
 	_spot("sample", "stall", Spot.Kind.OBJECT, "Scorched sample", 720, "ff7a2f", _sample, Vector2(30, 30)).visible_when = func() -> bool: return not Case.is_set("has_sample")
@@ -189,12 +189,12 @@ func _sato() -> Talk:
 		return Talk.say("Sato", "Optic's calibrated. Press T to see heat. It also reads leftover body heat, if you need a time of death.")
 	var has_sample: bool = Case.is_set("has_sample")
 	if has_sample or Case.body_in_morgue():
-		var line: String = "That's a heat-damaged sample from the stall. Give me two hours and I can calibrate a thermal optic off its burn pattern." if has_sample \
-			else "The body came in with heat damage on the clothes. Two hours and I can calibrate a thermal optic off it."
+		var line: String = "That's a heat-damaged sample from the stall. Leave it with me and I can calibrate a thermal optic off its burn pattern." if has_sample \
+			else "The body came in with heat damage on the clothes. Leave it with me and I can calibrate a thermal optic off it."
 		return Talk.say("Sato", line, [
-			TalkOption.make("Run it (2 hours)", func() -> Talk:
+			TalkOption.make("Run it", func() -> Talk:
 				Case.grant_optic()
-				Case.advance(Case.OPTIC_MINUTES, "Thermal optic calibrated. Press T to toggle it")
+				Case.reach("optic_calibrated")
 				return null),
 			TalkOption.close("Not now"),
 		])
@@ -232,19 +232,20 @@ func _reyka_door() -> Talk:
 func kick_in_reyka_door() -> Talk:
 	Case.set_flag("raided")
 	Case.spawn_hostiles("apt", 2)
-	return _go("apt", 80, "You kick the door in. Corporate security answers.")
+	for id: String in Case.RAID_CONSEQUENCES:
+		Case.schedule(id)
+	_go("apt", 80)
+	Case.reach("reyka_raided")
+	return null
 
 
 func _apt_exit() -> Talk:
 	if Case.is_set("raided") and not Case.is_set("raid_fallout") and Case.has_clue("memstamp"):
 		Case.set_flag("raid_fallout")
-		Case.revoke_clearance()
 		_go("row", 850)
-		return Talk.say("Captain Ruiz (call)", "Reyka's lawyers were in a judge's office before you left the building. Your clearance is revoked, and badge readers won't take you. And he has an alibi, detective.", [
-			TalkOption.make("...", func() -> Talk:
-				Case.advance(Case.FALLOUT_MINUTES, "Time lost to the fallout")
-				return null),
-		])
+		Case.revoke_clearance()
+		Case.reach("clearance_revoked")
+		return null
 	return _go("row", 850)
 
 
@@ -297,9 +298,9 @@ func _fixer_name_the_buyer() -> Talk:
 		opts.append(TalkOption.make(name, func() -> Talk:
 			if name == "J. Reyka":
 				Case.set_flag("fixer_vouched")
+				Case.reach("fixer_vouched")
 				return Talk.say("The fixer", "Hm. You actually did the work. The back room's open, and my people in Cold Storage won't touch you.")
-			Case.advance(Case.WRONG_NAME_MINUTES, "\"Wrong. Don't waste my time.\" The fixer turns away")
-			return null))
+			return Talk.say("The fixer", "Wrong. Come back when you know.")))
 	return Talk.say("The fixer", "Go on then. Who was the buyer?", opts)
 
 
@@ -332,12 +333,21 @@ func _heat_door() -> Talk:
 
 # ---------- the stall ----------
 
+func _stall_exit() -> Talk:
+	_go("market", 455)
+	# Once you've seen her, the coroner takes the body.
+	if Case.has_beat("body_examined"):
+		Case.reach("body_removed")
+	return null
+
+
 func _ledger() -> Talk:
 	return _found("ledger", "Vale's ledger", "Last entry: \"recall, 1 unit\" sold to J. Reyka for 40k. You check her stock list. Nothing on it matches.")
 
 
 func _body() -> Talk:
 	Case.find_clue("chip")
+	Case.reach("body_examined")
 	if Case.optic_on:
 		return _found("thermal", "The body", "Through the optic: residual core heat. She died near 00:15. A blank chip in her hand, etched CS-14-07.")
 	return Talk.say("The body", "Ines Vale. A blank memory chip in her hand, wiped clean, etched CS-14-07. The body's cooling. You can't tell when she died by looking.")
@@ -374,7 +384,9 @@ func _lookout() -> Talk:
 # ---------- tunnels and the dead drop ----------
 
 func _drop_panel() -> Talk:
-	return _go("drop", 100, "Panel CS-14-07 opens on a crawlspace.")
+	_go("drop", 100)
+	Case.reach("dead_drop_found_late" if Case.is_set("raided") else "dead_drop_found")
+	return null
 
 
 func _crawlspace() -> Talk:
