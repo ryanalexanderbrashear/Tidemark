@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="Clue" format=3]
+
+[ext_resource type="Script" path="res://game/data/clue.gd" id="1_clue"]
+
+[resource]
+script = ExtResource("1_clue")
+id = "chip"
+title = "The calling card"
+text = "Blank memory chip, wiped. Etched on the casing: CS-14-07."
+source = "The body"

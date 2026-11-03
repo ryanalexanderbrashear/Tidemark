@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="Theory" format=3]
+
+[ext_resource type="Script" path="res://game/data/theory.gd" id="1_theory"]
+
+[resource]
+script = ExtResource("1_theory")
+id = "there"
+order = 1
+statement = "Reyka was there when Vale died."
+supported_by = PackedStringArray("ledger", "rival")
+contradicted_by = PackedStringArray("thermal", "footage", "memstamp")
+requires = ""
+shown_by = PackedStringArray("ledger", "rival")
+excludes = "left"
+is_true = false
+committed_line = "You commit: Reyka was there. His door on Broker's Row is yours to kick in, if you're sure."

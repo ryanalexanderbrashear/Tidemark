@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="Theory" format=3]
+
+[ext_resource type="Script" path="res://game/data/theory.gd" id="1_theory"]
+
+[resource]
+script = ExtResource("1_theory")
+id = "catalog"
+order = 4
+statement = "The etching is a Cold Storage catalog number."
+supported_by = PackedStringArray("drawers", "fixerfmt", "tech")
+contradicted_by = PackedStringArray()
+requires = "chip"
+shown_by = PackedStringArray("chip")
+excludes = ""
+is_true = true
+committed_line = "Fact: CS-14-07 is a catalog number. Your board flags a matching panel in the flood tunnels."

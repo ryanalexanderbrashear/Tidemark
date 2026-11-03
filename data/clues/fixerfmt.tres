@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="Clue" format=3]
+
+[ext_resource type="Script" path="res://game/data/clue.gd" id="1_clue"]
+
+[resource]
+script = ExtResource("1_clue")
+id = "fixerfmt"
+title = "The fixer on the etching"
+text = "\"CS-something? That's a Cold Storage catalog code. The old system.\""
+source = "The fixer"

@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="Clue" format=3]
+
+[ext_resource type="Script" path="res://game/data/clue.gd" id="1_clue"]
+
+[resource]
+script = ExtResource("1_clue")
+id = "rival"
+title = "Osk, rival broker"
+text = "\"Vale was fencing hot recall. That corp man Reyka was at her stall around ten.\""
+source = "Market floor"

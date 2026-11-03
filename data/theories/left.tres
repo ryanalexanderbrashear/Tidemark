@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="Theory" format=3]
+
+[ext_resource type="Script" path="res://game/data/theory.gd" id="1_theory"]
+
+[resource]
+script = ExtResource("1_theory")
+id = "left"
+order = 2
+statement = "Reyka left before Vale died."
+supported_by = PackedStringArray("thermal", "footage", "memstamp")
+contradicted_by = PackedStringArray()
+requires = ""
+shown_by = PackedStringArray("thermal", "footage", "memstamp")
+excludes = "there"
+is_true = true
+committed_line = "Fact: Reyka left before she died. He's cleared as a suspect."

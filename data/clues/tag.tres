@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="Clue" format=3]
+
+[ext_resource type="Script" path="res://game/data/clue.gd" id="1_clue"]
+
+[resource]
+script = ExtResource("1_clue")
+id = "tag"
+title = "Empty storage case"
+text = "Vale's rented drawer is empty. The case inside carries an ID tag for \"D. Marr\", not Vale."
+source = "Cold Storage"

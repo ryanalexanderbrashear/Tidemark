@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="Clue" format=3]
+
+[ext_resource type="Script" path="res://game/data/clue.gd" id="1_clue"]
+
+[resource]
+script = ExtResource("1_clue")
+id = "drawers"
+title = "Drawer stamps"
+text = "Every freezer drawer is stamped in the old format: CS-##-##."
+source = "Cold Storage"
