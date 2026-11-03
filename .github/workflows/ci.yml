@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    # Explicit bash gets -eo pipefail, so a piped Godot command can't hide a failure.
+    shell: bash
+
+jobs:
+  ci:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          lfs: true
+
+      - name: Read the pinned Godot version
+        id: godot
+        run: |
+          version="$(tr -d '[:space:]' < .godot-version)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "base_url=https://github.com/godotengine/godot-builds/releases/download/$version" >> "$GITHUB_OUTPUT"
+          echo "GODOT_BIN=$HOME/godot/godot" >> "$GITHUB_ENV"
+
+      - name: Restore Godot
+        id: godot-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/godot
+          key: godot-${{ steps.godot.outputs.version }}-linux-x86_64
+
+      - name: Download Godot
+        if: steps.godot-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/godot && cd ~/godot
+          zip="Godot_v${{ steps.godot.outputs.version }}_linux.x86_64.zip"
+          curl -fsSLO "${{ steps.godot.outputs.base_url }}/$zip"
+          curl -fsSLO "${{ steps.godot.outputs.base_url }}/SHA512-SUMS.txt"
+          grep " $zip\$" SHA512-SUMS.txt | sha512sum -c -
+          unzip -q "$zip"
+          mv "Godot_v${{ steps.godot.outputs.version }}_linux.x86_64" godot
+          rm "$zip" SHA512-SUMS.txt
+
+      - name: Import the project
+        run: |
+          "$GODOT_BIN" --headless --path . --import 2>&1 | tee import.log
+          # --import exits 0 even when something fails to load, so read its output.
+          if grep -E "SCRIPT ERROR|ERROR:" import.log | grep -v " at exit"; then
+            echo "::error::Import reported errors"
+            exit 1
+          fi
+
+      - name: Check every script parses
+        run: '"$GODOT_BIN" --headless --path . -s res://editor/ci/check_scripts.gd'
+
+      - name: Run the tests
+        # --continue: gdUnit4 otherwise stops at the first failing test and hides the rest.
+        run: '"$GODOT_BIN" --headless --path . -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd --add res://tests --ignoreHeadlessMode --continue'
+
+      - name: Upload the test report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-report
+          path: reports/
+          retention-days: 14
+          if-no-files-found: ignore
+
+      - name: Boot the main scene
+        run: |
+          "$GODOT_BIN" --headless --path . --quit-after 120 2>&1 | tee boot.log
+          grep -q "^Boot: Undertow" boot.log
+          if grep -E "SCRIPT ERROR" boot.log; then exit 1; fi

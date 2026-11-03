@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="Theory" format=3]
+
+[ext_resource type="Script" path="res://game/data/theory.gd" id="1_theory"]
+
+[resource]
+script = ExtResource("1_theory")
+id = "stolen"
+order = 0
+statement = "Vale sold a memory that wasn't hers to sell."
+supported_by = PackedStringArray("ledger", "rival", "tag")
+contradicted_by = PackedStringArray()
+requires = ""
+shown_by = PackedStringArray("ledger", "rival", "tag")
+excludes = ""
+is_true = true
+committed_line = "Fact: Vale was fencing someone else's memory. The fixer might talk to you now."

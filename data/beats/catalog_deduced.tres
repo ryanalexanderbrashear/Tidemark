@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="StoryBeat" format=3]
+
+[ext_resource type="Script" path="res://game/data/story_beat.gd" id="1_beat"]
+
+[resource]
+script = ExtResource("1_beat")
+id = "catalog_deduced"
+time = "02:15"
+line = ""
+speaker = ""
+offscreen = false

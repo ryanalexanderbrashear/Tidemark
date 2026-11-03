@@ -21,3 +21,7 @@
 *.otf filter=lfs diff=lfs merge=lfs -text
 *.woff filter=lfs diff=lfs merge=lfs -text
 *.woff2 filter=lfs diff=lfs merge=lfs -text
+
+# Vendored addons keep their small images in plain Git, so a clone works without LFS.
+addons/** !filter !diff !merge
+addons/**/*.png binary

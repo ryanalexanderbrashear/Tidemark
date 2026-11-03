@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="Theory" format=3]
+
+[ext_resource type="Script" path="res://game/data/theory.gd" id="1_theory"]
+
+[resource]
+script = ExtResource("1_theory")
+id = "stallcode"
+order = 5
+statement = "The etching is Vale's stall registration."
+supported_by = PackedStringArray()
+contradicted_by = PackedStringArray()
+requires = "chip"
+shown_by = PackedStringArray("chip")
+excludes = ""
+is_true = false
+committed_line = ""
