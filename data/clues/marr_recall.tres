@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="Clue" format=3]
+
+[ext_resource type="Script" path="res://game/data/clue.gd" id="1_clue"]
+
+[resource]
+script = ExtResource("1_clue")
+id = "marr_recall"
+title = "Inside Reyka's recall"
+text = "The memory he bought isn't Vale's. The hands in it wear an ID band: D. Marr."
+source = "Memory reading"
+leftover = false

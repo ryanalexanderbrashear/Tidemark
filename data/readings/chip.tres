@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="Reading" format=3]
+
+[ext_resource type="Script" path="res://game/data/reading.gd" id="1_reading"]
+
+[resource]
+script = ExtResource("1_reading")
+id = "chip"
+title = "Reading: the blank chip"
+surface_text = "Surface reading. Static. The chip is wiped and there's nothing on the surface to read."
+surface_clue = ""
+deep_text = "Deep reading. You push past the static into the wipe itself. It's too clean for street gear: no scarring, no fragments, the kind of work a clinic does. Something in the empty space feels like it's looking back."
+deep_clue = ""
+deep_cost = 2
+passenger = ""
+insight = "The chip was wiped with clinic-grade care. Whoever did it was trained to erase memories."

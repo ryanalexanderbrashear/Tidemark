@@ -30,6 +30,7 @@ The design lives outside this repo, in Claude Docs and Alex's Google Drive desig
 ## Working conventions
 
 - `Case` (autoload, `game/case/case_state.gd`) owns all case state. Gameplay and UI change the case only through it, so tests can play the case without a scene.
+- `Mind` (autoload, `game/mind/mind_state.gd`) owns the detective's symptoms, passengers and pills. It carries across cases, so `Case.reset()` doesn't clear it; tests call `Mind.reset()`. It never moves the case clock or closes a gate.
 - Case content (rooms, spots, dialogue) lives in `game/case/drowned_market.gd`. Each spot's action returns a `Talk` or null.
 - Scripts run with `-s` can't name the `Case` autoload at compile time. Load such code at runtime (see `editor/ci/check_scripts.gd`).
 - Schemas in `game/data/` are `@tool` scripts.

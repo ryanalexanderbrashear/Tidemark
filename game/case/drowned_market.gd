@@ -15,9 +15,23 @@ extends RefCounted
 ##
 ## No lockouts: every clue a needed fact rests on has a second route that
 ## doesn't need the badge (see tests/case/test_case_paths.gd).
+##
+## Memory readings (data/readings/): Vale (the body or the morgue drawer), the
+## blank chip (coroner terminal) and Reyka's memory deck. Surface readings are
+## safe; deep readings add a route to a fact or a detail about the killer, and
+## cost bleed-through (tests/mind/test_readings.gd). No gate needs one.
 
 const FLOOR_Y: float = 470.0
 const DROP_PANEL: String = "CS-14-07"
+const VALE: String = "Ines Vale"
+## Where Vale's passenger points, first unfound clue first. Placeholder lines,
+## not canon: they test whether a passenger's help feels worth the symptoms.
+const VALE_POINTS: Array[Array] = [
+	["tag", "toward the back of the market, where the cold comes from"],
+	["footage", "up at the camera over the floor"],
+	["tech", "at the man fixing the pumps"],
+	["fixerfmt", "at the fixer, then at the chip in your pocket"],
+]
 
 var rooms: Dictionary[String, RoomDef] = {}
 var spots: Array[Spot] = []
@@ -135,6 +149,7 @@ func _build_spots() -> void:
 	_spot("officer", "apt", Spot.Kind.PERSON, "Security officer", 780, "9fb4c8", func() -> Talk: return Talk.say("Security officer", "Warrant checks out. Mr. Reyka is cooperating through counsel. Touch nothing you don't need.")).visible_when = func() -> bool: return not Case.is_set("raided")
 	# Market floor
 	_spot("stall_door", "market", Spot.Kind.DOOR, "Vale's stall", 420, "ff5a6e", _stall_door, Vector2(70, 90))
+	_spot("passenger_vale", "market", Spot.Kind.PERSON, "Ines Vale?", 560, "cfe3ff", _passenger_vale).visible_when = func() -> bool: return Mind.has_passenger(VALE) and Mind.passengers_present()
 	_spot("osk", "market", Spot.Kind.PERSON, "Osk, rival broker", 700, "ffa07a", _osk)
 	_spot("cams", "market", Spot.Kind.OBJECT, "Security cams", 1120, "6fa8ff", _cams, Vector2(40, 60), 340)
 	_spot("fixer", "market", Spot.Kind.PERSON, "The fixer", 1500, "e0a3ff", fixer)
@@ -182,6 +197,37 @@ func _found(id: String, who: String, line: String) -> Talk:
 	return Talk.say(who, line)
 
 
+## The reading choices left for a subject this case: surface (always safe) until
+## it's done, then deep until that's done.
+func reading_options(id: String) -> Array[TalkOption]:
+	var r: Reading = CaseCatalog.reading(id)
+	var done: String = Case.reading_depth(id)
+	var opts: Array[TalkOption] = []
+	if done == "":
+		opts.append(TalkOption.make("Surface reading (safe)", func() -> Talk: return read(id, false)))
+	if done != "deep":
+		opts.append(TalkOption.make("Deep reading (bleed-through +%d)" % r.deep_cost, func() -> Talk: return read(id, true)))
+	return opts
+
+
+func read(id: String, deep: bool) -> Talk:
+	var r: Reading = Case.read_memory(id, deep)
+	var opts: Array[TalkOption] = reading_options(id)
+	opts.append(TalkOption.close("Come up"))
+	return Talk.say(r.title, r.deep_text if deep else r.surface_text, opts)
+
+
+func _with_reading(t: Talk, id: String) -> Talk:
+	var opts: Array[TalkOption] = reading_options(id)
+	if opts.is_empty():
+		return t
+	if t.options.size() == 1 and not t.options[0].action.is_valid():
+		t.options.clear()
+	t.options.append_array(opts)
+	t.options.append(TalkOption.close("Leave"))
+	return t
+
+
 # ---------- precinct ----------
 
 func _sato() -> Talk:
@@ -203,13 +249,13 @@ func _sato() -> Talk:
 
 func _coroner() -> Talk:
 	Case.find_clue("chip")
-	return Talk.say("Coroner terminal", "Personal effects, Vale, I.: one blank memory chip, wiped. Etching on the casing reads CS-14-07.")
+	return _with_reading(Talk.say("Coroner terminal", "Personal effects, Vale, I.: one blank memory chip, wiped. Etching on the casing reads CS-14-07."), "chip")
 
 
 func _morgue() -> Talk:
 	if Case.optic_on:
-		return _found("thermal", "Morgue drawer", "Through the optic, residual heat still clings to the core. She died near 00:15.")
-	return Talk.say("Morgue drawer", "Ines Vale. To the naked eye she's just cold." + (" Try the thermal optic (T)." if Case.has_optic else ""))
+		return _with_reading(_found("thermal", "Morgue drawer", "Through the optic, residual heat still clings to the core. She died near 00:15."), "vale")
+	return _with_reading(Talk.say("Morgue drawer", "Ines Vale. To the naked eye she's just cold." + (" Try the thermal optic (T)." if Case.has_optic else "")), "vale")
 
 
 # ---------- Broker's Row and the apartment ----------
@@ -253,7 +299,8 @@ func _memory_deck() -> Talk:
 	if Case.hostiles_left("apt"):
 		Case.notice.emit("Deal with security first.")
 		return null
-	return _found("memstamp", "Memory deck", "The recall he bought from Vale, still loaded. The playback log puts him in Uptown from 23:00 on, across the city when she died.")
+	# Reading the log is the surface reading. It gives the alibi.
+	return read("deck", false)
 
 
 # ---------- market floor ----------
@@ -262,6 +309,14 @@ func _stall_door() -> Talk:
 	if not Case.clearance:
 		return Talk.say("Badge reader", "CLEARANCE REVOKED. The tape stays up.")
 	return _go("stall", 80, "Badge accepted.")
+
+
+## A passenger: she helps, but never comforts.
+func _passenger_vale() -> Talk:
+	for pair: Array in VALE_POINTS:
+		if not Case.has_clue(pair[0]):
+			return Talk.say(VALE + "?", "She's standing where her stall light used to fall, still wet. She doesn't look at you. She points %s." % pair[1])
+	return Talk.say(VALE + "?", "She's standing where her stall light used to fall, still wet. She just watches you.")
 
 
 func _osk() -> Talk:
@@ -349,8 +404,8 @@ func _body() -> Talk:
 	Case.find_clue("chip")
 	Case.reach("body_examined")
 	if Case.optic_on:
-		return _found("thermal", "The body", "Through the optic: residual core heat. She died near 00:15. A blank chip in her hand, etched CS-14-07.")
-	return Talk.say("The body", "Ines Vale. A blank memory chip in her hand, wiped clean, etched CS-14-07. The body's cooling. You can't tell when she died by looking.")
+		return _with_reading(_found("thermal", "The body", "Through the optic: residual core heat. She died near 00:15. A blank chip in her hand, etched CS-14-07."), "vale")
+	return _with_reading(Talk.say("The body", "Ines Vale. A blank memory chip in her hand, wiped clean, etched CS-14-07. The body's cooling. You can't tell when she died by looking."), "vale")
 
 
 func _sample() -> Talk:

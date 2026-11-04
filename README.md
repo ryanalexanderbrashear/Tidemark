@@ -19,6 +19,8 @@ Open `project.godot` in Godot and press F5.
 | E or Enter | Talk, examine, use a door |
 | F or J | Stun pistol |
 | T | Thermal optic, once the lab has calibrated it |
+| Q | Take a pill (the suppressant) |
+| F2 / F3 | Playtest only: add 2 bleed-through / clear symptoms, pills and passengers |
 | Tab or C | Case board |
 | 1 to 9 | Pick a dialogue choice |
 | Esc | Close a message or the board |
@@ -31,7 +33,15 @@ Open `project.godot` in Godot and press F5.
 - **Badge gate and its loss.** Your badge opens the crime scene and the market cams. Kicking in Reyka's door on the wrong theory gets it revoked. From then on the people in the market (the tech, the fixer) are the way around.
 - **The timeline.** The night is a fixed timeline of story beats in `data/beats/`, each at a set time (the coroner takes the body at 00:30, the dead drop is found at 03:00). The clock shows the latest beat reached; walking, fighting and the board never move it. Some beats only happen because of a choice: the raid on Reyka (02:00) leads to the lawyers revoking your clearance (02:40), the killer clearing the wiping rig out of the dead drop (03:30), a second victim (04:00), and finding the dead drop later (04:30).
 
-The case's rules live in `game/case/` and are covered by tests that play the clean path, the wrong-suspect path, a no-badge-from-the-start path and the timeline (`tests/case/`).
+- **Memory readings.** Vale (the body, or the morgue drawer once she's there), the blank chip (coroner terminal) and Reyka's memory deck can be read. A surface reading is always safe. A deep reading gives more: Vale's last memory is a fourth route to "Reyka left", the deck's recall is a fourth route to "Vale sold a memory that wasn't hers", and the chip gives a detail about the killer for the end of the case. No gate needs a deep reading.
+- **Bleed-through.** Each deep reading adds its cost (2 or 3) to a 0 to 10 bleed-through level that carries across cases ("Play again, symptoms carried over" on the summary keeps it; "fresh" clears it). The level is shown in the HUD and on screen: mild from 3 (inner-voice lines, flicker), strong from 6, severe from 9 (a figure that isn't there). From 6, a deep reading also plants a **leftover**: a false clue from someone else's memory that looks like any other reading on the board and supports nothing. The summary says which ones weren't yours.
+- **Passengers.** A deep reading of Vale's death leaves her with you. She stands in the market and points at a clue you haven't found. She's there whenever your felt level is 1 or more.
+- **The suppressant.** You start with 3 pills and case 1 has no way to get more. Each pill holds back 3 points of felt bleed-through until the case ends, which also quiets passengers (and their help). Past the first pill, each dose adds a point of withdrawal that's felt whenever you're not dosed, in every case after.
+- **None of it is a clock.** Readings, symptoms and pills never move the case clock, close a gate or end the game. They change what you see and what the summary says.
+
+All the numbers are in `data/mind/tuning.tres`, and each reading's cost is `deep_cost` in `data/readings/`. The readings' text, the leftovers and Vale's passenger lines are placeholders for the playtest, not canon.
+
+The case's rules live in `game/case/` and are covered by tests that play the clean path, the wrong-suspect path, a no-badge-from-the-start path and the timeline (`tests/case/`). The detective's mind lives in `game/mind/` (the `Mind` autoload), and `tests/mind/` covers readings, symptoms and pills, including a run with maxed symptoms, no pills and every leftover on the board.
 
 ## The art test
 
@@ -67,12 +77,13 @@ CI (`.github/workflows/ci.yml`) runs the import, the script check, the tests and
 
 ```
 game/
-  data/      resource schemas: Clue, Theory, StoryBeat
+  data/      resource schemas: Clue, Theory, StoryBeat, Reading, MindTuning
+  mind/      the detective's mind across cases (the Mind autoload): bleed-through, passengers, pills
   case/      the running case (the Case autoload), the board's check, dialogue (Talk), the Drowned Market's rooms and spots
   world/     the main scene's room builder, the detective, hostiles, bolts, grey-box drawing
   ui/        HUD, dialogue box, case board, intro and summary screens
   art_test/  the Drowned Market style test: palette, drawing kit, layers, sprites, rain, water
-data/        clues/, theories/ and beats/ as .tres, one per id
+data/        clues/, theories/, beats/ and readings/ as .tres, one per id; mind/tuning.tres
 scenes/      main.tscn, art_test.tscn
 tests/       gdUnit4 tests
 editor/ci/   CI-only scripts

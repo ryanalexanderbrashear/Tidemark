@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="Clue" format=3]
+
+[ext_resource type="Script" path="res://game/data/clue.gd" id="1_clue"]
+
+[resource]
+script = ExtResource("1_clue")
+id = "leftover_door"
+title = "A green door"
+text = "A green door at the end of a flooded corridor, its number painted over."
+source = "Memory reading"
+leftover = true
