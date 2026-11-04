@@ -83,3 +83,8 @@ jobs:
           "$GODOT_BIN" --headless --path . --quit-after 120 2>&1 | tee boot.log
           grep -q "^Boot: Undertow" boot.log
           if grep -E "SCRIPT ERROR" boot.log; then exit 1; fi
+
+      - name: Boot the art test scene
+        run: |
+          "$GODOT_BIN" --headless --path . --quit-after 60 res://scenes/art_test.tscn 2>&1 | tee art_boot.log
+          if grep -E "SCRIPT ERROR|ERROR:" art_boot.log; then exit 1; fi

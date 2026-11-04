@@ -1,0 +1,363 @@
+class_name ArtTest
+extends Node
+## The Drowned Market style test (milestone M3 in Gameplay and Production): one
+## stretch of the market floor drawn at target resolution, to settle the Look and
+## Feel doc's open questions on game resolution, character size and how the
+## detective's inner voice is shown. It doesn't touch the case.
+##
+## Keys: A/D move, R switches resolution, V switches the inner voice, E shows
+## the next thought, H hides the key list.
+## Screenshots: run with `-- --shots=<dir>` and it saves a fixed set and quits.
+
+enum Voice { THOUGHT, CAPTION, NONE }
+
+const P = preload("res://game/art_test/art_palette.gd")
+const WATER_SHADER = preload("res://game/art_test/water.gdshader")
+
+## The two resolutions on test: [size, camera top]. 640x360 scales by whole
+## numbers to 720p, 1080p, 1440p and 4K; 480x270 only to 1080p and 4K.
+const RESOLUTIONS: Array[Array] = [[Vector2i(640, 360), 0], [Vector2i(480, 270), 56]]
+const VOICE_NAMES: Array[String] = ["thought text by the detective", "caption box", "silence"]
+const SPEED: float = 62.0
+const OSK_X: float = 512.0
+const FIXER_X: float = 905.0
+
+## Placeholder lines for the test. They lean on what the docs settle (Vale, the
+## market, the badge), but they're not canon dialogue.
+const THOUGHTS: Array[String] = [
+	"Ines Vale sold other people's memories for a living. Somebody took the last one she had.",
+	"The rain never stops down here. It just finds new ways in.",
+	"Tape, a badge reader, a stall sealed with her inside. My badge still opens doors. For now.",
+]
+
+var res_index: int = 0
+var voice: Voice = Voice.THOUGHT
+var detective_x: float = 300.0
+var facing: int = 1
+
+var _view: SubViewport
+var _screen: TextureRect
+var _layers: Dictionary[String, Sprite2D] = {}
+var _detective: Sprite2D
+var _osk: Sprite2D
+var _fixer: Sprite2D
+var _holo: Sprite2D
+var _lamp: Sprite2D
+var _water: ColorRect
+var _rain: ArtRain
+var _det_frames: Array[ImageTexture] = []
+var _osk_frames: Array[ImageTexture] = []
+var _fixer_frames: Array[ImageTexture] = []
+var _holo_frames: Array[ImageTexture] = []
+var _thought: Label
+var _caption: PanelContainer
+var _caption_label: Label
+var _keys: Label
+var _line: int = 0
+var _typed: float = 0.0
+var _time: float = 0.0
+var _walk_time: float = 0.0
+var _scale: int = 1
+var _shooting: bool = false
+var _offset: Vector2 = Vector2.ZERO
+
+
+func _ready() -> void:
+	get_window().content_scale_mode = Window.CONTENT_SCALE_MODE_DISABLED
+	get_window().size_changed.connect(_layout)
+	_build()
+	_apply_resolution()
+	var shots: String = _shots_dir()
+	if shots != "":
+		_take_shots.call_deferred(shots)
+
+
+func _build() -> void:
+	var back: ColorRect = ColorRect.new()
+	back.color = Color.BLACK
+	back.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(back)
+
+	_view = SubViewport.new()
+	_view.canvas_item_default_texture_filter = Viewport.DEFAULT_CANVAS_ITEM_TEXTURE_FILTER_NEAREST
+	_view.snap_2d_transforms_to_pixel = true
+	_view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(_view)
+
+	_layers["sky"] = _sprite(MarketArt.sky())
+	_layers["city"] = _sprite(MarketArt.city())
+	_layers["arcology"] = _sprite(MarketArt.arcology())
+	_layers["shanties"] = _sprite(MarketArt.shanties())
+	for f: int in range(8):
+		_holo_frames.append(ImageTexture.create_from_image(MarketArt.hologram(f)))
+	_holo = Sprite2D.new()
+	_holo.centered = false
+	_holo.material = _additive()
+	_view.add_child(_holo)
+	_layers["market"] = _sprite(MarketArt.market())
+
+	_lamp = _sprite(_lamp_image())
+	_lamp.material = _additive()
+
+	for f: int in range(ArtCharacters.WALK_FRAMES):
+		_det_frames.append(ImageTexture.create_from_image(ArtCharacters.detective(f, true)))
+	for f: int in range(2):
+		_det_frames.append(ImageTexture.create_from_image(ArtCharacters.detective(f, false)))
+		_osk_frames.append(ImageTexture.create_from_image(ArtCharacters.osk(f)))
+		_fixer_frames.append(ImageTexture.create_from_image(ArtCharacters.fixer(f)))
+	_osk = _sprite(_osk_frames[0].get_image())
+	_fixer = _sprite(_fixer_frames[0].get_image())
+	_detective = _sprite(_det_frames[0].get_image())
+
+	_water = ColorRect.new()
+	var mat: ShaderMaterial = ShaderMaterial.new()
+	mat.shader = WATER_SHADER
+	_water.material = mat
+	_view.add_child(_water)
+
+	_layers["front"] = _sprite(MarketArt.front())
+
+	var rain_layer: CanvasLayer = CanvasLayer.new()
+	_view.add_child(rain_layer)
+	_rain = ArtRain.new()
+	rain_layer.add_child(_rain)
+
+	_screen = TextureRect.new()
+	_screen.texture = _view.get_texture()
+	_screen.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_screen.stretch_mode = TextureRect.STRETCH_SCALE
+	add_child(_screen)
+
+	_thought = Label.new()
+	_thought.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_thought.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_thought.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	_thought.add_theme_color_override("font_color", Color("d4dce6"))
+	_thought.add_theme_color_override("font_outline_color", Color(P.INK, 0.9))
+	add_child(_thought)
+
+	_caption = PanelContainer.new()
+	var box: StyleBoxFlat = StyleBoxFlat.new()
+	box.bg_color = Color(P.NAVY, 0.9)
+	box.border_color = P.AMBER_DIM
+	box.border_width_left = 4
+	add_child(_caption)
+	_caption.add_theme_stylebox_override("panel", box)
+	_caption_label = Label.new()
+	_caption_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_caption_label.add_theme_color_override("font_color", Color("d4dce6"))
+	_caption.add_child(_caption_label)
+
+	_keys = Label.new()
+	_keys.add_theme_color_override("font_color", Color(P.RAIN, 0.8))
+	add_child(_keys)
+
+
+func _sprite(img: Image) -> Sprite2D:
+	var s: Sprite2D = Sprite2D.new()
+	s.centered = false
+	s.texture = ImageTexture.create_from_image(img)
+	_view.add_child(s)
+	return s
+
+
+func _additive() -> CanvasItemMaterial:
+	var m: CanvasItemMaterial = CanvasItemMaterial.new()
+	m.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	return m
+
+
+## The lamp over Vale's stall, on its own so it can stutter.
+func _lamp_image() -> Image:
+	var img: Image = Px.blank(MarketArt.STALL_W + 40, 90)
+	Px.glow(img, img.get_width() * 0.5, 22, MarketArt.STALL_W * 0.45, 40, P.AMBER, 0.18)
+	Px.rect(img, img.get_width() / 2 - 4, 2, 8, 2, P.AMBER)
+	return img
+
+
+func _apply_resolution() -> void:
+	var size: Vector2i = RESOLUTIONS[res_index][0]
+	_view.size = size
+	_water.size = Vector2(size.x, size.y)
+	var mat: ShaderMaterial = _water.material as ShaderMaterial
+	mat.set_shader_parameter("view_size", Vector2(size))
+	_rain.view_size = size
+	_rain.reset()
+	_layout()
+
+
+func _layout() -> void:
+	var win: Vector2i = get_window().size
+	var size: Vector2i = _view.size
+	_scale = maxi(1, mini(win.x / size.x, win.y / size.y))
+	var shown: Vector2 = Vector2(size * _scale)
+	_offset = ((Vector2(win) - shown) * 0.5).floor()
+	_screen.position = _offset
+	_screen.size = shown
+	var font_px: int = roundi(float(win.y) / 46.0)
+	_thought.add_theme_font_size_override("font_size", font_px)
+	_thought.add_theme_constant_override("outline_size", maxi(2, font_px / 5))
+	_caption_label.add_theme_font_size_override("font_size", font_px)
+	var box: StyleBoxFlat = _caption.get_theme_stylebox("panel") as StyleBoxFlat
+	box.set_content_margin_all(font_px * 0.8)
+	box.content_margin_left = font_px * 1.2
+	_keys.add_theme_font_size_override("font_size", maxi(12, roundi(float(win.y) / 70.0)))
+	_keys.position = _offset + Vector2(12, 8)
+
+
+func _process(delta: float) -> void:
+	_time += delta
+	var dir: float = Input.get_axis("move_left", "move_right")
+	if dir != 0.0:
+		facing = 1 if dir > 0.0 else -1
+		detective_x = clampf(detective_x + dir * SPEED * delta, 20.0, float(MarketArt.ROOM.x - 20))
+		_walk_time += delta
+	else:
+		_walk_time = 0.0
+	if not _shooting:
+		_typed += delta * 38.0
+	if _typed > THOUGHTS[_line].length() + 140.0 and not _shooting:
+		_next_line()
+	_update_world(dir != 0.0)
+	_update_voice()
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	var key: InputEventKey = event as InputEventKey
+	if key == null or not key.pressed or key.echo:
+		return
+	match key.physical_keycode:
+		KEY_R:
+			res_index = (res_index + 1) % RESOLUTIONS.size()
+			_apply_resolution()
+		KEY_V:
+			voice = ((voice + 1) % 3) as Voice
+		KEY_E:
+			_next_line()
+		KEY_H:
+			_keys.visible = not _keys.visible
+
+
+func _next_line() -> void:
+	_line = (_line + 1) % THOUGHTS.size()
+	_typed = 0.0
+
+
+func _update_world(walking: bool) -> void:
+	var size: Vector2i = _view.size
+	var cam_top: int = RESOLUTIONS[res_index][1]
+	var cam_x: float = clampf(detective_x - size.x * 0.5, 0.0, float(MarketArt.ROOM.x - size.x))
+	cam_x = floorf(cam_x)
+	var max_scroll: float = float(MarketArt.ROOM.x - MarketArt.VIEW.x)
+	for layer: String in _layers:
+		var factor: float = MarketArt.PARALLAX[layer]
+		# Back layers are drawn for the 640-wide view; keep them centred on it.
+		var lx: float = -floorf(cam_x * factor) if layer == "market" else -floorf(cam_x / max_scroll * max_scroll * factor)
+		if layer == "sky":
+			lx = 0.0
+		_layers[layer].position = Vector2(lx, -cam_top)
+	var market_x: float = -cam_x
+	_lamp.position = Vector2(market_x + MarketArt.STALL_X - 20, MarketArt.WALK_Y - 128 + 6 - cam_top)
+	# A failing tube: mostly on, sometimes off for a beat.
+	var flick: float = sin(_time * 23.0) + sin(_time * 7.3)
+	_lamp.visible = flick > -1.4
+	_holo.texture = _holo_frames[int(_time * 8.0) % _holo_frames.size()]
+	_holo.position = Vector2(market_x + 602, 58 - cam_top)
+	_holo.modulate.a = 0.85 if fmod(_time, 3.7) > 0.12 else 0.3
+
+	var breath: int = int(_time * 1.6) % 2
+	var walk_frame: int = int(_walk_time * 10.0) % ArtCharacters.WALK_FRAMES
+	_detective.texture = _det_frames[walk_frame] if walking else _det_frames[ArtCharacters.WALK_FRAMES + breath]
+	_detective.flip_h = facing < 0
+	_place(_detective, detective_x, ArtCharacters.DETECTIVE_SIZE, market_x, cam_top)
+	_osk.texture = _osk_frames[breath]
+	_place(_osk, OSK_X, ArtCharacters.OSK_SIZE, market_x, cam_top)
+	_fixer.texture = _fixer_frames[(breath + 1) % 2]
+	_fixer.flip_h = true
+	_place(_fixer, FIXER_X, ArtCharacters.FIXER_SIZE, market_x, cam_top)
+
+	_water.position = Vector2(0, MarketArt.WATER_Y - cam_top)
+	(_water.material as ShaderMaterial).set_shader_parameter("line_y", float(MarketArt.WATER_Y - cam_top))
+	_rain.walk_y = MarketArt.WALK_Y - cam_top
+	_rain.water_y = MarketArt.WATER_Y - cam_top
+
+
+func _place(s: Sprite2D, x: float, size: Vector2i, market_x: float, cam_top: int) -> void:
+	# Feet on the walkway; sprites' last two rows are below the shoe line.
+	s.position = Vector2(floorf(market_x + x - size.x * 0.5), MarketArt.WALK_Y - size.y + 2 - cam_top)
+
+
+func _update_voice() -> void:
+	var line: String = THOUGHTS[_line]
+	var shown: String = line.substr(0, int(_typed))
+	_thought.visible = voice == Voice.THOUGHT
+	_caption.visible = voice == Voice.CAPTION
+	var win: Vector2 = Vector2(get_window().size)
+	if voice == Voice.THOUGHT:
+		_thought.text = shown
+		var width: float = minf(win.x * 0.36, 640.0)
+		var cam_top: int = RESOLUTIONS[res_index][1]
+		var cam_x: float = floorf(clampf(detective_x - _view.size.x * 0.5, 0.0, float(MarketArt.ROOM.x - _view.size.x)))
+		var head: Vector2 = Vector2(detective_x - cam_x, MarketArt.WALK_Y - ArtCharacters.DETECTIVE_SIZE.y - 6 - cam_top)
+		var at: Vector2 = _offset + head * float(_scale)
+		_thought.size = Vector2(width, 10)
+		_thought.reset_size()
+		_thought.size.x = width
+		var h: float = _thought.get_combined_minimum_size().y
+		_thought.position = Vector2(clampf(at.x - width * 0.5, _offset.x + 16.0, _offset.x + _screen.size.x - width - 16.0), at.y - h)
+	elif voice == Voice.CAPTION:
+		_caption_label.text = shown
+		var width: float = minf(_screen.size.x * 0.5, 900.0)
+		_caption.size = Vector2(width, 0)
+		_caption.reset_size()
+		_caption.size.x = width
+		var h: float = _caption.get_combined_minimum_size().y
+		# Reserve the full line's height so the box doesn't grow as it types.
+		_caption_label.text = line
+		h = _caption.get_combined_minimum_size().y
+		_caption_label.text = shown
+		_caption.size = Vector2(width, h)
+		_caption.position = _offset + Vector2(_screen.size.x * 0.04, _screen.size.y - h - _screen.size.y * 0.05)
+	var res: Vector2i = _view.size
+	_keys.text = "%dx%d at x%d  |  voice: %s\nA/D move   R resolution   V voice   E next thought   H hide" % [res.x, res.y, _scale, VOICE_NAMES[voice]]
+
+
+# ---------- screenshots ----------
+
+func _shots_dir() -> String:
+	for arg: String in OS.get_cmdline_user_args():
+		if arg.begins_with("--shots="):
+			return arg.trim_prefix("--shots=")
+	return ""
+
+
+func _take_shots(dir: String) -> void:
+	DirAccess.make_dir_recursive_absolute(dir)
+	_keys.visible = false
+	_shooting = true
+	var plan: Array[Array] = [
+		# name, resolution, voice, detective x, facing, line
+		["640-thought", 0, Voice.THOUGHT, 300.0, 1, 2],
+		["640-caption", 0, Voice.CAPTION, 300.0, 1, 0],
+		["640-silent", 0, Voice.NONE, 760.0, 1, 0],
+		["480-thought", 1, Voice.THOUGHT, 300.0, 1, 2],
+		["480-caption", 1, Voice.CAPTION, 300.0, 1, 0],
+		["480-silent", 1, Voice.NONE, 760.0, 1, 0],
+	]
+	for shot: Array in plan:
+		res_index = shot[1]
+		_apply_resolution()
+		voice = shot[2]
+		detective_x = shot[3]
+		facing = shot[4]
+		_line = shot[5]
+		_typed = 9999.0
+		_time = 1.0
+		_rain.warm(2.0)
+		for i: int in range(4):
+			await get_tree().process_frame
+		_typed = 9999.0
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png(dir.path_join("%s.png" % shot[0]))
+		_view.get_texture().get_image().save_png(dir.path_join("%s-native.png" % shot[0]))
+	get_tree().quit()

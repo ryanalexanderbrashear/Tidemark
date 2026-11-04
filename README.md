@@ -33,6 +33,24 @@ Open `project.godot` in Godot and press F5.
 
 The case's rules live in `game/case/` and are covered by tests that play the clean path, the wrong-suspect path, a no-badge-from-the-start path and the timeline (`tests/case/`).
 
+## The art test
+
+`scenes/art_test.tscn` is the Drowned Market style test (milestone M3): one stretch of the market floor in pixel art, with rain, reflections in the water, Vale's taped-off stall and three people (the detective, Osk, the fixer). It's there to settle the Look and Feel doc's open questions on game resolution, character size and how the detective's inner voice is shown. Open the scene and press F6. All of its art is drawn in code from `ArtPalette` (`game/art_test/`), so it's a test of scale, light and palette, not final art.
+
+| Key | Does |
+| --- | --- |
+| A / D | Walk |
+| R | Switch between 640x360 and 480x270 |
+| V | Inner voice: thought text by the detective, a caption box, or silence |
+| E | Next thought |
+| H | Hide the key list |
+
+To save the set of comparison screenshots (needs a display, so not headless):
+
+```bash
+godot --path . --resolution 1920x1080 res://scenes/art_test.tscn -- --shots=/tmp/art-test
+```
+
 ## Run the checks
 
 Run them from the repo root. On a fresh clone, import first, or scripts can't find each other's classes.
@@ -53,8 +71,9 @@ game/
   case/      the running case (the Case autoload), the board's check, dialogue (Talk), the Drowned Market's rooms and spots
   world/     the main scene's room builder, the detective, hostiles, bolts, grey-box drawing
   ui/        HUD, dialogue box, case board, intro and summary screens
+  art_test/  the Drowned Market style test: palette, drawing kit, layers, sprites, rain, water
 data/        clues/, theories/ and beats/ as .tres, one per id
-scenes/      main.tscn
+scenes/      main.tscn, art_test.tscn
 tests/       gdUnit4 tests
 editor/ci/   CI-only scripts
 ```
