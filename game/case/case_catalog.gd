@@ -1,14 +1,16 @@
 class_name CaseCatalog
 extends RefCounted
-## Loads the case's clues and theories from data/ (one .tres per id).
+## Loads the case's clues, theories, story beats and memory readings from data/ (one .tres per id).
 
 const CLUES_DIR: String = "res://data/clues"
 const THEORIES_DIR: String = "res://data/theories"
 const BEATS_DIR: String = "res://data/beats"
+const READINGS_DIR: String = "res://data/readings"
 
 static var _clues: Dictionary[String, Clue] = {}
 static var _theories: Array[Theory] = []
 static var _beats: Dictionary[String, StoryBeat] = {}
+static var _readings: Dictionary[String, Reading] = {}
 
 
 static func clue(id: String) -> Clue:
@@ -55,6 +57,29 @@ static func timeline() -> Array[StoryBeat]:
 	return out
 
 
+static func reading(id: String) -> Reading:
+	_ensure_loaded()
+	return _readings.get(id) as Reading
+
+
+static func all_readings() -> Array[Reading]:
+	_ensure_loaded()
+	var out: Array[Reading] = []
+	out.assign(_readings.values())
+	return out
+
+
+## Leftover clues bleed-through can plant, in the order it plants them.
+static func leftovers() -> Array[String]:
+	_ensure_loaded()
+	var out: Array[String] = []
+	for c: Clue in _clues.values():
+		if c.leftover:
+			out.append(c.id)
+	out.sort()
+	return out
+
+
 static func _ensure_loaded() -> void:
 	if not _clues.is_empty():
 		return
@@ -70,6 +95,10 @@ static func _ensure_loaded() -> void:
 		var b: StoryBeat = res as StoryBeat
 		if b != null:
 			_beats[b.id] = b
+	for res: Resource in _load_dir(READINGS_DIR):
+		var r: Reading = res as Reading
+		if r != null:
+			_readings[r.id] = r
 	_theories.sort_custom(func(a: Theory, b: Theory) -> bool: return a.order < b.order)
 
 

@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="Clue" format=3]
+
+[ext_resource type="Script" path="res://game/data/clue.gd" id="1_clue"]
+
+[resource]
+script = ExtResource("1_clue")
+id = "vale_last"
+title = "Vale's last memory"
+text = "She let someone into the shut stall near 00:10. Reyka had left two hours before."
+source = "Memory reading"
+leftover = false

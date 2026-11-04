@@ -7,6 +7,7 @@ var market: DrownedMarket
 
 
 func before_test() -> void:
+	Mind.reset()
 	Case.reset()
 	market = DrownedMarket.new()
 

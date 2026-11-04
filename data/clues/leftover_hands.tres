@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="Clue" format=3]
+
+[ext_resource type="Script" path="res://game/data/clue.gd" id="1_clue"]
+
+[resource]
+script = ExtResource("1_clue")
+id = "leftover_hands"
+title = "Shaking hands"
+text = "A man's hands pushing a chip into a reader, shaking. A ring on the left thumb."
+source = "Memory reading"
+leftover = true

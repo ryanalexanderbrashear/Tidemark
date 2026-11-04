@@ -16,6 +16,19 @@ var wrong_facts: Array[String] = []
 var clearance: bool
 var second_victim: bool
 var reyka: String
+## The detective's mind when the case closed. These carry into the next case.
+var bleed: int
+## What the detective felt at the end, after doses and withdrawal.
+var felt: int
+var bleed_max: int
+var tier: String
+var passengers: Array[String] = []
+var doses_taken: int
+var pills_left: int
+## Details about the killer from deep readings.
+var insights: Array[String] = []
+## Titles of leftover clues that ended up on the board.
+var leftovers: Array[String] = []
 
 
 static func from_case(c: Node) -> CaseSummary:
@@ -36,6 +49,11 @@ static func from_case(c: Node) -> CaseSummary:
 		s.facts.append(t.statement)
 		if not t.is_true:
 			s.wrong_facts.append(t.statement)
+	var learned: Array[String] = c.get("insights")
+	s.insights = learned.duplicate()
+	var false_clues: Array[String] = c.call("leftovers_held")
+	for id: String in false_clues:
+		s.leftovers.append(CaseCatalog.clue(id).title)
 	if held.has("left"):
 		s.reyka = "cleared"
 	elif held.has("there"):
@@ -43,3 +61,13 @@ static func from_case(c: Node) -> CaseSummary:
 	else:
 		s.reyka = "never resolved"
 	return s
+
+
+func read_mind(m: MindState) -> void:
+	bleed = m.bleed
+	felt = m.level()
+	bleed_max = m.tuning.bleed_max
+	tier = m.tier_name()
+	passengers = m.passengers.duplicate()
+	doses_taken = m.doses_taken
+	pills_left = m.pills

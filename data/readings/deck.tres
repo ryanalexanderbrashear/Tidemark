@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="Reading" format=3]
+
+[ext_resource type="Script" path="res://game/data/reading.gd" id="1_reading"]
+
+[resource]
+script = ExtResource("1_reading")
+id = "deck"
+title = "Memory deck"
+source = 0
+readable_until = ""
+surface_text = "The recall he bought from Vale, still loaded. The playback log puts him in Uptown from 23:00 on, across the city when she died."
+surface_clue = "memstamp"
+deep_text = "Deep reading. You play the recall itself. It isn't Vale's life: the hands in it are a stranger's, and there's an ID band on the wrist that reads D. Marr. For a moment the stranger's hands feel like yours."
+deep_clue = "marr_recall"
+deep_cost = 2
+passenger = ""
+insight = ""

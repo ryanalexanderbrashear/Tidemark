@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="MindTuning" format=3]
+
+[ext_resource type="Script" path="res://game/data/mind_tuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+bleed_max = 10
+mild_at = 3
+strong_at = 6
+severe_at = 9
+leftover_at = 6
+passengers_show_at = 1
+start_pills = 3
+dose_strength = 3
+free_doses = 1
+withdrawal_per_dose = 1

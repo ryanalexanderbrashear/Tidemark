@@ -38,6 +38,10 @@ var scheduled: Array[String] = []
 var flags: Dictionary[String, Variant] = {}
 ## Hostiles still standing, per room. Rooms not listed have none.
 var hostiles: Dictionary[String, int] = {}
+## Memory readings done this case: id -> "surface" or "deep".
+var readings: Dictionary[String, String] = {}
+## Details about the killer learned from deep readings this case.
+var insights: Array[String] = []
 var closed: bool
 
 
@@ -56,7 +60,11 @@ func reset() -> void:
 	scheduled.clear()
 	flags.clear()
 	hostiles.clear()
+	readings.clear()
+	insights.clear()
 	closed = false
+	# The detective's symptoms carry over; only this case's doses wear off.
+	Mind.case_started()
 	minutes = 0
 	reach("case_opens")
 
@@ -160,6 +168,72 @@ func commit_theory(id: String, selected: Array[String]) -> TheoryCheck.Result:
 	return result
 
 
+# ---------- memory readings ----------
+
+## "surface", "deep", or "" when the subject hasn't been read this case.
+func reading_depth(id: String) -> String:
+	return readings.get(id, "")
+
+
+## Reads a memory, or returns null when it can't be read now (see
+## reading_blocked). A surface reading is safe. A deep reading gives its clue and
+## insight, costs bleed-through (and maybe a passenger), and at strong symptoms
+## also plants a leftover clue. Reading again at the same depth costs nothing.
+## Readings never move the clock.
+func read_memory(id: String, deep: bool) -> Reading:
+	var r: Reading = CaseCatalog.reading(id)
+	assert(r != null, "Unknown reading %s" % id)
+	if reading_blocked(id) != "":
+		return null
+	var done: String = reading_depth(id)
+	if not deep:
+		if done == "":
+			readings[id] = "surface"
+		if r.surface_clue != "":
+			find_clue(r.surface_clue)
+		return r
+	if done == "deep":
+		return r
+	readings[id] = "deep"
+	if r.surface_clue != "":
+		find_clue(r.surface_clue)
+	if r.deep_clue != "":
+		find_clue(r.deep_clue)
+	if r.insight != "":
+		insights.append(r.insight)
+	Mind.add_bleed(r.deep_cost)
+	if r.passenger != "" and r.source == Reading.Source.DEAD:
+		Mind.add_passenger(r.passenger)
+	if Mind.plants_leftovers():
+		_plant_leftover()
+	return r
+
+
+## Why a subject can't be read now ("" when it can): a body read too late, or
+## a living person with no consent ("consent_<id>" flag) and no warrant
+## ("warrant_<id>" flag).
+func reading_blocked(id: String) -> String:
+	var r: Reading = CaseCatalog.reading(id)
+	return r.blocked_reason(minutes, is_set("consent_" + id), is_set("warrant_" + id))
+
+
+## Clues on the board that came from someone else's memory.
+func leftovers_held() -> Array[String]:
+	var out: Array[String] = []
+	for id: String in clues:
+		if CaseCatalog.clue(id).leftover:
+			out.append(id)
+	return out
+
+
+func _plant_leftover() -> void:
+	for id: String in CaseCatalog.leftovers():
+		if not clues.has(id):
+			# Announced like any other clue: the player has to judge it.
+			find_clue(id)
+			return
+
+
 # ---------- flags ----------
 
 func flag(id: String) -> Variant:
@@ -255,5 +329,6 @@ func close_case() -> CaseSummary:
 	closed = true
 	var s: CaseSummary = CaseSummary.from_case(self)
 	s.closed_at = at
+	s.read_mind(Mind)
 	case_closed.emit(s)
 	return s

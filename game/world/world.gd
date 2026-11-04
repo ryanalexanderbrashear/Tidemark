@@ -32,6 +32,7 @@ func _ready() -> void:
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_ui.add_child(root)
+	root.add_child(BleedOverlay.new())
 	_hud = Hud.new()
 	root.add_child(_hud)
 	_dialog = DialogBox.new()
@@ -50,12 +51,13 @@ func _ready() -> void:
 
 	Case.travel_requested.connect(_load_room)
 	Case.notice.connect(_hud.toast)
+	Mind.thought.connect(_hud.thought)
 	# Deferred: a beat can fire from inside a dialogue choice, and the box closes
 	# after the choice returns.
 	Case.announcement.connect(func(who: String, text: String, at: String) -> void:
 		_announce.call_deferred(who, text, at))
 	Case.case_closed.connect(func(s: CaseSummary) -> void:
-		_show_screen(CaseScreens.summary(s, _start)))
+		_show_screen(CaseScreens.summary(s, _start, _start_fresh)))
 	_show_screen(CaseScreens.intro(_start))
 	print("Boot: Undertow %s on Godot %s" % [ProjectSettings.get_setting("application/config/version"), Engine.get_version_info().string])
 
@@ -66,6 +68,12 @@ func _start() -> void:
 	Case.travel("lab", 200.0)
 	_hud.toast("Captain Ruiz has the case brief. The market is east, past Broker's Row.")
 	get_tree().paused = false
+
+
+## Play again with no symptoms and a full bottle.
+func _start_fresh() -> void:
+	Mind.reset()
+	_start()
 
 
 func _load_room(id: String, x: float) -> void:
@@ -97,6 +105,9 @@ func _load_room(id: String, x: float) -> void:
 	_camera.reset_smoothing()
 	_hud.room_title = room.title
 	_limit_warned = false
+	var line: String = Mind.room_line(randf(), randi())
+	if line != "":
+		_hud.thought.call_deferred(line)
 
 
 func _solid(r: Rect2, one_way: bool) -> StaticBody2D:
@@ -165,6 +176,17 @@ func _unhandled_input(event: InputEvent) -> void:
 			_hud.toast("Thermal optic on" if Case.toggle_optic() else "Thermal optic off")
 		else:
 			_hud.toast("You don't have a thermal optic yet.")
+	elif event.is_action_pressed("dose"):
+		Mind.take_dose()
+	elif event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo \
+			and (event as InputEventKey).keycode in [KEY_F2, KEY_F3]:
+		# Playtest keys: raise bleed-through, or clear the detective's mind.
+		if (event as InputEventKey).keycode == KEY_F2:
+			Mind.add_bleed(2)
+			_hud.toast("Playtest: bleed-through %d/%d (%s)" % [Mind.bleed, Mind.tuning.bleed_max, Mind.tier_name()])
+		else:
+			Mind.reset()
+			_hud.toast("Playtest: symptoms, pills and passengers reset")
 	elif event.is_action_pressed("case_board"):
 		get_tree().paused = true
 		_board.open_board()
