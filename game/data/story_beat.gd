@@ -19,6 +19,11 @@ extends Resource
 
 ## Minutes since midnight at the start of the case's night; past midnight runs on (01:00 is 1500).
 func minutes() -> int:
-	var parts: PackedStringArray = time.split(":")
+	return to_minutes(time)
+
+
+## Case minutes for an "HH:MM" time, on the same scale as minutes().
+static func to_minutes(hhmm: String) -> int:
+	var parts: PackedStringArray = hhmm.split(":")
 	var m: int = int(parts[0]) * 60 + int(parts[1])
 	return m + 1440 if m < 12 * 60 else m

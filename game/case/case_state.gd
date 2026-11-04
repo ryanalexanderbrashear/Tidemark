@@ -175,13 +175,16 @@ func reading_depth(id: String) -> String:
 	return readings.get(id, "")
 
 
-## Reads a memory. A surface reading is safe. A deep reading gives its clue and
+## Reads a memory, or returns null when it can't be read now (see
+## reading_blocked). A surface reading is safe. A deep reading gives its clue and
 ## insight, costs bleed-through (and maybe a passenger), and at strong symptoms
 ## also plants a leftover clue. Reading again at the same depth costs nothing.
 ## Readings never move the clock.
 func read_memory(id: String, deep: bool) -> Reading:
 	var r: Reading = CaseCatalog.reading(id)
 	assert(r != null, "Unknown reading %s" % id)
+	if reading_blocked(id) != "":
+		return null
 	var done: String = reading_depth(id)
 	if not deep:
 		if done == "":
@@ -199,11 +202,19 @@ func read_memory(id: String, deep: bool) -> Reading:
 	if r.insight != "":
 		insights.append(r.insight)
 	Mind.add_bleed(r.deep_cost)
-	if r.passenger != "":
+	if r.passenger != "" and r.source == Reading.Source.DEAD:
 		Mind.add_passenger(r.passenger)
 	if Mind.plants_leftovers():
 		_plant_leftover()
 	return r
+
+
+## Why a subject can't be read now ("" when it can): a body read too late, or
+## a living person with no consent ("consent_<id>" flag) and no warrant
+## ("warrant_<id>" flag).
+func reading_blocked(id: String) -> String:
+	var r: Reading = CaseCatalog.reading(id)
+	return r.blocked_reason(minutes, is_set("consent_" + id), is_set("warrant_" + id))
 
 
 ## Clues on the board that came from someone else's memory.

@@ -202,3 +202,39 @@ func test_no_deep_reading_clue_is_the_only_route_to_a_fact() -> void:
 			if not deep_only.has(id):
 				others += 1
 		assert_int(others).override_failure_message("%s leans on deep readings" % t.id).is_greater_equal(3)
+
+
+func test_a_body_can_only_be_read_for_a_few_hours() -> void:
+	Case.revoke_clearance()
+	assert_object(_use("morgue").option("Surface")).is_not_null()
+	# The raid path's fallout comes after the window closes.
+	Case.reach("clearance_revoked")
+	assert_str(Case.reading_blocked("vale")).is_not_empty()
+	var t: Talk = _use("morgue")
+	assert_object(t.option("Deep")).is_null()
+	assert_str(t.choose("Try to read").text).contains("Too long gone")
+	assert_object(Case.read_memory("vale", true)).is_null()
+	assert_int(Mind.bleed).is_equal(0)
+	assert_array(Mind.passengers).is_empty()
+
+
+func test_recordings_never_expire() -> void:
+	Case.reach("dead_drop_found_late")
+	assert_str(Case.reading_blocked("chip")).is_empty()
+	assert_object(_use("coroner").option("Deep")).is_not_null()
+
+
+func test_the_living_need_consent_or_a_warrant() -> void:
+	var r: Reading = Reading.new()
+	r.source = Reading.Source.LIVING
+	assert_str(r.blocked_reason(0, false, false)).is_not_empty()
+	assert_str(r.blocked_reason(0, true, false)).is_empty()
+	assert_str(r.blocked_reason(0, false, true)).is_empty()
+
+
+func test_only_a_reading_of_the_dead_leaves_a_passenger() -> void:
+	for r: Reading in CaseCatalog.all_readings():
+		if r.passenger != "":
+			assert_int(r.source).override_failure_message("%s leaves a passenger but isn't a body" % r.id).is_equal(Reading.Source.DEAD)
+		if r.source == Reading.Source.DEAD:
+			assert_str(r.readable_until).override_failure_message("%s has no reading window" % r.id).is_not_empty()

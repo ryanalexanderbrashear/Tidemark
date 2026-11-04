@@ -6,6 +6,8 @@
 script = ExtResource("1_reading")
 id = "vale"
 title = "Reading: Ines Vale"
+source = 1
+readable_until = "02:15"
 surface_text = "Surface reading. Her last hour comes in pieces: the stall's hum, the cold of the freezers she rented, fear without a face. Nothing you could put on a board."
 surface_clue = ""
 deep_text = "Deep reading. You go under with her. The stall is shut, it's ten past midnight, and she's opening the door to someone. Reyka left hours ago. Then white, where a face should be. You come up with her still behind your eyes."

@@ -16,7 +16,8 @@ extends RefCounted
 ## No lockouts: every clue a needed fact rests on has a second route that
 ## doesn't need the badge (see tests/case/test_case_paths.gd).
 ##
-## Memory readings (data/readings/): Vale (the body or the morgue drawer), the
+## Memory readings (data/readings/): Vale (the body or the morgue drawer, until
+## 02:15, about two hours after she died), the
 ## blank chip (coroner terminal) and Reyka's memory deck. Surface readings are
 ## safe; deep readings add a route to a fact or a detail about the killer, and
 ## cost bleed-through (tests/mind/test_readings.gd). No gate needs one.
@@ -203,6 +204,11 @@ func reading_options(id: String) -> Array[TalkOption]:
 	var r: Reading = CaseCatalog.reading(id)
 	var done: String = Case.reading_depth(id)
 	var opts: Array[TalkOption] = []
+	var blocked: String = Case.reading_blocked(id)
+	if blocked != "":
+		if done != "deep":
+			opts.append(TalkOption.make("Try to read", func() -> Talk: return Talk.say(r.title, blocked)))
+		return opts
 	if done == "":
 		opts.append(TalkOption.make("Surface reading (safe)", func() -> Talk: return read(id, false)))
 	if done != "deep":
@@ -212,6 +218,8 @@ func reading_options(id: String) -> Array[TalkOption]:
 
 func read(id: String, deep: bool) -> Talk:
 	var r: Reading = Case.read_memory(id, deep)
+	if r == null:
+		return Talk.say(CaseCatalog.reading(id).title, Case.reading_blocked(id))
 	var opts: Array[TalkOption] = reading_options(id)
 	opts.append(TalkOption.close("Come up"))
 	return Talk.say(r.title, r.deep_text if deep else r.surface_text, opts)
