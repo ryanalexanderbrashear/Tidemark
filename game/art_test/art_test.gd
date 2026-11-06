@@ -10,9 +10,10 @@ extends Node
 ## fog is pixel art like everything else; volumetric fog is drawn at the
 ## window's own resolution behind the crisp pixel-art playable layer.
 ##
-## The detective is the closer-to-final "rain-worn tracer" (ArtDetective). C
-## cycles to a taller, rim-lit style draft of him (ArtDetectiveTall, toward
-## Replaced's look) and to the first proof-of-concept sprite, to compare.
+## The detective starts as the tall, rim-lit draft of the "rain-worn tracer"
+## (ArtDetectiveTall, toward Replaced's look), and Osk and the fixer are drawn to
+## his scale. C cycles to the 64 px pass (ArtDetective) and to the first
+## proof-of-concept sprite, to compare.
 ##
 ## Keys: A/D move, R switches resolution, V switches the inner voice, F switches
 ## the fog, C switches the detective, E shows the next thought, H hides the key list.
@@ -50,7 +51,8 @@ var fog: Fog = Fog.STEPPED
 var detective_x: float = 300.0
 enum Look { CLOSER, TALL, SKETCH }
 const LOOK_NAMES: Array[String] = ["closer to final", "tall rim-lit draft", "first sketch"]
-var look: Look = Look.CLOSER
+## The tall draft by default: Osk and the fixer are drawn to its scale.
+var look: Look = Look.TALL
 var facing: int = 1
 
 ## Two viewports at native resolution: the background (sky to shanties, with
@@ -506,6 +508,8 @@ func _take_shots(dir: String) -> void:
 		["detective-tall-idle", 0, Voice.NONE, 300.0, 1, 0, Fog.STEPPED, -1, Look.TALL],
 		["detective-tall-walk", 0, Voice.NONE, 300.0, 1, 0, Fog.STEPPED, 1, Look.TALL],
 		["detective-tall-volumetric", 0, Voice.NONE, 300.0, 1, 0, Fog.VOLUMETRIC, 6, Look.TALL],
+		["npcs-osk", 0, Voice.NONE, 440.0, 1, 0, Fog.STEPPED, -1, Look.TALL],
+		["npcs-fixer", 0, Voice.NONE, 830.0, 1, 0, Fog.STEPPED, -1, Look.TALL],
 	]
 	for shot: Array in plan:
 		res_index = shot[1]
@@ -516,7 +520,7 @@ func _take_shots(dir: String) -> void:
 		_line = shot[5]
 		fog = shot[6]
 		_shot_walk = shot[7] if shot.size() > 7 else -1
-		look = shot[8] if shot.size() > 8 else Look.CLOSER
+		look = shot[8] if shot.size() > 8 else Look.TALL
 		_typed = 9999.0
 		_time = 1.0
 		_rain.warm(2.0)

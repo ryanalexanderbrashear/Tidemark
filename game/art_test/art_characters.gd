@@ -11,8 +11,11 @@ extends RefCounted
 const P = preload("res://game/art_test/art_palette.gd")
 
 const DETECTIVE_SIZE: Vector2i = Vector2i(32, 60)
-const OSK_SIZE: Vector2i = Vector2i(40, 60)
-const FIXER_SIZE: Vector2i = Vector2i(28, 64)
+## Osk and the fixer are scaled up to stand beside the tall detective draft
+## (ArtDetectiveTall, ~86 px): 1.5x their first sketch.
+const NPC_SCALE: float = 1.5
+const OSK_SIZE: Vector2i = Vector2i(60, 90)
+const FIXER_SIZE: Vector2i = Vector2i(42, 96)
 const WALK_FRAMES: int = 6
 
 const COAT: Color = Color("1e2838")
@@ -91,80 +94,121 @@ static func _leg(img: Image, hip: Vector2, foot_x: float, lifted: bool, c: Color
 ## Faces left, toward Vale's stall.
 static func osk(frame: int) -> Image:
 	var img: Image = Px.blank(OSK_SIZE.x, OSK_SIZE.y)
+	_k = NPC_SCALE
 	var b: int = frame % 2
 	var fb: float = float(b)
-	Px.rect(img, 13, 50, 5, 7, PANTS_BACK)
-	Px.rect(img, 20, 50, 5, 7, PANTS)
-	Px.rect(img, 11, 56, 7, 3, SHOE)
-	Px.rect(img, 19, 56, 7, 3, SHOE)
+	_rect(img, 13, 50, 5, 7, PANTS_BACK)
+	_rect(img, 20, 50, 5, 7, PANTS)
+	_rect(img, 11, 56, 7, 3, SHOE)
+	_rect(img, 19, 56, 7, 3, SHOE)
 	var jacket: Color = Color("3a2724")
 	var jacket_dark: Color = Color("261a19")
-	Px.poly(img, PackedVector2Array([Vector2(10, 29 + fb), Vector2(28, 29 + fb), Vector2(30, 35 + fb), Vector2(29, 51), Vector2(9, 51), Vector2(8, 35 + fb)]), jacket)
-	Px.poly(img, PackedVector2Array([Vector2(20, 29 + fb), Vector2(28, 29 + fb), Vector2(30, 35 + fb), Vector2(29, 51), Vector2(21, 51)]), jacket_dark)
-	Px.rect(img, 9, 44, 21, 1, jacket_dark)
-	Px.line(img, Vector2i(17, 30 + b), Vector2i(17, 50), Color("5a3a30"))
+	_poly(img, PackedVector2Array([Vector2(10, 29 + fb), Vector2(28, 29 + fb), Vector2(30, 35 + fb), Vector2(29, 51), Vector2(9, 51), Vector2(8, 35 + fb)]), jacket)
+	_poly(img, PackedVector2Array([Vector2(20, 29 + fb), Vector2(28, 29 + fb), Vector2(30, 35 + fb), Vector2(29, 51), Vector2(21, 51)]), jacket_dark)
+	_rect(img, 9, 44, 21, 1, jacket_dark)
+	_line(img, Vector2i(17, 30 + b), Vector2i(17, 50), Color("5a3a30"))
 	# Near arm hangs, holding a broker's memory case.
-	Px.line(img, Vector2i(10, 31 + b), Vector2i(9, 43), jacket_dark)
-	Px.line(img, Vector2i(11, 31 + b), Vector2i(10, 43), jacket_dark)
-	Px.rect(img, 6, 43, 7, 5, P.STEEL)
-	Px.rect(img, 7, 44, 5, 1, P.CYAN_DIM)
+	_line(img, Vector2i(10, 31 + b), Vector2i(9, 43), jacket_dark)
+	_line(img, Vector2i(11, 31 + b), Vector2i(10, 43), jacket_dark)
+	_rect(img, 6, 43, 7, 5, P.STEEL)
+	_rect(img, 7, 44, 5, 1, P.CYAN_DIM)
 	# Arm up to the umbrella.
-	Px.line(img, Vector2i(26, 31 + b), Vector2i(27, 20), Color("3b231d"))
-	Px.line(img, Vector2i(27, 31 + b), Vector2i(28, 20), Color("3b231d"))
-	Px.rect(img, 26, 18, 3, 3, P.SKIN_SHADE)
+	_line(img, Vector2i(26, 31 + b), Vector2i(27, 20), Color("3b231d"))
+	_line(img, Vector2i(27, 31 + b), Vector2i(28, 20), Color("3b231d"))
+	_rect(img, 26, 18, 3, 3, P.SKIN_SHADE)
 	# Bald head, goggles pushed up, heavy jaw.
-	Px.ellipse(img, 17.5, 23.0 + fb, 5.0, 5.5, P.SKIN)
-	Px.rect(img, 13, 26 + b, 9, 3, P.SKIN_SHADE)
-	Px.rect(img, 12, 20 + b, 11, 1, Color("1a1410"))
-	Px.rect(img, 13, 19 + b, 2, 2, Color("4a3a20"))
-	Px.rect(img, 16, 19 + b, 2, 2, Color("4a3a20"))
-	Px.dot(img, 13, 19 + b, P.AMBER_DIM)
-	Px.dot(img, 14, 23 + b, P.INK)
-	Px.dot(img, 13, 24 + b, P.SKIN_SHADE)
+	_ellipse(img, 17.5, 23.0 + fb, 5.0, 5.5, P.SKIN)
+	_rect(img, 13, 26 + b, 9, 3, P.SKIN_SHADE)
+	_rect(img, 12, 20 + b, 11, 1, Color("1a1410"))
+	_rect(img, 13, 19 + b, 2, 2, Color("4a3a20"))
+	_rect(img, 16, 19 + b, 2, 2, Color("4a3a20"))
+	_dot(img, 13, 19 + b, P.AMBER_DIM)
+	_dot(img, 14, 23 + b, P.INK)
+	_dot(img, 13, 24 + b, P.SKIN_SHADE)
 	# The umbrella.
-	Px.line(img, Vector2i(27, 4), Vector2i(27, 20), P.STEEL)
+	_line(img, Vector2i(27, 4), Vector2i(27, 20), P.STEEL)
 	for y: int in range(7):
 		var half: float = 15.0 * sqrt(1.0 - pow(float(6 - y) / 7.0, 2.0))
-		Px.rect(img, roundi(25.0 - half), 3 + y, roundi(half * 2.0), 1, Color("161f2e") if y < 6 else Color("0e1520"))
+		_rect(img, roundi(25.0 - half), 3 + y, roundi(half * 2.0), 1, Color("161f2e") if y < 6 else Color("0e1520"))
 	for rib: int in [12, 19, 25, 31, 37]:
-		Px.line(img, Vector2i(25, 3), Vector2i(rib, 9), Color("223047"))
+		_line(img, Vector2i(25, 3), Vector2i(rib, 9), Color("223047"))
 	# Poncho over everything, then the light.
-	Px.line(img, Vector2i(13, 31 + b), Vector2i(12, 42), Color(P.RAIN, 0.35))
-	Px.line(img, Vector2i(23, 31 + b), Vector2i(25, 42), Color(P.RAIN, 0.25))
-	Px.rect(img, 10, 29 + b, 18, 1, Color(P.RAIN, 0.3))
+	_line(img, Vector2i(13, 31 + b), Vector2i(12, 42), Color(P.RAIN, 0.35))
+	_line(img, Vector2i(23, 31 + b), Vector2i(25, 42), Color(P.RAIN, 0.25))
+	_rect(img, 10, 29 + b, 18, 1, Color(P.RAIN, 0.3))
+	_k = 1.0
 	_light(img)
 	# LED trim on the umbrella's edge, drawn after the rim so it stays bright.
+	_k = NPC_SCALE
 	for x: int in range(11, 40, 2):
-		Px.dot(img, x, 9, P.CYAN if (x + frame) % 6 != 0 else P.CYAN_DIM)
+		_dot(img, x, 9, P.CYAN if (x + frame) % 6 != 0 else P.CYAN_DIM)
+	_k = 1.0
 	return img
 
 
 ## The fixer: tall, thin, hooded, a magenta visor where the face should be.
 static func fixer(frame: int) -> Image:
 	var img: Image = Px.blank(FIXER_SIZE.x, FIXER_SIZE.y)
+	_k = NPC_SCALE
 	var b: float = float(frame % 2)
 	var bi: int = frame % 2
-	Px.line(img, Vector2i(12, 46), Vector2i(12, 60), PANTS_BACK)
-	Px.line(img, Vector2i(13, 46), Vector2i(13, 60), PANTS_BACK)
-	Px.line(img, Vector2i(16, 46), Vector2i(16, 60), PANTS)
-	Px.line(img, Vector2i(17, 46), Vector2i(17, 60), PANTS)
-	Px.rect(img, 10, 60, 5, 3, SHOE)
-	Px.rect(img, 15, 60, 5, 3, SHOE)
+	_line(img, Vector2i(12, 46), Vector2i(12, 60), PANTS_BACK)
+	_line(img, Vector2i(13, 46), Vector2i(13, 60), PANTS_BACK)
+	_line(img, Vector2i(16, 46), Vector2i(16, 60), PANTS)
+	_line(img, Vector2i(17, 46), Vector2i(17, 60), PANTS)
+	_rect(img, 10, 60, 5, 3, SHOE)
+	_rect(img, 15, 60, 5, 3, SHOE)
 	var coat: Color = Color("1d1828")
-	Px.poly(img, PackedVector2Array([Vector2(9, 15 + b), Vector2(19, 15 + b), Vector2(21, 21 + b), Vector2(20.5, 47), Vector2(17, 51), Vector2(10, 51), Vector2(7.5, 47), Vector2(7, 21 + b)]), coat)
-	Px.rect(img, 8, 27 + bi, 13, 3, Color("15111e"))
-	Px.rect(img, 8, 30 + bi, 13, 1, Color("2a2238"))
-	Px.line(img, Vector2i(14, 31), Vector2i(14, 50), Color("15111e"))
+	_poly(img, PackedVector2Array([Vector2(9, 15 + b), Vector2(19, 15 + b), Vector2(21, 21 + b), Vector2(20.5, 47), Vector2(17, 51), Vector2(10, 51), Vector2(7.5, 47), Vector2(7, 21 + b)]), coat)
+	_rect(img, 8, 27 + bi, 13, 3, Color("15111e"))
+	_rect(img, 8, 30 + bi, 13, 1, Color("2a2238"))
+	_line(img, Vector2i(14, 31), Vector2i(14, 50), Color("15111e"))
 	# Hood and the dark inside it.
-	Px.ellipse(img, 14.0, 10.0 + b, 6.0, 7.0, Color("221c30"))
-	Px.ellipse(img, 15.0, 11.0 + b, 3.6, 4.4, P.INK)
+	_ellipse(img, 14.0, 10.0 + b, 6.0, 7.0, Color("221c30"))
+	_ellipse(img, 15.0, 11.0 + b, 3.6, 4.4, P.INK)
+	_k = 1.0
 	_light(img)
 	# Cables over the shoulder, and the visor.
 	for i: int in range(4):
-		Px.dot(img, 10 + (i % 2), 17 + i * 4 + bi, P.MAGENTA_DIM)
-	Px.rect(img, 13, 10 + bi, 5, 1, P.MAGENTA)
-	Px.dot(img, 12, 10 + bi, P.MAGENTA_DIM)
+		_dot(img, 10 + (i % 2), 17 + i * 4 + bi, P.MAGENTA_DIM)
+	_rect(img, 13, 10 + bi, 5, 1, P.MAGENTA)
+	_dot(img, 12, 10 + bi, P.MAGENTA_DIM)
+	_k = 1.0
 	return img
+
+
+# Osk and the fixer are drawn in their original 1x coordinates and scaled up
+# by NPC_SCALE as they're drawn, so they stand at the taller detective's scale.
+static var _k: float = 1.0
+
+
+static func _rect(img: Image, x: float, y: float, w: float, h: float, c: Color) -> void:
+	var x0: int = floori(x * _k)
+	var y0: int = floori(y * _k)
+	Px.rect(img, x0, y0, maxi(ceili((x + w) * _k) - x0, 1), maxi(ceili((y + h) * _k) - y0, 1), c)
+
+
+static func _dot(img: Image, x: float, y: float, c: Color) -> void:
+	_rect(img, x, y, 1, 1, c)
+
+
+static func _line(img: Image, from: Vector2i, to: Vector2i, c: Color) -> void:
+	var d: Vector2i = to - from
+	var n: int = maxi(absi(d.x), absi(d.y))
+	for i: int in range(n + 1):
+		var t: float = float(i) / maxf(float(n), 1.0)
+		_dot(img, roundi(lerpf(from.x, to.x, t)), roundi(lerpf(from.y, to.y, t)), c)
+
+
+static func _poly(img: Image, points: PackedVector2Array, c: Color) -> void:
+	var scaled: PackedVector2Array = []
+	for pt: Vector2 in points:
+		scaled.append(pt * _k)
+	Px.poly(img, scaled, c)
+
+
+static func _ellipse(img: Image, cx: float, cy: float, rx: float, ry: float, c: Color) -> void:
+	Px.ellipse(img, cx * _k, cy * _k, rx * _k, ry * _k, c)
 
 
 static func _light(img: Image) -> void:
