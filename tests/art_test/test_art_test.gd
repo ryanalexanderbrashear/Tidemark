@@ -140,3 +140,38 @@ func test_detective_has_no_blood_red() -> void:
 	for y: int in range(img.get_height()):
 		for x: int in range(img.get_width()):
 			assert_bool(img.get_pixel(x, y).is_equal_approx(ArtPalette.BLOOD)).is_false()
+
+
+# ---------- the tall rim-lit style draft ----------
+
+func test_tall_draft_walk_frames_are_all_different() -> void:
+	var seen: Array[PackedByteArray] = []
+	for f: int in range(ArtDetectiveTall.WALK_FRAMES):
+		var data: PackedByteArray = ArtDetectiveTall.walk(f).get_data()
+		assert_bool(data in seen).is_false()
+		seen.append(data)
+
+
+func test_tall_draft_stands_on_the_same_row_as_the_others() -> void:
+	for img: Image in [ArtDetectiveTall.idle(0), ArtDetectiveTall.walk(0), ArtDetectiveTall.walk(2)]:
+		assert_bool(_row_has_pixels(img, img.get_height() - 3)).is_true()
+		assert_bool(_row_has_pixels(img, img.get_height() - 2)).is_false()
+
+
+func test_tall_draft_head_is_not_too_small() -> void:
+	# An 8-head first try read as a tiny head (Alex); keep it near 6.5 heads.
+	var img: Image = ArtDetectiveTall.idle(0)
+	var top: int = 0
+	while not _row_has_pixels(img, top):
+		top += 1
+	var height: int = img.get_height() - 3 - top + 1
+	assert_int(height).is_between(82, 90)
+	assert_float(float(height) / float(ArtDetectiveTall.HEAD.size())).is_between(6.0, 7.2)
+
+
+func test_tall_draft_planted_foot_moves_back_at_walking_speed() -> void:
+	var step: float = ArtDetectiveTall.STRIDE / float(ArtDetectiveTall.WALK_FRAMES)
+	for f: int in range(4):
+		var a: Vector2 = ArtDetectiveTall._foot(f)[0]
+		var b: Vector2 = ArtDetectiveTall._foot(f + 1)[0]
+		assert_float(a.x - b.x).is_equal_approx(step, 0.001)
