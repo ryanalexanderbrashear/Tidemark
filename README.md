@@ -64,13 +64,14 @@ godot --headless --path . -s res://editor/art/detective_sheet.gd -- --out=/tmp/d
 | X | Examine the items in the detective's pockets (below) |
 | H | Hide the key list |
 
-**Examining items.** X holds up the wiped memory chip and the storage case's ID tag. Each item is a small 3D box with pixel-art faces, rendered at the game's resolution and snapped to the art palette with an ink outline, so it reads as pixel art but turns freely. The chip's CS-14-07 etching is on its back: turn it over and hold it there for a moment to find it.
+**Examining items.** X holds up the wiped memory chip and the storage case's ID tag. Each item is a small 3D box with pixel-art faces, rendered at the game's resolution and snapped to the art palette with an ink outline, so it reads as pixel art but turns freely. The chip's CS-14-07 etching is on its back: turn it over and hold it there for a moment to find it. The pocket tin (a test item, not from the case) has a catch hidden on its right edge: find it, open the tin, and take out the slip inside, which then goes in the pockets like anything else.
 
 | Key (while examining) | Does |
 | --- | --- |
 | Drag, or W / A / S / D | Turn the item (a flick keeps it spinning) |
 | Q / E | Roll it |
 | Wheel, or + / - | Bring it closer or further |
+| Space | Open the item (once its catch is found), or take out what's inside |
 | Tab | Next item |
 | R | Straighten it |
 | P | Palette snap on or off, to compare |

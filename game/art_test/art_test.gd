@@ -562,7 +562,8 @@ func _take_shots(dir: String) -> void:
 
 
 ## The examine test: the chip as it comes up, turning, turned over with the
-## etching found, without palette snap to compare, and the flat tag.
+## etching found, without palette snap to compare, the flat tag, and the tin:
+## shut, its catch found, open, and the slip taken out of it.
 func _take_examine_shots(dir: String, only: String) -> void:
 	res_index = 0
 	_apply_resolution()
@@ -581,12 +582,26 @@ func _take_examine_shots(dir: String, only: String) -> void:
 		["examine-chip-no-snap", 0, Vector3(-0.35, 1.9, 0.15), ExamineView.ZOOM_START, false],
 		["examine-tag", 1, Vector3(-0.25, -0.35, -0.08), 1.75, true],
 		["examine-tag-back", 1, Vector3(0.2, PI + 0.45, 0.1), 1.75, true],
+		["examine-tin", 2, ExamineView.REST, ExamineView.ZOOM_START, true],
+		["examine-tin-catch", 2, Vector3(0.1, -1.42, 0.05), 2.5, true],
+		["examine-tin-open", 2, Vector3(-0.22, 0.3, 0.0), ExamineView.ZOOM_START, true, "open"],
+		["examine-slip", 2, Vector3(-0.15, 0.2, -0.05), 2.0, true, "taken"],
 	]
 	for shot: Array in plan:
 		if not String(shot[0]).begins_with(only):
 			continue
+		_examine.items = ExamineItem.all()
 		_examine.found.clear()
+		_examine.opened.clear()
+		_examine.taken.clear()
 		_examine.open(shot[1])
+		var state: String = shot[5] if shot.size() > 5 else ""
+		if state != "":
+			_examine.found[_examine.current().id] = true
+			_examine.use()
+			if state == "taken":
+				_examine.use()
+			_examine.open()
 		_examine.set_turn(Basis.from_euler(shot[2]))
 		_examine.zoom = shot[3]
 		_examine.snap = shot[4]
