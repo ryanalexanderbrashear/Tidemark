@@ -32,6 +32,19 @@ var detail_face: String = ""
 var detail_note: String = ""
 var detail_thought: String = ""
 
+## Items that open: the front face is a lid hinged on its left edge, and it
+## only opens once the hidden detail (the catch) has been found.
+var opens: bool = false
+## Inside the item: the floor with what's in it, the floor once it's taken
+## out, the underside of the lid, and the inner walls.
+var inside: Image
+var inside_empty: Image
+var lid_inside: Image
+var wall_inside: Color = P.DEEP
+var open_note: String = ""
+## What can be taken out once it's open (null: nothing).
+var contains: ExamineItem
+
 
 ## The pixel size a face's image has to be.
 func face_size(face: String) -> Vector2i:
@@ -48,7 +61,7 @@ static func facing(turn: Basis, face: String) -> float:
 
 
 static func all() -> Array[ExamineItem]:
-	return [chip(), tag()]
+	return [chip(), tag(), tin()]
 
 
 # ---------- the calling card ----------
@@ -196,3 +209,91 @@ static func _card(px: Vector2i, rng: RandomNumberGenerator) -> Image:
 			if d.length() <= hole:
 				img.set_pixel(x, y, Color(0, 0, 0, 0))
 	return img
+
+
+# ---------- something hidden inside ----------
+
+## A test item, not from the case: a pocket tin with a catch on its right edge.
+## Turn it to find the catch, open it, and take out what's inside.
+static func tin() -> ExamineItem:
+	var it: ExamineItem = ExamineItem.new()
+	it.id = "tin"
+	it.title = "Pocket tin (test item)"
+	it.size = Vector3(0.9, 0.6, 0.22)
+	it.metallic = 0.35
+	it.roughness = 0.4
+	it.notes = ["A test item, not from the case.", "Dented, and heavier than it looks."]
+	it.detail_face = "right"
+	it.detail_note = "A slide catch on the side. It opens."
+	# Placeholder line, not canon dialogue.
+	it.detail_thought = "Somebody filed the catch down so it sits flush. Not meant to be found."
+	it.opens = true
+	it.open_note = "Inside: a slip of paper, folded small."
+	it.contains = slip()
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = 2207
+
+	var lid: Image = _casing(it.face_size("front"), rng)
+	Px.rect(lid, 6, 6, 78, 48, P.SLATE)
+	Px.rect(lid, 7, 7, 76, 46, P.STEEL)
+	for i: int in range(5):
+		Px.ellipse(lid, rng.randf_range(15, 75), rng.randf_range(12, 48), 3.5, 2.5, Color(P.SLATE, 0.8))
+	it.faces["front"] = lid
+	var back: Image = _casing(it.face_size("back"), rng)
+	it.faces["back"] = back
+	for face: String in ["left", "top", "bottom"]:
+		it.faces[face] = _edge(it.face_size(face))
+	# The catch: a thin slider filed flush with the edge, only a glint and a notch.
+	var side: Image = _edge(it.face_size("right"))
+	Px.rect(side, 6, 22, 10, 16, P.STEEL)
+	Px.rect(side, 6, 22, 10, 1, P.GLINT)
+	Px.rect(side, 10, 28, 2, 4, P.INK)
+	it.faces["right"] = side
+
+	var inside_px: Vector2i = it.face_size("front")
+	it.inside_empty = Px.blank(inside_px.x, inside_px.y)
+	it.inside_empty.fill(P.DEEP)
+	Px.rect(it.inside_empty, 4, 4, inside_px.x - 8, inside_px.y - 8, P.NIGHT)
+	it.inside = it.inside_empty.duplicate() as Image
+	var paper: Image = it.contains.faces["front"]
+	var small: Image = paper.duplicate() as Image
+	small.resize(paper.get_width() * 3 / 4, paper.get_height() * 3 / 4, Image.INTERPOLATE_NEAREST)
+	Px.stamp(it.inside, small, 16, 14)
+	it.lid_inside = Px.blank(inside_px.x, inside_px.y)
+	it.lid_inside.fill(P.SLATE)
+	Px.rect(it.lid_inside, 3, 3, inside_px.x - 6, inside_px.y - 6, P.STEEL)
+	return it
+
+
+## What's in the tin: a folded slip of paper, scribbled on. Placeholder: it
+## says nothing yet, because what it says would be canon.
+static func slip() -> ExamineItem:
+	var it: ExamineItem = ExamineItem.new()
+	it.id = "slip"
+	it.title = "Folded slip (test item)"
+	it.size = Vector3(0.7, 0.45, 0.01)
+	it.roughness = 0.95
+	it.notes = ["Taken out of the pocket tin.", "Placeholder scribbles: what it says is for the case to decide."]
+	var front: Image = Px.blank(it.face_size("front").x, it.face_size("front").y)
+	front.fill(P.RAIN)
+	Px.rect(front, 0, 0, front.get_width(), 1, P.GLINT)
+	Px.rect(front, front.get_width() / 2, 0, 1, front.get_height(), P.FOG)
+	var rng: RandomNumberGenerator = RandomNumberGenerator.new()
+	rng.seed = 31
+	for row: int in range(4):
+		var y: int = 9 + row * 8
+		var x: int = 6
+		while x < 62:
+			var w: int = rng.randi_range(3, 9)
+			Px.line(front, Vector2i(x, y + rng.randi_range(-1, 1)), Vector2i(x + w, y + rng.randi_range(-1, 1)), P.NAVY)
+			x += w + rng.randi_range(2, 4)
+	it.faces["front"] = front
+	var back: Image = Px.blank(it.face_size("back").x, it.face_size("back").y)
+	back.fill(P.RAIN)
+	Px.rect(back, back.get_width() / 2, 0, 1, back.get_height(), P.FOG)
+	it.faces["back"] = back
+	for face: String in ["left", "right", "top", "bottom"]:
+		var e: Image = Px.blank(maxi(1, it.face_size(face).x), maxi(1, it.face_size(face).y))
+		e.fill(P.FOG)
+		it.faces[face] = e
+	return it

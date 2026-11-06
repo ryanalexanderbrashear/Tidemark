@@ -7,9 +7,12 @@ extends Control
 ## (examine.gdshader). The look stays pixel art; the turning is real.
 ##
 ## A hidden detail is found by holding its face toward the camera for a moment.
+## Some items open once their hidden catch is found, and what's inside can be
+## taken out and examined like anything else.
 ##
-## Keys: drag or W/A/S/D (arrows) turn, Q/E roll, wheel or +/- zoom, Tab next
-## item, R straighten, P palette snap on/off, X or Esc put it away.
+## Keys: drag or W/A/S/D (arrows) turn, Q/E roll, wheel or +/- zoom, Space open
+## or take out, Tab next item, R straighten, P palette snap on/off, X or Esc put
+## it away.
 
 signal closed
 
@@ -33,6 +36,11 @@ const FOUND_HOLD: float = 0.3
 const LIFT_TIME: float = 0.35
 ## The angle an item first comes up at: a little turned, like it's in a hand.
 const REST: Vector3 = Vector3(-0.18, 0.32, 0.04)
+## How far a lid swings open (radians) and how long it takes.
+const LID_OPEN: float = 1.95
+const LID_TIME: float = 0.45
+## Inner faces sit this far inside the outer ones, so they never flicker.
+const INSET: float = 0.004
 
 var items: Array[ExamineItem] = []
 var index: int = 0
@@ -44,12 +52,20 @@ var snap: bool = true:
 			(_screen.material as ShaderMaterial).set_shader_parameter("snap", value)
 ## Details found so far, by item id.
 var found: Dictionary[String, bool] = {}
+## Items opened, and items whose contents have been taken out, by item id.
+var opened: Dictionary[String, bool] = {}
+var taken: Dictionary[String, bool] = {}
 
 var _view: SubViewport
 var _camera: Camera3D
 ## _hand sways a little; _item is the box the player turns inside it.
 var _hand: Node3D
 var _item: Node3D
+## The open item's lid hinge and floor, for the item on show (null otherwise).
+var _lid: Node3D
+var _floor: StandardMaterial3D
+## 0 shut .. 1 open.
+var _lid_t: float = 0.0
 var _screen: TextureRect
 var _dim: ColorRect
 var _title: Label
@@ -112,7 +128,7 @@ func _ready() -> void:
 	_thought.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_thought.add_theme_color_override("font_outline_color", Color(P.INK, 0.9))
 	_hint = _label(Color(P.RAIN, 0.8))
-	_hint.text = "drag or WASD turn   Q/E roll   wheel zoom   Tab next item   R straighten   P palette snap   X put away"
+	_hint.text = "drag or WASD turn"
 
 
 ## Every palette colour the close-up may use: the cool greys, the neons and
@@ -210,8 +226,15 @@ func _show_item() -> void:
 	for c: Node in _item.get_children():
 		c.queue_free()
 	var it: ExamineItem = current()
+	_lid = null
+	_floor = null
 	for face: String in ExamineItem.FACES:
+		if it.opens and face == "front":
+			continue
 		_item.add_child(_face_mesh(it, face))
+	if it.opens:
+		_build_opening(it)
+	_lid_t = 1.0 if opened.get(it.id, false) else 0.0
 	_item.basis = Basis.from_euler(REST)
 	_spin = Vector3.ZERO
 	_facing_time = 0.0
@@ -223,11 +246,15 @@ func _show_item() -> void:
 
 func _face_mesh(it: ExamineItem, face: String) -> MeshInstance3D:
 	var n: Vector3 = ExamineItem.FACES[face]
-	var px: Vector2i = it.face_size(face)
+	return _quad(it, it.faces[face], it.face_size(face), n, n * it.size * 0.5)
+
+
+## One textured face pointing along `n`, centred at `at`.
+func _quad(it: ExamineItem, img: Image, px: Vector2i, n: Vector3, at: Vector3) -> MeshInstance3D:
 	var quad: QuadMesh = QuadMesh.new()
 	quad.size = Vector2(px) / ExamineItem.TEXELS
 	var mat: StandardMaterial3D = StandardMaterial3D.new()
-	mat.albedo_texture = ImageTexture.create_from_image(it.faces[face])
+	mat.albedo_texture = ImageTexture.create_from_image(img)
 	mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
 	mat.metallic = it.metallic
 	mat.roughness = it.roughness
@@ -239,8 +266,60 @@ func _face_mesh(it: ExamineItem, face: String) -> MeshInstance3D:
 	# images read the right way round when the item is tipped toward you.
 	var up: Vector3 = Vector3.UP if n.y == 0.0 else Vector3.FORWARD * n.y
 	m.basis = Basis(up.cross(n), up, n)
-	m.position = n * it.size * 0.5
+	m.position = at
 	return m
+
+
+## An item that opens: a lid on a hinge at the front's left edge, inner walls,
+## and a floor showing what's inside.
+func _build_opening(it: ExamineItem) -> void:
+	var half: Vector3 = it.size * 0.5
+	for face: String in ["back", "left", "right", "top", "bottom"]:
+		var n: Vector3 = ExamineItem.FACES[face]
+		var px: Vector2i = it.face_size(face)
+		var img: Image = Px.blank(px.x, px.y)
+		img.fill(it.wall_inside)
+		if face == "back":
+			var floor_img: Image = it.inside_empty if taken.get(it.id, false) else it.inside
+			var m: MeshInstance3D = _quad(it, floor_img, px, -n, n * (half - Vector3.ONE * INSET))
+			_floor = (m.mesh as QuadMesh).material as StandardMaterial3D
+			_item.add_child(m)
+		else:
+			_item.add_child(_quad(it, img, px, -n, n * (half - Vector3.ONE * INSET)))
+	_lid = Node3D.new()
+	_lid.position = Vector3(-half.x, 0.0, half.z)
+	_item.add_child(_lid)
+	var front_px: Vector2i = it.face_size("front")
+	_lid.add_child(_quad(it, it.faces["front"], front_px, Vector3.BACK, Vector3(half.x, 0.0, 0.0)))
+	_lid.add_child(_quad(it, it.lid_inside, front_px, Vector3.FORWARD, Vector3(half.x, 0.0, -INSET)))
+
+
+# ---------- opening and taking out ----------
+
+## Whether the item on show can be opened now: it opens, its catch has been
+## found, and it isn't open yet.
+func can_open() -> bool:
+	var it: ExamineItem = current()
+	return it.opens and found.get(it.id, false) and not opened.get(it.id, false)
+
+
+func can_take_out() -> bool:
+	var it: ExamineItem = current()
+	return opened.get(it.id, false) and it.contains != null and not taken.get(it.id, false)
+
+
+## Space: opens the item if it can, or takes out what's inside.
+func use() -> void:
+	var it: ExamineItem = current()
+	if can_open():
+		opened[it.id] = true
+	elif can_take_out():
+		taken[it.id] = true
+		if _floor != null:
+			_floor.albedo_texture = ImageTexture.create_from_image(it.inside_empty)
+		items.append(it.contains)
+		index = items.size() - 1
+		_show_item()
 
 
 # ---------- turning ----------
@@ -296,6 +375,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	match key.physical_keycode:
 		KEY_X, KEY_ESCAPE:
 			close()
+		KEY_SPACE:
+			use()
 		KEY_TAB:
 			next_item()
 		KEY_R:
@@ -330,6 +411,8 @@ func _process(delta: float) -> void:
 		turn(_spin * delta)
 		_spin *= exp(-FRICTION * delta)
 	_lift = minf(1.0, _lift + delta / LIFT_TIME)
+	var want_open: float = 1.0 if opened.get(current().id, false) else 0.0
+	_lid_t = move_toward(_lid_t, want_open, delta / LID_TIME)
 	check_found(delta)
 	if _thought_time > 0.0:
 		_thought_time -= delta
@@ -364,6 +447,10 @@ func _update_stage() -> void:
 	var sway: float = 0.0 if still else 1.0
 	_hand.position = Vector3(0, lerpf(-2.0, 0.0, t) + sin(_time * 1.3) * 0.012 * sway, 0)
 	_hand.rotation = Vector3(sin(_time * 0.9) * 0.015 * sway, (1.0 - t) * 0.9, sin(_time * 0.7) * 0.01 * sway)
+	if _lid != null:
+		# Swings out toward the camera on its left-edge hinge, easing at the end.
+		var e: float = 1.0 - pow(1.0 - _lid_t, 2.0)
+		_lid.rotation = Vector3(0.0, -LID_OPEN * e, 0.0)
 
 
 # ---------- layout and text ----------
@@ -406,6 +493,8 @@ func _update_text() -> void:
 	if found.get(it.id, false):
 		lines.append("")
 		lines.append("Found: " + it.detail_note)
+	if opened.get(it.id, false) and it.open_note != "":
+		lines.append(it.open_note if not taken.get(it.id, false) else "Empty now.")
 	var names: Array[String] = []
 	for i: int in range(items.size()):
 		names.append(("[%s]" if i == index else "%s") % items[i].title)
@@ -414,3 +503,5 @@ func _update_text() -> void:
 	_notes.text = "\n".join(PackedStringArray(lines))
 	_thought.visible = _thought_time > 0.0 or (still and found.get(it.id, false))
 	_thought.text = it.detail_thought
+	var use_hint: String = "Space open   " if can_open() else ("Space take out   " if can_take_out() else "")
+	_hint.text = "drag or WASD turn   Q/E roll   wheel zoom   %sTab next item   R straighten   P palette snap   X put away" % use_hint
