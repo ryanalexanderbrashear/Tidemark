@@ -158,14 +158,15 @@ func test_tall_draft_stands_on_the_same_row_as_the_others() -> void:
 		assert_bool(_row_has_pixels(img, img.get_height() - 2)).is_false()
 
 
-func test_tall_draft_is_about_8_heads_tall() -> void:
+func test_tall_draft_head_is_not_too_small() -> void:
+	# An 8-head first try read as a tiny head (Alex); keep it near 6.5 heads.
 	var img: Image = ArtDetectiveTall.idle(0)
 	var top: int = 0
 	while not _row_has_pixels(img, top):
 		top += 1
 	var height: int = img.get_height() - 3 - top + 1
 	assert_int(height).is_between(82, 90)
-	assert_float(float(height) / float(ArtDetectiveTall.HEAD.size())).is_between(7.0, 9.0)
+	assert_float(float(height) / float(ArtDetectiveTall.HEAD.size())).is_between(6.0, 7.2)
 
 
 func test_tall_draft_planted_foot_moves_back_at_walking_speed() -> void:

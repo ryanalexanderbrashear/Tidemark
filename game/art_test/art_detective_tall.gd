@@ -2,7 +2,8 @@ class_name ArtDetectiveTall
 extends RefCounted
 ## A style draft of the same detective (the rain-worn tracer), pushed toward the
 ## look Alex likes in Replaced: taller and leaner with realistic proportions
-## (about 8 heads, ~85 px at 640x360), a small head, and no ink outline. He
+## (about 6.5 heads, ~86 px at 640x360) and no ink outline. A first try at
+## 8 heads made his head look too small (Alex, 2026-11-06), so it's larger now. He
 ## reads as a near-silhouette carved out by light: a hard cool rim from the neon
 ## behind him, warm sodium light on his top edges and profile, and the body
 ## falling off into shadow toward the feet. Only the cyan iris is bright.
@@ -47,25 +48,27 @@ const WARM: Color = Color("e0a768")    # sodium lamps above and ahead
 ## The head in profile, facing right. Mostly shadow: the profile line carries
 ## the warm light (w), the back of the skull the cool rim (r).
 const HEAD: Array[String] = [
-	"...rrrhh...",
-	"..rhhhhhww.",
-	".rhhhhhhhhw",
-	"rhhhhhhhhsw",
-	"rhhhhhmmbsw",
-	"rhhheSmcSsw.",
-	"rhhheSSSSsww",
-	"rhpeSSsssSS.",
-	".rSSSSzzzsw.",
-	"..SSSzzzzw..",
-	"...SSSzzw...",
+	"....rrrrh....",
+	"..rrhhhhhhw..",
+	".rhhhhhhhhhw.",
+	"rhhhhhhhhhhhw",
+	"rhhhhhhhhhssw",
+	"rhhhhhhmmbbsw",
+	"rhhhhSmmcSssw",
+	"rhhheSSmSSsssw",
+	"rhpeSSSSSSsssw",
+	"rhheSSSSSSSsS.",
+	".rSSSSSzzzsw..",
+	"..rSSSzzzzw...",
+	"...SSSSzzw....",
 ]
-const HEAD_AT: Vector2i = Vector2i(17, 3)
+const HEAD_AT: Vector2i = Vector2i(17, 2)
 const HEAD_KEY: Dictionary[String, Color] = {
 	"h": HAIR, "s": SKIN, "S": SKIN_SHADE, "e": Color("2e2427"), "z": Color("3a2f32"),
 	"b": Color("1c1619"), "m": Color("56626f"), "c": P.CYAN, "p": BRACE,
 	"w": Color("c49373"), "r": Color("5e8c98"),
 }
-const IRIS: Vector2i = Vector2i(7, 5)
+const IRIS: Vector2i = Vector2i(8, 6)
 
 
 static func walk(frame: int) -> Image:
@@ -200,8 +203,8 @@ static func _coat(img: Image, bob: int, lean: int, far_knee: Vector2, near_knee:
 
 static func _head(img: Image, bob: int, lean: int) -> void:
 	var at: Vector2i = HEAD_AT + Vector2i(lean, bob)
-	Px.rect(img, at.x + 3, at.y + 10, 5, 5, SKIN_SHADE)
-	Px.dot(img, at.x + 7, at.y + 11, Color("c49373"))
+	Px.rect(img, at.x + 3, at.y + 11, 6, 5, SKIN_SHADE)
+	Px.dot(img, at.x + 8, at.y + 12, Color("c49373"))
 	for y: int in range(HEAD.size()):
 		var row: String = HEAD[y]
 		for x: int in range(row.length()):
