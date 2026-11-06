@@ -98,8 +98,10 @@ var _offset: Vector2 = Vector2.ZERO
 
 func _ready() -> void:
 	get_window().content_scale_mode = Window.CONTENT_SCALE_MODE_DISABLED
-	get_window().size_changed.connect(_layout)
 	_build()
+	# Only listen for resizes once the screen exists: building the art takes a
+	# few seconds, and a resize in that time used to call _layout on nothing.
+	get_window().size_changed.connect(_layout)
 	_apply_resolution()
 	var shots: String = _shots_dir()
 	if shots != "":
@@ -265,6 +267,8 @@ func _apply_resolution() -> void:
 
 
 func _layout() -> void:
+	if _keys == null:
+		return
 	var win: Vector2i = get_window().size
 	var size: Vector2i = _view.size
 	_scale = maxi(1, mini(win.x / size.x, win.y / size.y))
