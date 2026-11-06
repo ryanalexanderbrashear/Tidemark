@@ -10,8 +10,9 @@ extends Node
 ## fog is pixel art like everything else; volumetric fog is drawn at the
 ## window's own resolution behind the crisp pixel-art playable layer.
 ##
-## The detective is the closer-to-final "rain-worn tracer" (ArtDetective); C
-## switches back to the first proof-of-concept sprite to compare.
+## The detective is the closer-to-final "rain-worn tracer" (ArtDetective). C
+## cycles to a taller, rim-lit style draft of him (ArtDetectiveTall, toward
+## Replaced's look) and to the first proof-of-concept sprite, to compare.
 ##
 ## Keys: A/D move, R switches resolution, V switches the inner voice, F switches
 ## the fog, C switches the detective, E shows the next thought, H hides the key list.
@@ -47,8 +48,9 @@ var res_index: int = 0
 var voice: Voice = Voice.THOUGHT
 var fog: Fog = Fog.STEPPED
 var detective_x: float = 300.0
-## False shows the first proof-of-concept detective instead, to compare.
-var new_detective: bool = true
+enum Look { CLOSER, TALL, SKETCH }
+const LOOK_NAMES: Array[String] = ["closer to final", "tall rim-lit draft", "first sketch"]
+var look: Look = Look.CLOSER
 var facing: int = 1
 
 ## Two viewports at native resolution: the background (sky to shanties, with
@@ -70,6 +72,8 @@ var _rain: ArtRain
 var _det_frames: Array[ImageTexture] = []
 var _det_walk: Array[ImageTexture] = []
 var _det_idle: Array[ImageTexture] = []
+var _tall_walk: Array[ImageTexture] = []
+var _tall_idle: Array[ImageTexture] = []
 var _osk_frames: Array[ImageTexture] = []
 var _fixer_frames: Array[ImageTexture] = []
 var _holo_frames: Array[ImageTexture] = []
@@ -139,6 +143,10 @@ func _build() -> void:
 		_det_walk.append(ImageTexture.create_from_image(ArtDetective.walk(f)))
 	for f: int in range(ArtDetective.IDLE_FRAMES):
 		_det_idle.append(ImageTexture.create_from_image(ArtDetective.idle(f)))
+	for f: int in range(ArtDetectiveTall.WALK_FRAMES):
+		_tall_walk.append(ImageTexture.create_from_image(ArtDetectiveTall.walk(f)))
+	for f: int in range(ArtDetectiveTall.IDLE_FRAMES):
+		_tall_idle.append(ImageTexture.create_from_image(ArtDetectiveTall.idle(f)))
 	_osk = _sprite(_osk_frames[0].get_image())
 	_fixer = _sprite(_fixer_frames[0].get_image())
 	_detective = _sprite(_det_frames[0].get_image())
@@ -307,7 +315,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_F:
 			fog = ((fog + 1) % 3) as Fog
 		KEY_C:
-			new_detective = not new_detective
+			look = ((look + 1) % 3) as Look
 		KEY_E:
 			_next_line()
 		KEY_H:
@@ -343,12 +351,15 @@ func _update_world(walking: bool) -> void:
 	_update_fog(cam_top)
 
 	var breath: int = int(_time * 1.6) % 2
-	if new_detective:
-		var step: float = ArtDetective.STRIDE / float(ArtDetective.WALK_FRAMES)
-		var walk_frame: int = int(_walk_dist / step) % ArtDetective.WALK_FRAMES
+	if look != Look.SKETCH:
+		var tall: bool = look == Look.TALL
+		var walks: Array[ImageTexture] = _tall_walk if tall else _det_walk
+		var idles: Array[ImageTexture] = _tall_idle if tall else _det_idle
+		var stride: float = ArtDetectiveTall.STRIDE if tall else ArtDetective.STRIDE
+		var walk_frame: int = int(_walk_dist / (stride / float(walks.size()))) % walks.size()
 		if _shot_walk >= 0:
 			walk_frame = _shot_walk
-		_detective.texture = _det_walk[walk_frame] if walking else _det_idle[int(_time * 2.0) % ArtDetective.IDLE_FRAMES]
+		_detective.texture = walks[walk_frame] if walking else idles[int(_time * 2.0) % idles.size()]
 	else:
 		var walk_frame: int = int(_walk_time * 10.0) % ArtCharacters.WALK_FRAMES
 		_detective.texture = _det_frames[walk_frame] if walking else _det_frames[ArtCharacters.WALK_FRAMES + breath]
@@ -412,7 +423,12 @@ func _update_fog(cam_top: int) -> void:
 
 
 func _detective_size() -> Vector2i:
-	return ArtDetective.SIZE if new_detective else ArtCharacters.DETECTIVE_SIZE
+	match look:
+		Look.CLOSER:
+			return ArtDetective.SIZE
+		Look.TALL:
+			return ArtDetectiveTall.SIZE
+	return ArtCharacters.DETECTIVE_SIZE
 
 
 func _place(s: Sprite2D, x: float, size: Vector2i, market_x: float, cam_top: int) -> void:
@@ -452,7 +468,7 @@ func _update_voice() -> void:
 		_caption.size = Vector2(width, h)
 		_caption.position = _offset + Vector2(_screen.size.x * 0.04, _screen.size.y - h - _screen.size.y * 0.05)
 	var res: Vector2i = _view.size
-	_keys.text = "%dx%d at x%d  |  voice: %s  |  fog: %s  |  detective: %s\nA/D move   R resolution   V voice   F fog   C detective   E next thought   H hide" % [res.x, res.y, _scale, VOICE_NAMES[voice], FOG_NAMES[fog], "closer to final" if new_detective else "first sketch"]
+	_keys.text = "%dx%d at x%d  |  voice: %s  |  fog: %s  |  detective: %s\nA/D move   R resolution   V voice   F fog   C detective   E next thought   H hide" % [res.x, res.y, _scale, VOICE_NAMES[voice], FOG_NAMES[fog], LOOK_NAMES[look]]
 
 
 # ---------- screenshots ----------
@@ -469,7 +485,7 @@ func _take_shots(dir: String) -> void:
 	_keys.visible = false
 	_shooting = true
 	var plan: Array[Array] = [
-		# name, resolution, voice, detective x, facing, line, fog[, walk frame, new detective]
+		# name, resolution, voice, detective x, facing, line, fog[, walk frame, look]
 		["640-thought", 0, Voice.THOUGHT, 300.0, 1, 2, Fog.STEPPED],
 		["640-caption", 0, Voice.CAPTION, 300.0, 1, 0, Fog.STEPPED],
 		["640-silent", 0, Voice.NONE, 760.0, 1, 0, Fog.STEPPED],
@@ -482,11 +498,14 @@ func _take_shots(dir: String) -> void:
 		["fog-fixer-off", 0, Voice.NONE, 1100.0, -1, 0, Fog.OFF],
 		["fog-fixer-stepped", 0, Voice.NONE, 1100.0, -1, 0, Fog.STEPPED],
 		["fog-fixer-volumetric", 0, Voice.NONE, 1100.0, -1, 0, Fog.VOLUMETRIC],
-		["detective-idle", 0, Voice.NONE, 300.0, 1, 0, Fog.STEPPED, -1, true],
-		["detective-walk", 0, Voice.NONE, 300.0, 1, 0, Fog.STEPPED, 1, true],
-		["detective-walk-left", 0, Voice.NONE, 640.0, -1, 0, Fog.STEPPED, 6, true],
-		["detective-thought", 0, Voice.THOUGHT, 300.0, 1, 2, Fog.STEPPED, -1, true],
-		["detective-first-sketch", 0, Voice.NONE, 300.0, 1, 0, Fog.STEPPED, -1, false],
+		["detective-idle", 0, Voice.NONE, 300.0, 1, 0, Fog.STEPPED, -1, Look.CLOSER],
+		["detective-walk", 0, Voice.NONE, 300.0, 1, 0, Fog.STEPPED, 1, Look.CLOSER],
+		["detective-walk-left", 0, Voice.NONE, 640.0, -1, 0, Fog.STEPPED, 6, Look.CLOSER],
+		["detective-thought", 0, Voice.THOUGHT, 300.0, 1, 2, Fog.STEPPED, -1, Look.CLOSER],
+		["detective-first-sketch", 0, Voice.NONE, 300.0, 1, 0, Fog.STEPPED, -1, Look.SKETCH],
+		["detective-tall-idle", 0, Voice.NONE, 300.0, 1, 0, Fog.STEPPED, -1, Look.TALL],
+		["detective-tall-walk", 0, Voice.NONE, 300.0, 1, 0, Fog.STEPPED, 1, Look.TALL],
+		["detective-tall-volumetric", 0, Voice.NONE, 300.0, 1, 0, Fog.VOLUMETRIC, 6, Look.TALL],
 	]
 	for shot: Array in plan:
 		res_index = shot[1]
@@ -497,7 +516,7 @@ func _take_shots(dir: String) -> void:
 		_line = shot[5]
 		fog = shot[6]
 		_shot_walk = shot[7] if shot.size() > 7 else -1
-		new_detective = shot[8] if shot.size() > 8 else true
+		look = shot[8] if shot.size() > 8 else Look.CLOSER
 		_typed = 9999.0
 		_time = 1.0
 		_rain.warm(2.0)

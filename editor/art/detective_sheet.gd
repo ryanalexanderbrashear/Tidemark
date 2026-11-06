@@ -1,18 +1,22 @@
 extends SceneTree
 ## Saves the detective's frames as a sprite sheet for review:
-##   godot --headless --path . -s res://editor/art/detective_sheet.gd -- --out=<file.png> [--scale=6]
+##   godot --headless --path . -s res://editor/art/detective_sheet.gd -- --out=<file.png> [--scale=6] [--tall]
+## --tall saves the Replaced-style draft (ArtDetectiveTall) instead.
 ## Top row idle, bottom row walk, on the market's night blue.
 
 
 func _init() -> void:
 	var out: String = "user://detective-sheet.png"
 	var scale: int = 6
+	var path: String = "res://game/art_test/art_detective.gd"
 	for arg: String in OS.get_cmdline_user_args():
 		if arg.begins_with("--out="):
 			out = arg.trim_prefix("--out=")
 		elif arg.begins_with("--scale="):
 			scale = arg.trim_prefix("--scale=").to_int()
-	var det: GDScript = load("res://game/art_test/art_detective.gd")
+		elif arg == "--tall":
+			path = "res://game/art_test/art_detective_tall.gd"
+	var det: GDScript = load(path)
 	var size: Vector2i = det.SIZE
 	var cols: int = det.WALK_FRAMES
 	var pad: int = 4
