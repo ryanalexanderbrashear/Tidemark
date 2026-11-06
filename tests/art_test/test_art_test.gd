@@ -45,3 +45,39 @@ func _row_has_pixels(img: Image, y: int) -> bool:
 		if img.get_pixel(x, y).a > 0.5:
 			return true
 	return false
+
+
+func test_each_fog_band_fits_the_layer_it_sits_in_front_of() -> void:
+	for band: String in FogArt.BANDS:
+		var behind: String = FogArt.BANDS[band][0]
+		assert_float(MarketArt.PARALLAX[band]).is_equal(MarketArt.PARALLAX[behind])
+		assert_int(FogArt.band(band).get_width()).is_equal(MarketArt.layer_width(behind))
+	assert_int(FogArt.signs().get_width()).is_equal(MarketArt.layer_width("signs"))
+
+
+func test_fog_stays_behind_the_play_space() -> void:
+	# Look and Feel: thick fog sits behind the walkway, so footing and clues stay clear.
+	for band: String in FogArt.BANDS:
+		assert_float(MarketArt.PARALLAX[band]).is_less(MarketArt.PARALLAX["market"])
+
+
+func test_fog_never_turns_blood_red() -> void:
+	# Fog takes the color of the light inside it, but blood red is kept for blood.
+	for band: String in FogArt.BANDS:
+		var img: Image = FogArt.band(band)
+		for y: int in range(0, img.get_height(), 2):
+			for x: int in range(0, img.get_width(), 2):
+				var c: Color = img.get_pixel(x, y)
+				if c.a > 0.0:
+					assert_bool(Color(c, 1.0).is_equal_approx(ArtPalette.BLOOD)).is_false()
+
+
+func test_fog_is_thicker_near_the_water() -> void:
+	for band: String in FogArt.BANDS:
+		var spec: Array = FogArt.BANDS[band]
+		assert_float(FogArt._band_alpha(spec[2], spec[1], spec[2], spec[3], spec[4])).is_greater(FogArt._band_alpha(spec[1], spec[1], spec[2], spec[3], spec[4]))
+
+
+func test_wisps_wrap_so_fog_can_drift_forever() -> void:
+	for band: String in FogArt.BANDS:
+		assert_int(FogArt.wisps(band).get_width()).is_equal(FogArt.WISP_TILE)

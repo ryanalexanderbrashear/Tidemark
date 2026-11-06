@@ -5,19 +5,28 @@ extends Node
 ## Feel doc's open questions on game resolution, character size and how the
 ## detective's inner voice is shown. It doesn't touch the case.
 ##
-## Keys: A/D move, R switches resolution, V switches the inner voice, E shows
-## the next thought, H hides the key list.
+## It also tries the fog, water and neon motif (Look and Feel doc, "Fog, water
+## and neon"): neon signs behind thick fog, drawn two ways to compare. Stepped
+## fog is pixel art like everything else; volumetric fog is drawn at the
+## window's own resolution behind the crisp pixel-art playable layer.
+##
+## Keys: A/D move, R switches resolution, V switches the inner voice, F switches
+## the fog, E shows the next thought, H hides the key list.
 ## Screenshots: run with `-- --shots=<dir>` and it saves a fixed set and quits.
 
 enum Voice { THOUGHT, CAPTION, NONE }
+enum Fog { STEPPED, VOLUMETRIC, OFF }
 
 const P = preload("res://game/art_test/art_palette.gd")
 const WATER_SHADER = preload("res://game/art_test/water.gdshader")
+const VOLUMETRIC_SHADER = preload("res://game/art_test/volumetric.gdshader")
+const MAX_LIGHTS: int = 24
 
 ## The two resolutions on test: [size, camera top]. 640x360 scales by whole
 ## numbers to 720p, 1080p, 1440p and 4K; 480x270 only to 1080p and 4K.
 const RESOLUTIONS: Array[Array] = [[Vector2i(640, 360), 0], [Vector2i(480, 270), 56]]
 const VOICE_NAMES: Array[String] = ["thought text by the detective", "caption box", "silence"]
+const FOG_NAMES: Array[String] = ["stepped pixel fog", "volumetric fog behind pixel art", "no fog"]
 const SPEED: float = 62.0
 const OSK_X: float = 512.0
 const FIXER_X: float = 905.0
@@ -32,12 +41,19 @@ const THOUGHTS: Array[String] = [
 
 var res_index: int = 0
 var voice: Voice = Voice.THOUGHT
+var fog: Fog = Fog.STEPPED
 var detective_x: float = 300.0
 var facing: int = 1
 
+## Two viewports at native resolution: the background (sky to shanties, with
+## the fog between) and the playable layer in front of it (market, people,
+## water, rain), which is see-through where the market has gaps.
+var _back: SubViewport
 var _view: SubViewport
+var _back_screen: TextureRect
 var _screen: TextureRect
 var _layers: Dictionary[String, Sprite2D] = {}
+var _wisps: Dictionary[String, Sprite2D] = {}
 var _detective: Sprite2D
 var _osk: Sprite2D
 var _fixer: Sprite2D
@@ -78,22 +94,24 @@ func _build() -> void:
 	back.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(back)
 
-	_view = SubViewport.new()
-	_view.canvas_item_default_texture_filter = Viewport.DEFAULT_CANVAS_ITEM_TEXTURE_FILTER_NEAREST
-	_view.snap_2d_transforms_to_pixel = true
-	_view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	add_child(_view)
+	_back = _viewport(false)
+	_view = _viewport(true)
 
-	_layers["sky"] = _sprite(MarketArt.sky())
-	_layers["city"] = _sprite(MarketArt.city())
-	_layers["arcology"] = _sprite(MarketArt.arcology())
-	_layers["shanties"] = _sprite(MarketArt.shanties())
+	_layers["sky"] = _sprite(MarketArt.sky(), _back)
+	_layers["city"] = _sprite(MarketArt.city(), _back)
+	_fog_band("fog_far")
+	_layers["signs"] = _sprite(FogArt.signs(), _back)
+	_fog_band("fog_signs")
+	_layers["arcology"] = _sprite(MarketArt.arcology(), _back)
+	_fog_band("fog_mid")
+	_layers["shanties"] = _sprite(MarketArt.shanties(), _back)
+	_fog_band("fog_low")
 	for f: int in range(8):
 		_holo_frames.append(ImageTexture.create_from_image(MarketArt.hologram(f)))
 	_holo = Sprite2D.new()
 	_holo.centered = false
 	_holo.material = _additive()
-	_view.add_child(_holo)
+	_back.add_child(_holo)
 	_layers["market"] = _sprite(MarketArt.market())
 
 	_lamp = _sprite(_lamp_image())
@@ -112,6 +130,7 @@ func _build() -> void:
 	_water = ColorRect.new()
 	var mat: ShaderMaterial = ShaderMaterial.new()
 	mat.shader = WATER_SHADER
+	mat.set_shader_parameter("back_tex", _back.get_texture())
 	_water.material = mat
 	_view.add_child(_water)
 
@@ -121,6 +140,17 @@ func _build() -> void:
 	_view.add_child(rain_layer)
 	_rain = ArtRain.new()
 	rain_layer.add_child(_rain)
+
+	_back_screen = TextureRect.new()
+	_back_screen.texture = _back.get_texture()
+	_back_screen.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_back_screen.stretch_mode = TextureRect.STRETCH_SCALE
+	var vol: ShaderMaterial = ShaderMaterial.new()
+	vol.shader = VOLUMETRIC_SHADER
+	vol.set_shader_parameter("back_soft", _back.get_texture())
+	vol.set_shader_parameter("fog_color", FogArt.FOG_TINT)
+	_back_screen.material = vol
+	add_child(_back_screen)
 
 	_screen = TextureRect.new()
 	_screen.texture = _view.get_texture()
@@ -153,12 +183,31 @@ func _build() -> void:
 	add_child(_keys)
 
 
-func _sprite(img: Image) -> Sprite2D:
+func _viewport(see_through: bool) -> SubViewport:
+	var v: SubViewport = SubViewport.new()
+	v.canvas_item_default_texture_filter = Viewport.DEFAULT_CANVAS_ITEM_TEXTURE_FILTER_NEAREST
+	v.snap_2d_transforms_to_pixel = true
+	v.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	v.transparent_bg = see_through
+	add_child(v)
+	return v
+
+
+func _sprite(img: Image, into: SubViewport = null) -> Sprite2D:
 	var s: Sprite2D = Sprite2D.new()
 	s.centered = false
 	s.texture = ImageTexture.create_from_image(img)
-	_view.add_child(s)
+	(into if into != null else _view).add_child(s)
 	return s
+
+
+## A stepped fog band and the wisps that drift across it.
+func _fog_band(band: String) -> void:
+	_layers[band] = _sprite(FogArt.band(band), _back)
+	var w: Sprite2D = _sprite(FogArt.wisps(band), _back)
+	w.texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
+	w.region_enabled = true
+	_wisps[band] = w
 
 
 func _additive() -> CanvasItemMaterial:
@@ -177,7 +226,10 @@ func _lamp_image() -> Image:
 
 func _apply_resolution() -> void:
 	var size: Vector2i = RESOLUTIONS[res_index][0]
+	_back.size = size
 	_view.size = size
+	var vol: ShaderMaterial = _back_screen.material as ShaderMaterial
+	vol.set_shader_parameter("view_size", Vector2(size))
 	_water.size = Vector2(size.x, size.y)
 	var mat: ShaderMaterial = _water.material as ShaderMaterial
 	mat.set_shader_parameter("view_size", Vector2(size))
@@ -194,6 +246,8 @@ func _layout() -> void:
 	_offset = ((Vector2(win) - shown) * 0.5).floor()
 	_screen.position = _offset
 	_screen.size = shown
+	_back_screen.position = _offset
+	_back_screen.size = shown
 	var font_px: int = roundi(float(win.y) / 46.0)
 	_thought.add_theme_font_size_override("font_size", font_px)
 	_thought.add_theme_constant_override("outline_size", maxi(2, font_px / 5))
@@ -232,6 +286,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_apply_resolution()
 		KEY_V:
 			voice = ((voice + 1) % 3) as Voice
+		KEY_F:
+			fog = ((fog + 1) % 3) as Fog
 		KEY_E:
 			_next_line()
 		KEY_H:
@@ -264,6 +320,7 @@ func _update_world(walking: bool) -> void:
 	_holo.texture = _holo_frames[int(_time * 8.0) % _holo_frames.size()]
 	_holo.position = Vector2(market_x + 602, 58 - cam_top)
 	_holo.modulate.a = 0.85 if fmod(_time, 3.7) > 0.12 else 0.3
+	_update_fog(cam_top)
 
 	var breath: int = int(_time * 1.6) % 2
 	var walk_frame: int = int(_walk_time * 10.0) % ArtCharacters.WALK_FRAMES
@@ -280,6 +337,51 @@ func _update_world(walking: bool) -> void:
 	(_water.material as ShaderMaterial).set_shader_parameter("line_y", float(MarketArt.WATER_Y - cam_top))
 	_rain.walk_y = MarketArt.WALK_Y - cam_top
 	_rain.water_y = MarketArt.WATER_Y - cam_top
+
+
+func _update_fog(cam_top: int) -> void:
+	var stepped: bool = fog == Fog.STEPPED
+	for band: String in FogArt.BANDS:
+		_layers[band].visible = stepped
+		var w: Sprite2D = _wisps[band]
+		w.visible = stepped
+		w.position = _layers[band].position
+		var drift: float = floorf(_time * FogArt.DRIFT[band])
+		w.region_rect = Rect2(-drift, 0, MarketArt.layer_width(band), MarketArt.VIEW.y)
+	var vol: ShaderMaterial = _back_screen.material as ShaderMaterial
+	vol.set_shader_parameter("volumetric", fog == Fog.VOLUMETRIC)
+	vol.set_shader_parameter("water_y", float(MarketArt.WATER_Y - cam_top))
+	if fog != Fog.VOLUMETRIC:
+		return
+	# The same lights the stepped fog is tinted by, moved to the screen.
+	var pos: PackedVector4Array = []
+	var col: PackedVector4Array = []
+	var view_w: float = float(_view.size.x)
+	var signs_at: Vector2 = _layers["signs"].position
+	for s: Array in FogArt.SIGNS:
+		var l: Vector3 = FogArt.sign_light(s)
+		var c: Color = FogArt.sign_color(s[3])
+		var at: Vector2 = signs_at + Vector2(l.x, l.y)
+		if at.x > -80.0 and at.x < view_w + 80.0:
+			pos.append(Vector4(at.x, at.y, l.z * 1.3, 0.32))
+			col.append(Vector4(c.r, c.g, c.b, 1.0))
+	var arc_at: Vector2 = _layers["arcology"].position
+	for g: Array in FogArt.lights("fog_mid"):
+		var at: Vector2 = arc_at + Vector2(g[0], g[1])
+		if at.x > -60.0 and at.x < view_w + 60.0 and pos.size() < MAX_LIGHTS:
+			var c: Color = g[3]
+			pos.append(Vector4(at.x, at.y, 150.0, 0.09))
+			col.append(Vector4(c.r, c.g, c.b, 2.0))
+	if pos.size() < MAX_LIGHTS:
+		var h: Vector2 = _holo.position + Vector2(48, 44)
+		pos.append(Vector4(h.x, h.y, 60.0, 0.18))
+		col.append(Vector4(P.CYAN.r, P.CYAN.g, P.CYAN.b, 1.0))
+	var count: int = mini(pos.size(), MAX_LIGHTS)
+	pos.resize(MAX_LIGHTS)
+	col.resize(MAX_LIGHTS)
+	vol.set_shader_parameter("light_count", count)
+	vol.set_shader_parameter("light_pos", pos)
+	vol.set_shader_parameter("light_col", col)
 
 
 func _place(s: Sprite2D, x: float, size: Vector2i, market_x: float, cam_top: int) -> void:
@@ -319,7 +421,7 @@ func _update_voice() -> void:
 		_caption.size = Vector2(width, h)
 		_caption.position = _offset + Vector2(_screen.size.x * 0.04, _screen.size.y - h - _screen.size.y * 0.05)
 	var res: Vector2i = _view.size
-	_keys.text = "%dx%d at x%d  |  voice: %s\nA/D move   R resolution   V voice   E next thought   H hide" % [res.x, res.y, _scale, VOICE_NAMES[voice]]
+	_keys.text = "%dx%d at x%d  |  voice: %s  |  fog: %s\nA/D move   R resolution   V voice   F fog   E next thought   H hide" % [res.x, res.y, _scale, VOICE_NAMES[voice], FOG_NAMES[fog]]
 
 
 # ---------- screenshots ----------
@@ -336,13 +438,19 @@ func _take_shots(dir: String) -> void:
 	_keys.visible = false
 	_shooting = true
 	var plan: Array[Array] = [
-		# name, resolution, voice, detective x, facing, line
-		["640-thought", 0, Voice.THOUGHT, 300.0, 1, 2],
-		["640-caption", 0, Voice.CAPTION, 300.0, 1, 0],
-		["640-silent", 0, Voice.NONE, 760.0, 1, 0],
-		["480-thought", 1, Voice.THOUGHT, 300.0, 1, 2],
-		["480-caption", 1, Voice.CAPTION, 300.0, 1, 0],
-		["480-silent", 1, Voice.NONE, 760.0, 1, 0],
+		# name, resolution, voice, detective x, facing, line, fog
+		["640-thought", 0, Voice.THOUGHT, 300.0, 1, 2, Fog.STEPPED],
+		["640-caption", 0, Voice.CAPTION, 300.0, 1, 0, Fog.STEPPED],
+		["640-silent", 0, Voice.NONE, 760.0, 1, 0, Fog.STEPPED],
+		["480-thought", 1, Voice.THOUGHT, 300.0, 1, 2, Fog.STEPPED],
+		["480-caption", 1, Voice.CAPTION, 300.0, 1, 0, Fog.STEPPED],
+		["480-silent", 1, Voice.NONE, 760.0, 1, 0, Fog.STEPPED],
+		["fog-market-off", 0, Voice.NONE, 300.0, 1, 0, Fog.OFF],
+		["fog-market-stepped", 0, Voice.NONE, 300.0, 1, 0, Fog.STEPPED],
+		["fog-market-volumetric", 0, Voice.NONE, 300.0, 1, 0, Fog.VOLUMETRIC],
+		["fog-fixer-off", 0, Voice.NONE, 1100.0, -1, 0, Fog.OFF],
+		["fog-fixer-stepped", 0, Voice.NONE, 1100.0, -1, 0, Fog.STEPPED],
+		["fog-fixer-volumetric", 0, Voice.NONE, 1100.0, -1, 0, Fog.VOLUMETRIC],
 	]
 	for shot: Array in plan:
 		res_index = shot[1]
@@ -351,6 +459,7 @@ func _take_shots(dir: String) -> void:
 		detective_x = shot[3]
 		facing = shot[4]
 		_line = shot[5]
+		fog = shot[6]
 		_typed = 9999.0
 		_time = 1.0
 		_rain.warm(2.0)
@@ -359,5 +468,12 @@ func _take_shots(dir: String) -> void:
 		_typed = 9999.0
 		await RenderingServer.frame_post_draw
 		get_viewport().get_texture().get_image().save_png(dir.path_join("%s.png" % shot[0]))
-		_view.get_texture().get_image().save_png(dir.path_join("%s-native.png" % shot[0]))
+		# The native frame is the two viewports stacked (without volumetric light,
+		# which only exists at window resolution).
+		var native: Image = _back.get_texture().get_image()
+		native.convert(Image.FORMAT_RGBA8)
+		var front: Image = _view.get_texture().get_image()
+		front.convert(Image.FORMAT_RGBA8)
+		native.blend_rect(front, Rect2i(Vector2i.ZERO, front.get_size()), Vector2i.ZERO)
+		native.save_png(dir.path_join("%s-native.png" % shot[0]))
 	get_tree().quit()
