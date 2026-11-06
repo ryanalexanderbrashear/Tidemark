@@ -59,7 +59,7 @@ func _ready() -> void:
 	Case.case_closed.connect(func(s: CaseSummary) -> void:
 		_show_screen(CaseScreens.summary(s, _start, _start_fresh)))
 	_show_screen(CaseScreens.intro(_start))
-	print("Boot: Undertow %s on Godot %s" % [ProjectSettings.get_setting("application/config/version"), Engine.get_version_info().string])
+	print("Boot: Tidemark %s on Godot %s" % [ProjectSettings.get_setting("application/config/version"), Engine.get_version_info().string])
 
 
 func _start() -> void:

@@ -1,6 +1,6 @@
-# Undertow (working title)
+# Tidemark
 
-A cyberpunk detective game in Godot 4: a 2D metroidvania about a detective chasing a serial killer through a flooded city, by one developer (Alex). Investigation is the main pillar; platforming and combat are lighter, and every fight needs a story reason. This repo currently holds a grey-box prototype of one case, the Drowned Market, to test the core loop. Treat it as a prototype: clear and tested, but expect rooms built in code to move into hand-built scenes later.
+A cyberpunk detective game in Godot 4: a 2D metroidvania about a detective chasing a serial killer through Halcyon Reach, a flooded city, by one developer (Alex). The game was called Undertow while in development, and the repo and some docs may still use that name. Investigation is the main pillar; platforming and combat are lighter, and every fight needs a story reason. This repo currently holds a grey-box prototype of one case, the Drowned Market, to test the core loop. Treat it as a prototype: clear and tested, but expect rooms built in code to move into hand-built scenes later.
 
 ## Design
 
