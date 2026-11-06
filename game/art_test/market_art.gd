@@ -17,7 +17,11 @@ const STALL_X: int = 352    # Vale's stall, left edge
 const STALL_W: int = 120
 
 ## Parallax factor for each back layer, by name.
-const PARALLAX: Dictionary[String, float] = {"sky": 0.0, "city": 0.2, "arcology": 0.5, "shanties": 0.78, "market": 1.0, "front": 1.3}
+## Fog bands (FogArt) move with the layer they sit in front of.
+const PARALLAX: Dictionary[String, float] = {
+	"sky": 0.0, "city": 0.2, "fog_far": 0.2, "signs": 0.35, "fog_signs": 0.35,
+	"arcology": 0.5, "fog_mid": 0.5, "shanties": 0.78, "fog_low": 0.78, "market": 1.0, "front": 1.3,
+}
 
 
 static func layer_width(layer: String) -> int:

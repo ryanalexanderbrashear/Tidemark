@@ -152,6 +152,20 @@ static func text(img: Image, x: int, y: int, s: String, c: Color) -> void:
 		cx += 4
 
 
+## The sign font at a whole-number `scale`, for big signs: each font pixel
+## becomes a `scale` x `scale` block, spacing included.
+static func text_scaled(img: Image, x: int, y: int, s: String, c: Color, scale: int) -> void:
+	var cx: int = x
+	for ch: String in s.to_upper():
+		var rows: Array = FONT.get(ch, FONT[" "])
+		for r: int in range(5):
+			var bits: int = rows[r]
+			for b: int in range(3):
+				if bits & (4 >> b):
+					rect(img, cx + b * scale, y + r * scale, scale, scale, c)
+		cx += 4 * scale
+
+
 ## Copies `src` onto `dst` at (x, y), blending alpha.
 static func stamp(dst: Image, src: Image, x: int, y: int) -> void:
 	dst.blend_rect(src, Rect2i(Vector2i.ZERO, src.get_size()), Vector2i(x, y))
