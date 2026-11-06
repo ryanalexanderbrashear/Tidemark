@@ -81,3 +81,62 @@ func test_fog_is_thicker_near_the_water() -> void:
 func test_wisps_wrap_so_fog_can_drift_forever() -> void:
 	for band: String in FogArt.BANDS:
 		assert_int(FogArt.wisps(band).get_width()).is_equal(FogArt.WISP_TILE)
+
+
+# ---------- the closer-to-final detective ----------
+
+func test_detective_walk_frames_are_all_different() -> void:
+	var seen: Array[PackedByteArray] = []
+	for f: int in range(ArtDetective.WALK_FRAMES):
+		var data: PackedByteArray = ArtDetective.walk(f).get_data()
+		assert_bool(data in seen).is_false()
+		seen.append(data)
+
+
+func test_detective_stands_on_the_same_row_as_the_others() -> void:
+	for img: Image in [ArtDetective.idle(0), ArtDetective.walk(0), ArtDetective.walk(2)]:
+		assert_bool(_row_has_pixels(img, img.get_height() - 3)).is_true()
+		assert_bool(_row_has_pixels(img, img.get_height() - 2)).is_false()
+
+
+func test_detective_is_about_64_pixels_tall() -> void:
+	# Look and Feel: about 64 px at 640x360, so his face reads.
+	var img: Image = ArtDetective.idle(0)
+	var top: int = 0
+	while not _row_has_pixels(img, top):
+		top += 1
+	assert_int(img.get_height() - 3 - top + 1).is_between(62, 66)
+
+
+func test_planted_foot_moves_back_at_walking_speed() -> void:
+	# Walk frames are picked by distance (STRIDE / WALK_FRAMES per frame), so a
+	# planted foot has to slide back by exactly that much each frame.
+	var step: float = ArtDetective.STRIDE / float(ArtDetective.WALK_FRAMES)
+	for f: int in range(4):
+		var a: Vector2 = ArtDetective._foot(f)[0]
+		var b: Vector2 = ArtDetective._foot(f + 1)[0]
+		assert_float(a.x - b.x).is_equal_approx(step, 0.001)
+		assert_float(a.y).is_equal(ArtDetective.ANKLE_Y)
+
+
+func test_detective_implant_glows_in_every_frame() -> void:
+	# The cyan iris is the one bright point on him.
+	var frames: Array[Image] = []
+	for f: int in range(ArtDetective.WALK_FRAMES):
+		frames.append(ArtDetective.walk(f))
+	for f: int in range(ArtDetective.IDLE_FRAMES):
+		frames.append(ArtDetective.idle(f))
+	for img: Image in frames:
+		var found: bool = false
+		for y: int in range(20):
+			for x: int in range(img.get_width()):
+				if img.get_pixel(x, y).is_equal_approx(ArtPalette.CYAN):
+					found = true
+		assert_bool(found).is_true()
+
+
+func test_detective_has_no_blood_red() -> void:
+	var img: Image = ArtDetective.walk(3)
+	for y: int in range(img.get_height()):
+		for x: int in range(img.get_width()):
+			assert_bool(img.get_pixel(x, y).is_equal_approx(ArtPalette.BLOOD)).is_false()

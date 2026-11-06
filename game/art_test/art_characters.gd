@@ -1,6 +1,7 @@
 class_name ArtCharacters
 extends RefCounted
-## The three people in the style test, drawn as pixel sprites. Each is lit from
+## The three people in the style test, drawn as pixel sprites. The detective here
+## is the first sketch; ArtDetective is his closer-to-final pass. Each is lit from
 ## behind by the market's neon (magenta on the left edge, cyan on the right) and
 ## from above by the sodium lamps, so they read as silhouettes first and faces second.
 ##
