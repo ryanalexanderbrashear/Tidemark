@@ -61,13 +61,28 @@ godot --headless --path . -s res://editor/art/detective_sheet.gd -- --out=/tmp/d
 | F | Fog: stepped pixel fog, volumetric fog behind the pixel art, or none |
 | C | Detective: closer to final, the tall rim-lit draft, or the first sketch |
 | E | Next thought |
+| X | Examine the items in the detective's pockets (below) |
 | H | Hide the key list |
+
+**Examining items.** X holds up the wiped memory chip and the storage case's ID tag. Each item is a small 3D box with pixel-art faces, rendered at the game's resolution and snapped to the art palette with an ink outline, so it reads as pixel art but turns freely. The chip's CS-14-07 etching is on its back: turn it over and hold it there for a moment to find it.
+
+| Key (while examining) | Does |
+| --- | --- |
+| Drag, or W / A / S / D | Turn the item (a flick keeps it spinning) |
+| Q / E | Roll it |
+| Wheel, or + / - | Bring it closer or further |
+| Tab | Next item |
+| R | Straighten it |
+| P | Palette snap on or off, to compare |
+| X / Esc | Put it away |
 
 To save the set of comparison screenshots (needs a display, so not headless):
 
 ```bash
 godot --path . --resolution 1920x1080 res://scenes/art_test.tscn -- --shots=/tmp/art-test
 ```
+
+Add `--only=<prefix>` to save only some of them, for example `--only=examine` for the examine shots.
 
 ## Run the checks
 

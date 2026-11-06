@@ -28,3 +28,4 @@ const MAGENTA_DIM: Color = Color("7a1d4a")
 const CYAN_DIM: Color = Color("1b6f84")
 const SKIN: Color = Color("9a7b6c")
 const SKIN_SHADE: Color = Color("5e4a45")
+const GLINT: Color = Color("d4dce6")    # highlights on wet or handled things

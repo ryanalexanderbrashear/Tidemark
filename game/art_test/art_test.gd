@@ -15,8 +15,12 @@ extends Node
 ## his scale. C cycles to the 64 px pass (ArtDetective) and to the first
 ## proof-of-concept sprite, to compare.
 ##
+## X opens the examine test (ExamineView): the items in the detective's pockets,
+## held up close and turned over by hand to find what's on their other side.
+##
 ## Keys: A/D move, R switches resolution, V switches the inner voice, F switches
-## the fog, C switches the detective, E shows the next thought, H hides the key list.
+## the fog, C switches the detective, E shows the next thought, X examines items,
+## H hides the key list.
 ## Screenshots: run with `-- --shots=<dir>` and it saves a fixed set and quits.
 
 enum Voice { THOUGHT, CAPTION, NONE }
@@ -83,6 +87,7 @@ var _thought: Label
 var _caption: PanelContainer
 var _caption_label: Label
 var _keys: Label
+var _examine: ExamineView
 var _line: int = 0
 var _typed: float = 0.0
 var _time: float = 0.0
@@ -210,6 +215,9 @@ func _build() -> void:
 	_keys.add_theme_color_override("font_color", Color(P.RAIN, 0.8))
 	add_child(_keys)
 
+	_examine = ExamineView.new()
+	add_child(_examine)
+
 
 func _viewport(see_through: bool) -> SubViewport:
 	var v: SubViewport = SubViewport.new()
@@ -287,11 +295,13 @@ func _layout() -> void:
 	box.content_margin_left = font_px * 1.2
 	_keys.add_theme_font_size_override("font_size", maxi(12, roundi(float(win.y) / 70.0)))
 	_keys.position = _offset + Vector2(12, 8)
+	_examine.layout(size, _scale, _offset)
 
 
 func _process(delta: float) -> void:
 	_time += delta
-	var dir: float = Input.get_axis("move_left", "move_right")
+	# The detective stands still while he has something in his hands.
+	var dir: float = 0.0 if _examine.is_open() else Input.get_axis("move_left", "move_right")
 	if dir != 0.0:
 		facing = 1 if dir > 0.0 else -1
 		detective_x = clampf(detective_x + dir * SPEED * delta, 20.0, float(MarketArt.ROOM.x - 20))
@@ -326,6 +336,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_next_line()
 		KEY_H:
 			_keys.visible = not _keys.visible
+		KEY_X:
+			_examine.open()
 
 
 func _next_line() -> void:
@@ -474,7 +486,7 @@ func _update_voice() -> void:
 		_caption.size = Vector2(width, h)
 		_caption.position = _offset + Vector2(_screen.size.x * 0.04, _screen.size.y - h - _screen.size.y * 0.05)
 	var res: Vector2i = _view.size
-	_keys.text = "%dx%d at x%d  |  voice: %s  |  fog: %s  |  detective: %s\nA/D move   R resolution   V voice   F fog   C detective   E next thought   H hide" % [res.x, res.y, _scale, VOICE_NAMES[voice], FOG_NAMES[fog], LOOK_NAMES[look]]
+	_keys.text = "%dx%d at x%d  |  voice: %s  |  fog: %s  |  detective: %s\nA/D move   R resolution   V voice   F fog   C detective   E next thought   X examine items   H hide" % [res.x, res.y, _scale, VOICE_NAMES[voice], FOG_NAMES[fog], LOOK_NAMES[look]]
 
 
 # ---------- screenshots ----------
@@ -515,7 +527,10 @@ func _take_shots(dir: String) -> void:
 		["npcs-osk", 0, Voice.NONE, 440.0, 1, 0, Fog.STEPPED, -1, Look.TALL],
 		["npcs-fixer", 0, Voice.NONE, 830.0, 1, 0, Fog.STEPPED, -1, Look.TALL],
 	]
+	var only: String = _only_prefix()
 	for shot: Array in plan:
+		if not String(shot[0]).begins_with(only):
+			continue
 		res_index = shot[1]
 		_apply_resolution()
 		voice = shot[2]
@@ -541,4 +556,54 @@ func _take_shots(dir: String) -> void:
 		front.convert(Image.FORMAT_RGBA8)
 		native.blend_rect(front, Rect2i(Vector2i.ZERO, front.get_size()), Vector2i.ZERO)
 		native.save_png(dir.path_join("%s-native.png" % shot[0]))
+	if "examine".begins_with(only) or only.begins_with("examine"):
+		await _take_examine_shots(dir, only)
 	get_tree().quit()
+
+
+## The examine test: the chip as it comes up, turning, turned over with the
+## etching found, without palette snap to compare, and the flat tag.
+func _take_examine_shots(dir: String, only: String) -> void:
+	res_index = 0
+	_apply_resolution()
+	voice = Voice.NONE
+	detective_x = 300.0
+	facing = 1
+	fog = Fog.STEPPED
+	look = Look.TALL
+	_shot_walk = -1
+	_examine.still = true
+	var plan: Array[Array] = [
+		# name, item, turn (euler), zoom, palette snap
+		["examine-chip", 0, ExamineView.REST, ExamineView.ZOOM_START, true],
+		["examine-chip-turning", 0, Vector3(-0.35, 1.9, 0.15), ExamineView.ZOOM_START, true],
+		["examine-chip-etching", 0, Vector3(0.12, PI - 0.2, 0.05), 2.5, true],
+		["examine-chip-no-snap", 0, Vector3(-0.35, 1.9, 0.15), ExamineView.ZOOM_START, false],
+		["examine-tag", 1, Vector3(-0.25, -0.35, -0.08), 1.75, true],
+		["examine-tag-back", 1, Vector3(0.2, PI + 0.45, 0.1), 1.75, true],
+	]
+	for shot: Array in plan:
+		if not String(shot[0]).begins_with(only):
+			continue
+		_examine.found.clear()
+		_examine.open(shot[1])
+		_examine.set_turn(Basis.from_euler(shot[2]))
+		_examine.zoom = shot[3]
+		_examine.snap = shot[4]
+		_examine.check_found(1.0)
+		_examine.check_found(1.0)
+		_time = 1.0
+		_rain.warm(2.0)
+		for i: int in range(4):
+			await get_tree().process_frame
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png(dir.path_join("%s.png" % shot[0]))
+	_examine.close()
+	_examine.still = false
+
+
+func _only_prefix() -> String:
+	for arg: String in OS.get_cmdline_user_args():
+		if arg.begins_with("--only="):
+			return arg.trim_prefix("--only=")
+	return ""
