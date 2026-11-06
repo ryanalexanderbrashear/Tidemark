@@ -10,8 +10,11 @@ extends Node
 ## fog is pixel art like everything else; volumetric fog is drawn at the
 ## window's own resolution behind the crisp pixel-art playable layer.
 ##
+## The detective is the closer-to-final "rain-worn tracer" (ArtDetective); C
+## switches back to the first proof-of-concept sprite to compare.
+##
 ## Keys: A/D move, R switches resolution, V switches the inner voice, F switches
-## the fog, E shows the next thought, H hides the key list.
+## the fog, C switches the detective, E shows the next thought, H hides the key list.
 ## Screenshots: run with `-- --shots=<dir>` and it saves a fixed set and quits.
 
 enum Voice { THOUGHT, CAPTION, NONE }
@@ -27,7 +30,8 @@ const MAX_LIGHTS: int = 24
 const RESOLUTIONS: Array[Array] = [[Vector2i(640, 360), 0], [Vector2i(480, 270), 56]]
 const VOICE_NAMES: Array[String] = ["thought text by the detective", "caption box", "silence"]
 const FOG_NAMES: Array[String] = ["stepped pixel fog", "volumetric fog behind pixel art", "no fog"]
-const SPEED: float = 62.0
+## Walking pace: about 1.5 walk cycles a second with ArtDetective's stride.
+const SPEED: float = 54.0
 const OSK_X: float = 512.0
 const FIXER_X: float = 905.0
 
@@ -43,6 +47,8 @@ var res_index: int = 0
 var voice: Voice = Voice.THOUGHT
 var fog: Fog = Fog.STEPPED
 var detective_x: float = 300.0
+## False shows the first proof-of-concept detective instead, to compare.
+var new_detective: bool = true
 var facing: int = 1
 
 ## Two viewports at native resolution: the background (sky to shanties, with
@@ -62,6 +68,8 @@ var _lamp: Sprite2D
 var _water: ColorRect
 var _rain: ArtRain
 var _det_frames: Array[ImageTexture] = []
+var _det_walk: Array[ImageTexture] = []
+var _det_idle: Array[ImageTexture] = []
 var _osk_frames: Array[ImageTexture] = []
 var _fixer_frames: Array[ImageTexture] = []
 var _holo_frames: Array[ImageTexture] = []
@@ -73,6 +81,10 @@ var _line: int = 0
 var _typed: float = 0.0
 var _time: float = 0.0
 var _walk_time: float = 0.0
+## Distance walked, so ArtDetective's walk frames keep the planted foot still.
+var _walk_dist: float = 0.0
+## Screenshots only: shows this walk frame instead of standing (-1: off).
+var _shot_walk: int = -1
 var _scale: int = 1
 var _shooting: bool = false
 var _offset: Vector2 = Vector2.ZERO
@@ -123,6 +135,10 @@ func _build() -> void:
 		_det_frames.append(ImageTexture.create_from_image(ArtCharacters.detective(f, false)))
 		_osk_frames.append(ImageTexture.create_from_image(ArtCharacters.osk(f)))
 		_fixer_frames.append(ImageTexture.create_from_image(ArtCharacters.fixer(f)))
+	for f: int in range(ArtDetective.WALK_FRAMES):
+		_det_walk.append(ImageTexture.create_from_image(ArtDetective.walk(f)))
+	for f: int in range(ArtDetective.IDLE_FRAMES):
+		_det_idle.append(ImageTexture.create_from_image(ArtDetective.idle(f)))
 	_osk = _sprite(_osk_frames[0].get_image())
 	_fixer = _sprite(_fixer_frames[0].get_image())
 	_detective = _sprite(_det_frames[0].get_image())
@@ -266,13 +282,15 @@ func _process(delta: float) -> void:
 		facing = 1 if dir > 0.0 else -1
 		detective_x = clampf(detective_x + dir * SPEED * delta, 20.0, float(MarketArt.ROOM.x - 20))
 		_walk_time += delta
+		_walk_dist += SPEED * delta
 	else:
 		_walk_time = 0.0
+		_walk_dist = 0.0
 	if not _shooting:
 		_typed += delta * 38.0
 	if _typed > THOUGHTS[_line].length() + 140.0 and not _shooting:
 		_next_line()
-	_update_world(dir != 0.0)
+	_update_world(dir != 0.0 or _shot_walk >= 0)
 	_update_voice()
 
 
@@ -288,6 +306,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			voice = ((voice + 1) % 3) as Voice
 		KEY_F:
 			fog = ((fog + 1) % 3) as Fog
+		KEY_C:
+			new_detective = not new_detective
 		KEY_E:
 			_next_line()
 		KEY_H:
@@ -323,10 +343,17 @@ func _update_world(walking: bool) -> void:
 	_update_fog(cam_top)
 
 	var breath: int = int(_time * 1.6) % 2
-	var walk_frame: int = int(_walk_time * 10.0) % ArtCharacters.WALK_FRAMES
-	_detective.texture = _det_frames[walk_frame] if walking else _det_frames[ArtCharacters.WALK_FRAMES + breath]
+	if new_detective:
+		var step: float = ArtDetective.STRIDE / float(ArtDetective.WALK_FRAMES)
+		var walk_frame: int = int(_walk_dist / step) % ArtDetective.WALK_FRAMES
+		if _shot_walk >= 0:
+			walk_frame = _shot_walk
+		_detective.texture = _det_walk[walk_frame] if walking else _det_idle[int(_time * 2.0) % ArtDetective.IDLE_FRAMES]
+	else:
+		var walk_frame: int = int(_walk_time * 10.0) % ArtCharacters.WALK_FRAMES
+		_detective.texture = _det_frames[walk_frame] if walking else _det_frames[ArtCharacters.WALK_FRAMES + breath]
 	_detective.flip_h = facing < 0
-	_place(_detective, detective_x, ArtCharacters.DETECTIVE_SIZE, market_x, cam_top)
+	_place(_detective, detective_x, _detective_size(), market_x, cam_top)
 	_osk.texture = _osk_frames[breath]
 	_place(_osk, OSK_X, ArtCharacters.OSK_SIZE, market_x, cam_top)
 	_fixer.texture = _fixer_frames[(breath + 1) % 2]
@@ -384,6 +411,10 @@ func _update_fog(cam_top: int) -> void:
 	vol.set_shader_parameter("light_col", col)
 
 
+func _detective_size() -> Vector2i:
+	return ArtDetective.SIZE if new_detective else ArtCharacters.DETECTIVE_SIZE
+
+
 func _place(s: Sprite2D, x: float, size: Vector2i, market_x: float, cam_top: int) -> void:
 	# Feet on the walkway; sprites' last two rows are below the shoe line.
 	s.position = Vector2(floorf(market_x + x - size.x * 0.5), MarketArt.WALK_Y - size.y + 2 - cam_top)
@@ -400,7 +431,7 @@ func _update_voice() -> void:
 		var width: float = minf(win.x * 0.36, 640.0)
 		var cam_top: int = RESOLUTIONS[res_index][1]
 		var cam_x: float = floorf(clampf(detective_x - _view.size.x * 0.5, 0.0, float(MarketArt.ROOM.x - _view.size.x)))
-		var head: Vector2 = Vector2(detective_x - cam_x, MarketArt.WALK_Y - ArtCharacters.DETECTIVE_SIZE.y - 6 - cam_top)
+		var head: Vector2 = Vector2(detective_x - cam_x, MarketArt.WALK_Y - _detective_size().y - 6 - cam_top)
 		var at: Vector2 = _offset + head * float(_scale)
 		_thought.size = Vector2(width, 10)
 		_thought.reset_size()
@@ -421,7 +452,7 @@ func _update_voice() -> void:
 		_caption.size = Vector2(width, h)
 		_caption.position = _offset + Vector2(_screen.size.x * 0.04, _screen.size.y - h - _screen.size.y * 0.05)
 	var res: Vector2i = _view.size
-	_keys.text = "%dx%d at x%d  |  voice: %s  |  fog: %s\nA/D move   R resolution   V voice   F fog   E next thought   H hide" % [res.x, res.y, _scale, VOICE_NAMES[voice], FOG_NAMES[fog]]
+	_keys.text = "%dx%d at x%d  |  voice: %s  |  fog: %s  |  detective: %s\nA/D move   R resolution   V voice   F fog   C detective   E next thought   H hide" % [res.x, res.y, _scale, VOICE_NAMES[voice], FOG_NAMES[fog], "closer to final" if new_detective else "first sketch"]
 
 
 # ---------- screenshots ----------
@@ -438,7 +469,7 @@ func _take_shots(dir: String) -> void:
 	_keys.visible = false
 	_shooting = true
 	var plan: Array[Array] = [
-		# name, resolution, voice, detective x, facing, line, fog
+		# name, resolution, voice, detective x, facing, line, fog[, walk frame, new detective]
 		["640-thought", 0, Voice.THOUGHT, 300.0, 1, 2, Fog.STEPPED],
 		["640-caption", 0, Voice.CAPTION, 300.0, 1, 0, Fog.STEPPED],
 		["640-silent", 0, Voice.NONE, 760.0, 1, 0, Fog.STEPPED],
@@ -451,6 +482,11 @@ func _take_shots(dir: String) -> void:
 		["fog-fixer-off", 0, Voice.NONE, 1100.0, -1, 0, Fog.OFF],
 		["fog-fixer-stepped", 0, Voice.NONE, 1100.0, -1, 0, Fog.STEPPED],
 		["fog-fixer-volumetric", 0, Voice.NONE, 1100.0, -1, 0, Fog.VOLUMETRIC],
+		["detective-idle", 0, Voice.NONE, 300.0, 1, 0, Fog.STEPPED, -1, true],
+		["detective-walk", 0, Voice.NONE, 300.0, 1, 0, Fog.STEPPED, 1, true],
+		["detective-walk-left", 0, Voice.NONE, 640.0, -1, 0, Fog.STEPPED, 6, true],
+		["detective-thought", 0, Voice.THOUGHT, 300.0, 1, 2, Fog.STEPPED, -1, true],
+		["detective-first-sketch", 0, Voice.NONE, 300.0, 1, 0, Fog.STEPPED, -1, false],
 	]
 	for shot: Array in plan:
 		res_index = shot[1]
@@ -460,6 +496,8 @@ func _take_shots(dir: String) -> void:
 		facing = shot[4]
 		_line = shot[5]
 		fog = shot[6]
+		_shot_walk = shot[7] if shot.size() > 7 else -1
+		new_detective = shot[8] if shot.size() > 8 else true
 		_typed = 9999.0
 		_time = 1.0
 		_rain.warm(2.0)
