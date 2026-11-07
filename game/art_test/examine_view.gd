@@ -15,6 +15,13 @@ extends Control
 ## it away.
 
 signal closed
+## The item came up into the detective's hands (opened, or switched to).
+signal item_shown(item: ExamineItem)
+## Its hidden detail was found just now.
+signal detail_found(item: ExamineItem)
+## It was opened, or what's inside was taken out.
+signal item_opened(item: ExamineItem)
+signal item_taken(item: ExamineItem)
 
 const P = preload("res://game/art_test/art_palette.gd")
 const SNAP_SHADER = preload("res://game/art_test/examine.gdshader")
@@ -242,6 +249,7 @@ func _show_item() -> void:
 	zoom = ZOOM_START
 	_lift = 0.0 if not still else 1.0
 	_update_text()
+	item_shown.emit(it)
 
 
 func _face_mesh(it: ExamineItem, face: String) -> MeshInstance3D:
@@ -313,8 +321,10 @@ func use() -> void:
 	var it: ExamineItem = current()
 	if can_open():
 		opened[it.id] = true
+		item_opened.emit(it)
 	elif can_take_out():
 		taken[it.id] = true
+		item_taken.emit(it)
 		if _floor != null:
 			_floor.albedo_texture = ImageTexture.create_from_image(it.inside_empty)
 		items.append(it.contains)
@@ -435,6 +445,7 @@ func check_found(delta: float) -> void:
 		if _facing_time >= FOUND_HOLD:
 			found[it.id] = true
 			_thought_time = 6.0
+			detail_found.emit(it)
 	else:
 		_facing_time = 0.0
 

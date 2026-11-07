@@ -56,15 +56,21 @@ godot --headless --path . -s res://editor/art/detective_sheet.gd -- --out=/tmp/d
 | Key | Does |
 | --- | --- |
 | A / D | Walk |
+| E or Enter | Talk to someone, check something, open a door (when a prompt shows) |
+| Tab | Case board |
 | R | Switch between 640x360 and 480x270 |
 | V | Inner voice: thought text by the detective, a caption box, or silence |
 | F | Fog: stepped pixel fog, volumetric fog behind the pixel art, or none |
 | C | Detective: closer to final, the tall rim-lit draft, or the first sketch |
-| E | Next thought |
+| N | Next thought (the opening thoughts play once, then the voice goes quiet) |
 | X | Examine the items in the detective's pockets (below) |
 | H | Hide the key list |
 
-**Examining items.** X holds up the wiped memory chip and the storage case's ID tag. Each item is a small 3D box with pixel-art faces, rendered at the game's resolution and snapped to the art palette with an ink outline, so it reads as pixel art but turns freely. The chip's CS-14-07 etching is on its back: turn it over and hold it there for a moment to find it. The pocket tin (a test item, not from the case) has a catch hidden on its right edge: find it, open the tin, and take out the slip inside, which then goes in the pockets like anything else.
+**Playing the market floor.** The scene is also a playable slice of the case (`ArtMarketFloor`). The people and objects on the floor are the market room's own spots from `DrownedMarket`: Vale's stall door, Osk, the security cams, the fixer, the fixer's back room and the maintenance tech (kneeling at the failing pump). Walk up to one and E brings up its dialogue in a box in the scene's style (`ArtTalkBox`); clues land in `Case` exactly as in the grey box. Tab opens the case board in the same style (`ArtBoard`): clues pinned as paper cards on cork, theories down the right, and string from each picked clue to the theory; it commits through `Case` and says the prototype board's lines. The slice starts as the detective comes out of Vale's stall (a placeholder start, not canon): her ledger is on the board and her chip is in his pocket, with its etching not yet found. From this floor alone you can work out who Vale was really selling to (Osk plus the ledger), which gets the fixer to open the back room, and that the etching is a catalog number (turn the chip over, show the fixer, ask the tech). Doors to rooms the art test hasn't drawn (the stall, Cold Storage) open through the case, and the scene says the room isn't built yet.
+
+**Placeholder sound.** `ArtSound` makes every sound in code (seeded noise and tones, no files): rain, water against the stilts, the hum of Vale's failing lamp (louder as you near it, gone when it stutters off), and one-shots for picking items up, finding a detail, a catch opening, paper, the board and dialogue. While a dialogue box, the board or a close-up is up, the rain and water muffle behind a low-pass filter (`ArtAmbience`), as the Look and Feel doc asks for during investigation.
+
+**Examining items.** X holds up the wiped memory chip and the storage case's ID tag. Each item is a small 3D box with pixel-art faces, rendered at the game's resolution and snapped to the art palette with an ink outline, so it reads as pixel art but turns freely. The chip's CS-14-07 etching is on its back: turn it over and hold it there for a moment to find it. Finding it adds the clue "The calling card" to the case. The pocket tin (a test item, not from the case) has a catch hidden on its right edge: find it, open the tin, and take out the slip inside, which then goes in the pockets like anything else.
 
 | Key (while examining) | Does |
 | --- | --- |
@@ -83,7 +89,7 @@ To save the set of comparison screenshots (needs a display, so not headless):
 godot --path . --resolution 1920x1080 res://scenes/art_test.tscn -- --shots=/tmp/art-test
 ```
 
-Add `--only=<prefix>` to save only some of them, for example `--only=examine` for the examine shots.
+Add `--only=<prefix>` to save only some of them, for example `--only=examine` for the examine shots or `--only=scene` for the playable market floor (talking, the board).
 
 ## Run the checks
 
@@ -106,7 +112,8 @@ game/
   case/      the running case (the Case autoload), the board's check, dialogue (Talk), the Drowned Market's rooms and spots
   world/     the main scene's room builder, the detective, hostiles, bolts, grey-box drawing
   ui/        HUD, dialogue box, case board, intro and summary screens
-  art_test/  the Drowned Market style test: palette, drawing kit, layers, sprites, rain, water
+  art_test/  the Drowned Market style test: palette, drawing kit, layers, sprites, rain, water, examining,
+             and the playable market floor (its spots, dialogue box, board, placeholder sound)
 data/        clues/, theories/, beats/ and readings/ as .tres, one per id; mind/tuning.tres
 scenes/      main.tscn, art_test.tscn
 tests/       gdUnit4 tests

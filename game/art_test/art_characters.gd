@@ -16,6 +16,8 @@ const DETECTIVE_SIZE: Vector2i = Vector2i(32, 60)
 const NPC_SCALE: float = 1.5
 const OSK_SIZE: Vector2i = Vector2i(60, 90)
 const FIXER_SIZE: Vector2i = Vector2i(42, 96)
+## Kneeling, so shorter than he'd stand.
+const TECH_SIZE: Vector2i = Vector2i(48, 65)
 const WALK_FRAMES: int = 6
 
 const COAT: Color = Color("1e2838")
@@ -173,6 +175,43 @@ static func fixer(frame: int) -> Image:
 		_dot(img, 10 + (i % 2), 17 + i * 4 + bi, P.MAGENTA_DIM)
 	_rect(img, 13, 10 + bi, 5, 1, P.MAGENTA)
 	_dot(img, 12, 10 + bi, P.MAGENTA_DIM)
+	_k = 1.0
+	return img
+
+
+## The maintenance tech: kneeling at the pump, hood up, a headlamp, a wrench
+## in the near hand. Faces right, toward the pump. Frame 1 is the wrench
+## turned a notch.
+static func tech(frame: int) -> Image:
+	var img: Image = Px.blank(TECH_SIZE.x, TECH_SIZE.y)
+	_k = NPC_SCALE
+	var b: int = frame % 2
+	var work: Color = Color("2f3a2c")
+	var work_dark: Color = Color("1f281e")
+	# Back leg kneeling (shin flat on the planks), front leg bent up.
+	_rect(img, 4, 37, 12, 4, PANTS_BACK)
+	_rect(img, 2, 38, 4, 3, SHOE)
+	_poly(img, PackedVector2Array([Vector2(14, 28), Vector2(22, 27), Vector2(24, 41), Vector2(20, 41), Vector2(18, 32), Vector2(13, 33)]), PANTS)
+	_rect(img, 20, 39, 7, 3, SHOE)
+	# Body leaning in, a work jacket with a dull reflective band.
+	_poly(img, PackedVector2Array([Vector2(7, 14), Vector2(18, 12), Vector2(22, 18), Vector2(19, 31), Vector2(8, 32), Vector2(6, 22)]), work)
+	_poly(img, PackedVector2Array([Vector2(14, 13), Vector2(18, 12), Vector2(22, 18), Vector2(19, 31), Vector2(14, 31)]), work_dark)
+	_rect(img, 7, 23, 13, 1, Color("6a6f5a"))
+	# Hood, and the face turned to the work.
+	_ellipse(img, 16.0, 9.0, 5.0, 5.5, Color("262e24"))
+	_ellipse(img, 18.5, 10.0, 2.6, 3.2, P.SKIN_SHADE)
+	_dot(img, 20, 10, P.SKIN)
+	# Arms out to the pump; the wrench.
+	_line(img, Vector2i(17, 16), Vector2i(26, 20 - b), work_dark)
+	_line(img, Vector2i(17, 17), Vector2i(26, 21 - b), work_dark)
+	_rect(img, 26, 19 - b, 2, 2, P.SKIN_SHADE)
+	_line(img, Vector2i(27, 20 - b), Vector2i(31, 15 + b), P.STEEL)
+	_k = 1.0
+	_light(img)
+	# The headlamp, drawn after the rim so it stays bright.
+	_k = NPC_SCALE
+	_rect(img, 19, 6, 2, 1, P.AMBER)
+	_dot(img, 21, 6, Color(P.AMBER, 0.6))
 	_k = 1.0
 	return img
 
