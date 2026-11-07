@@ -557,6 +557,11 @@ func interact() -> void:
 	var t: Talk = s.use()
 	if t != null and not Case.closed:
 		_show_talk(t)
+	# The chip is the examine tutorial: the voice leads him to turn it over
+	# once the body's talk is done (the voice waits while the box is up).
+	if s.id == "body" and ArtMarketFloor.chip_unexamined():
+		_narration = ""
+		say(ArtMarketFloor.CHIP_HINT)
 
 
 func _show_talk(t: Talk) -> void:
@@ -608,6 +613,8 @@ func _enter(to: String) -> void:
 	var line: String = Mind.room_line(randf(), randi())
 	if line != "":
 		say(line)
+	elif to == "market" and ArtMarketFloor.chip_unexamined():
+		say(ArtMarketFloor.CHIP_REMINDER)
 
 
 ## A line of the inner voice from the case (a passenger arriving, a dose,
@@ -621,6 +628,8 @@ func _on_detail_found(it: ExamineItem) -> void:
 	_sound.play("found")
 	if it.clue != "":
 		Case.find_clue(it.clue)
+	if it.id == "chip" and _said in [ArtMarketFloor.CHIP_HINT, ArtMarketFloor.CHIP_REMINDER]:
+		_said = ""
 
 
 func toast(text: String) -> void:
@@ -696,11 +705,11 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 ## X: holds up what's in his pockets. The chip is there once he's taken it
-## from her hand; the tag once he's found it; the tin and its slip are test
-## items, always there.
+## from her hand (turning it over finds the etching, the "chip" clue); the tag
+## once he's found it; the tin and its slip are test items, always there.
 func examine() -> void:
 	var items: Array[ExamineItem] = []
-	if Case.has_clue("chip"):
+	if Case.is_set("has_chip") or Case.has_clue("chip"):
 		items.append(ExamineItem.chip())
 	if Case.has_clue("tag"):
 		items.append(ExamineItem.tag())

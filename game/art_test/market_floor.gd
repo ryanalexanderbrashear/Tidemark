@@ -70,6 +70,9 @@ var spots: Dictionary[String, Array] = {}
 
 func _init(from: DrownedMarket = null) -> void:
 	market = from if from != null else DrownedMarket.new()
+	# The chip doubles as the examine tutorial: her body gives the chip, and
+	# turning it over (X) finds the etching.
+	market.etching_by_examining = true
 	for room: String in PLACES:
 		var list: Array[Spot] = []
 		for s: Spot in market.spots_in(room):
@@ -134,6 +137,17 @@ static func reading_depth(t: Talk) -> float:
 				return DEEP_WHITE
 			return SURFACE_WHITE
 	return 0.0
+
+
+## The examine tutorial: what the inner voice says once he has the chip
+## and hasn't turned it over yet (after the body; again on leaving the stall).
+const CHIP_HINT: String = "Something's scratched into that chip. Take it out and turn it over. (X)"
+const CHIP_REMINDER: String = "That chip in my pocket. I still haven't looked at what's scratched on it. (X)"
+
+
+## Whether he's carrying the chip without having found its etching.
+static func chip_unexamined() -> bool:
+	return Case.is_set("has_chip") and not Case.has_clue("chip")
 
 
 ## The prompt shown over a spot.

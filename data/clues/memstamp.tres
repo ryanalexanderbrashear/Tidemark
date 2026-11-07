@@ -6,5 +6,5 @@
 script = ExtResource("1_clue")
 id = "memstamp"
 title = "Reyka's purchased memory"
-text = "Playback log: he was across the city in Uptown from 23:00 onward."
+text = "Playback log: he was across the city in Uptown from 21:00 onward."
 source = "Reyka's apartment"

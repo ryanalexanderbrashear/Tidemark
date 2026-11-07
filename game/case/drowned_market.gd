@@ -17,7 +17,8 @@ extends RefCounted
 ## doesn't need the badge (see tests/case/test_case_paths.gd).
 ##
 ## Memory readings (data/readings/): Vale (the body or the morgue drawer, until
-## 02:15, about two hours after she died), the
+## 02:15, about four hours after she died; she was dead an hour before the
+## case opens), the
 ## blank chip (coroner terminal) and Reyka's memory deck. Surface readings are
 ## safe; deep readings add a route to a fact or a detail about the killer, and
 ## cost bleed-through (tests/mind/test_readings.gd). No gate needs one.
@@ -35,6 +36,11 @@ const VALE_POINTS: Array[Array] = [
 ]
 
 var rooms: Dictionary[String, RoomDef] = {}
+## When true, the body gives the chip but not its etching: he pockets it, and
+## the "chip" clue comes from turning it over (the art test's examine view).
+## The grey box has no examine view, so there the body names the etching.
+## Either way the coroner terminal is a second route to it.
+var etching_by_examining: bool = false
 var spots: Array[Spot] = []
 
 
@@ -262,7 +268,7 @@ func _coroner() -> Talk:
 
 func _morgue() -> Talk:
 	if Case.optic_on:
-		return _with_reading(_found("thermal", "Morgue drawer", "Through the optic, residual heat still clings to the core. She died near 00:15."), "vale")
+		return _with_reading(_found("thermal", "Morgue drawer", "Through the optic, residual heat still clings to the core. She died near 22:15."), "vale")
 	return _with_reading(Talk.say("Morgue drawer", "Ines Vale. To the naked eye she's just cold." + (" Try the thermal optic (T)." if Case.has_optic else "")), "vale")
 
 
@@ -334,7 +340,7 @@ func _osk() -> Talk:
 func _cams() -> Talk:
 	if not Case.clearance:
 		return Talk.say("Security terminal", "POLICE CREDENTIALS REQUIRED. Your badge bounces.")
-	return _found("footage", "Security terminal", "Stall camera, 22:14. Reyka leaves Vale's stall alone. He never comes back.")
+	return _found("footage", "Security terminal", "Stall camera, 20:14. Reyka leaves Vale's stall alone. He never comes back.")
 
 
 func fixer() -> Talk:
@@ -383,7 +389,7 @@ func _tech() -> Talk:
 	# The badge-free route to the footage.
 	if not Case.clearance and not Case.has_clue("footage"):
 		opts.append(TalkOption.make("Ask about the market cams", func() -> Talk:
-			return _found("footage", "Maintenance tech", "Cams? I service them. Here, I pulled the stall feed for you. 22:14, the corp guy walks out alone. You didn't get this from me.")))
+			return _found("footage", "Maintenance tech", "Cams? I service them. Here, I pulled the stall feed for you. 20:14, the corp guy walks out alone. You didn't get this from me.")))
 	opts.append(TalkOption.close("Leave"))
 	return Talk.say("Maintenance tech", "Pumps are failing again. What do you need, detective?", opts)
 
@@ -409,10 +415,16 @@ func _ledger() -> Talk:
 
 
 func _body() -> Talk:
-	Case.find_clue("chip")
 	Case.reach("body_examined")
+	if etching_by_examining:
+		Case.set_flag("has_chip")
+		var chip: String = "A blank memory chip in her hand, wiped clean. You pocket it. Something's scratched into the casing, on the side against her palm."
+		if Case.optic_on:
+			return _with_reading(_found("thermal", "The body", "Through the optic: residual core heat. She died near 22:15. " + chip), "vale")
+		return _with_reading(Talk.say("The body", "Ines Vale. " + chip + " The body's cooling. You can't tell when she died by looking."), "vale")
+	Case.find_clue("chip")
 	if Case.optic_on:
-		return _with_reading(_found("thermal", "The body", "Through the optic: residual core heat. She died near 00:15. A blank chip in her hand, etched CS-14-07."), "vale")
+		return _with_reading(_found("thermal", "The body", "Through the optic: residual core heat. She died near 22:15. A blank chip in her hand, etched CS-14-07."), "vale")
 	return _with_reading(Talk.say("The body", "Ines Vale. A blank memory chip in her hand, wiped clean, etched CS-14-07. The body's cooling. You can't tell when she died by looking."), "vale")
 
 

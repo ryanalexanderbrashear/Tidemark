@@ -73,7 +73,12 @@ func test_the_slice_starts_at_the_top_of_the_case() -> void:
 func test_the_badge_opens_the_stall_and_the_body_gives_the_chip() -> void:
 	_visit_stall()
 	_use("stall", "body")
-	assert_bool(Case.has_clue("chip")).is_true()
+	# He pockets the chip; its etching (the clue) waits for him to turn it over.
+	assert_bool(Case.is_set("has_chip")).is_true()
+	assert_bool(Case.has_clue("chip")).is_false()
+	assert_bool(ArtMarketFloor.chip_unexamined()).is_true()
+	Case.find_clue(ExamineItem.chip().clue)
+	assert_bool(ArtMarketFloor.chip_unexamined()).is_false()
 	assert_bool(Case.has_beat("body_examined")).is_true()
 	_use("stall", "ledger")
 	assert_bool(Case.has_clue("ledger")).is_true()
@@ -142,6 +147,9 @@ func test_the_etching_deduction_from_the_market_floor() -> void:
 	_visit_stall()
 	_use("stall", "body")
 	_use("stall", "stall_exit")
+	# Not until he's turned the chip over and seen the etching.
+	assert_object(_use("market", "fixer").option("chip etching")).is_null()
+	Case.find_clue(ExamineItem.chip().clue)
 	_use("market", "fixer").choose("chip etching")
 	_use("market", "tech").choose("tunnels")
 	assert_int(Case.commit_theory("catalog", ["fixerfmt", "tech"])).is_equal(TheoryCheck.Result.HOLDS)
@@ -178,3 +186,21 @@ func test_doors_out_say_the_room_is_not_drawn() -> void:
 
 func test_prompts_name_the_spot() -> void:
 	assert_str(ArtMarketFloor.prompt(market_floor.market.spot("osk"))).is_equal("E  Osk, rival broker")
+
+
+func test_the_body_line_leaves_the_etching_for_examining() -> void:
+	_visit_stall()
+	var t: Talk = _use("stall", "body")
+	assert_str(t.text).not_contains("CS-14-07")
+	assert_str(t.text).contains("scratched")
+
+
+func test_the_grey_box_body_still_names_the_etching() -> void:
+	Case.reset()
+	var grey: DrownedMarket = DrownedMarket.new()
+	Case.travel("stall", 0.0)
+	var t: Talk = grey.spot("body").use()
+	assert_bool(Case.has_clue("chip")).is_true()
+	assert_str(t.text).contains("CS-14-07")
+	grey.spots.clear()
+	grey.rooms.clear()
