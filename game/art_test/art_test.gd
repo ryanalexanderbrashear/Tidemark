@@ -3,7 +3,7 @@ extends Node
 ## The Drowned Market style test (milestone M3 in Gameplay and Production): one
 ## stretch of the market floor drawn at target resolution, to settle the Look and
 ## Feel doc's open questions on game resolution, character size and how the
-## detective's inner voice is shown. It doesn't touch the case.
+## detective's inner voice is shown. It's now also a playable slice (below).
 ##
 ## It also tries the fog, water and neon motif (Look and Feel doc, "Fog, water
 ## and neon"): neon signs behind thick fog, drawn two ways to compare. Stepped
@@ -18,16 +18,22 @@ extends Node
 ## X opens the examine test (ExamineView): the items in the detective's pockets,
 ## held up close and turned over by hand to find what's on their other side.
 ##
-## It's also a playable slice of the case (ArtMarketFloor): the people and
-## objects on the market floor are the case's own, so E talks to them in a
-## styled box (ArtTalkBox), clues land in `Case`, Tab opens the case board
-## (ArtBoard), and the chip's etching, found by turning it over, is a clue.
-## Placeholder sound (ArtAmbience) plays under it, muffled while the detective
-## is talking, at the board or holding something up.
+## It's also a playable slice of the case, the whole loop in small
+## (ArtMarketFloor): an opening caption, the market floor and Vale's stall (a
+## second room, through her badge-taped door), the case's own people and
+## objects in both, so E talks to them in a styled box (ArtTalkBox) and clues
+## land in `Case`. Her body can be read: the reading's white comes in like fog,
+## and a deep one brings her back as a passenger, standing at the fog's edge
+## on the market floor. T switches on the thermal optic: the fog falls away,
+## the cold goes dark blue, people show their heat, her passenger shows none,
+## and a boarded stall turns out to be a heat-sealed door. Tab opens the case
+## board (ArtBoard), and turning the chip over finds its etching. Placeholder
+## sound (ArtAmbience) plays under it all, muffled while the detective is
+## talking, at the board or holding something up.
 ##
-## Keys: A/D move, E use, Tab case board, X examine items, R switches
-## resolution, V switches the inner voice, F switches the fog, C switches the
-## detective, N shows the next thought, H hides the key list.
+## Keys: A/D move, E use, Tab case board, T thermal optic, X examine items,
+## R switches resolution, V switches the inner voice, F switches the fog, C
+## switches the detective, N shows the next thought, H hides the key list.
 ## Screenshots: run with `-- --shots=<dir>` and it saves a fixed set and quits.
 
 enum Voice { THOUGHT, CAPTION, NONE }
@@ -36,6 +42,9 @@ enum Fog { STEPPED, VOLUMETRIC, OFF }
 const P = preload("res://game/art_test/art_palette.gd")
 const WATER_SHADER = preload("res://game/art_test/water.gdshader")
 const VOLUMETRIC_SHADER = preload("res://game/art_test/volumetric.gdshader")
+const HEAT_SHADER = preload("res://game/art_test/heat.gdshader")
+const THERMAL_SHADER = preload("res://game/art_test/thermal.gdshader")
+const READING_SHADER = preload("res://game/art_test/reading_fog.gdshader")
 const MAX_LIGHTS: int = 24
 
 ## The two resolutions on test: [size, camera top]. 640x360 scales by whole
@@ -52,8 +61,18 @@ const TECH_X: float = ArtMarketFloor.TECH_X
 ## the camera on its pole.
 const PROMPT_Y: float = 178.0
 const PROMPT_Y_CAMS: float = 96.0
+## Inside the stall, over the counter and the floor.
+const PROMPT_Y_LOW: float = 222.0
 ## Seconds a toast stays up.
 const TOAST_TIME: float = 2.8
+## Seconds to fade out (and in again) through a door.
+const FADE_TIME: float = 0.3
+## How much heat is left in the body (the thermal read gives time of death).
+const BODY_HEAT: float = 0.35
+const SEAM_HEAT: float = 0.8
+
+## Scene-opening narration, in the caption box. Placeholder, not canon.
+const OPENING: String = "The Drowned Market. Ines Vale's stall is taped off, the shutter's sealed, and the badge reader by it is waiting for me."
 
 ## Placeholder lines for the test. They lean on what the docs settle (Vale, the
 ## market, the badge), but they're not canon dialogue.
@@ -86,6 +105,36 @@ var _detective: Sprite2D
 var _osk: Sprite2D
 var _fixer: Sprite2D
 var _tech: Sprite2D
+var _vale: Sprite2D
+var _vale_frames: Array[ImageTexture] = []
+## Which drawn room the detective is in ("market" or "stall").
+var room: String = "market"
+## Each room's nodes in the two viewports, shown only while he's in it.
+var _back_market: Node2D
+var _back_stall: Node2D
+var _play_market: Node2D
+var _play_stall: Node2D
+var _over_market: Node2D
+var _body: Sprite2D
+var _stall_lamp: Sprite2D
+var _rain_layer: CanvasLayer
+## The thermal optic: the cold picture, and what's warm drawn over it.
+var _thermal: ColorRect
+var _heat: SubViewport
+var _heat_screen: TextureRect
+var _heat_of: Dictionary[Sprite2D, Sprite2D] = {}
+var _seam: Sprite2D
+## A memory reading's white, and how far it's come in (0..1).
+var _reading: ColorRect
+var reading_amount: float = 0.0
+## Through a door: fading out (to `_next_room`) and back in.
+var _fade: ColorRect
+var _fade_t: float = 0.0
+var _next_room: String = ""
+var _hud: Label
+## The opening narration, then lines of the inner voice the case sends.
+var _narration: String = OPENING
+var _said: String = ""
 var _holo: Sprite2D
 var _lamp: Sprite2D
 var _water: ColorRect
@@ -137,6 +186,7 @@ func _ready() -> void:
 	_build()
 	Case.notice.connect(toast)
 	Case.travel_requested.connect(_on_travel)
+	Mind.thought.connect(say)
 	Case.announcement.connect(func(who: String, text: String, at: String) -> void:
 		_show_talk.call_deferred(Talk.say(who, at + ".  " + text)))
 	# Only listen for resizes once the screen exists: building the art takes a
@@ -160,23 +210,34 @@ func _build() -> void:
 
 	_back = _viewport(false)
 	_view = _viewport(true)
+	_back_market = _node(_back)
+	_back_stall = _node(_back)
+	_play_market = _node(_view)
+	_play_stall = _node(_view)
 
-	_layers["sky"] = _sprite(MarketArt.sky(), _back)
-	_layers["city"] = _sprite(MarketArt.city(), _back)
+	_layers["sky"] = _sprite(MarketArt.sky(), _back_market)
+	_layers["city"] = _sprite(MarketArt.city(), _back_market)
 	_fog_band("fog_far")
-	_layers["signs"] = _sprite(FogArt.signs(), _back)
+	_layers["signs"] = _sprite(FogArt.signs(), _back_market)
 	_fog_band("fog_signs")
-	_layers["arcology"] = _sprite(MarketArt.arcology(), _back)
+	_layers["arcology"] = _sprite(MarketArt.arcology(), _back_market)
 	_fog_band("fog_mid")
-	_layers["shanties"] = _sprite(MarketArt.shanties(), _back)
+	_layers["shanties"] = _sprite(MarketArt.shanties(), _back_market)
 	_fog_band("fog_low")
 	for f: int in range(8):
 		_holo_frames.append(ImageTexture.create_from_image(MarketArt.hologram(f)))
 	_holo = Sprite2D.new()
 	_holo.centered = false
 	_holo.material = _additive()
-	_back.add_child(_holo)
+	_back_market.add_child(_holo)
 	_layers["market"] = _sprite(MarketArt.market())
+
+	# Vale's stall: one screen, no parallax, no fog or rain inside.
+	_sprite(StallArt.back(), _back_stall)
+	_sprite(StallArt.room(), _play_stall)
+	_stall_lamp = _sprite(StallArt.lamp(), _play_stall)
+	_stall_lamp.material = _additive()
+	_body = _sprite(StallArt.body(), _play_stall)
 
 	_lamp = _sprite(_lamp_image())
 	_lamp.material = _additive()
@@ -188,6 +249,7 @@ func _build() -> void:
 		_osk_frames.append(ImageTexture.create_from_image(ArtCharacters.osk(f)))
 		_fixer_frames.append(ImageTexture.create_from_image(ArtCharacters.fixer(f)))
 		_tech_frames.append(ImageTexture.create_from_image(ArtCharacters.tech(f)))
+		_vale_frames.append(ImageTexture.create_from_image(ArtCharacters.vale(f)))
 	for f: int in range(ArtDetective.WALK_FRAMES):
 		_det_walk.append(ImageTexture.create_from_image(ArtDetective.walk(f)))
 	for f: int in range(ArtDetective.IDLE_FRAMES):
@@ -199,21 +261,31 @@ func _build() -> void:
 	_osk = _sprite(_osk_frames[0].get_image())
 	_fixer = _sprite(_fixer_frames[0].get_image())
 	_tech = _sprite(_tech_frames[0].get_image())
-	_detective = _sprite(_det_frames[0].get_image())
+	_vale = _sprite(_vale_frames[0].get_image())
+	# The detective goes between rooms, so he's in neither room's node.
+	_detective = _sprite(_det_frames[0].get_image(), _view)
+	_over_market = _node(_view)
 
 	_water = ColorRect.new()
 	var mat: ShaderMaterial = ShaderMaterial.new()
 	mat.shader = WATER_SHADER
 	mat.set_shader_parameter("back_tex", _back.get_texture())
 	_water.material = mat
-	_view.add_child(_water)
+	_over_market.add_child(_water)
 
-	_layers["front"] = _sprite(MarketArt.front())
+	_layers["front"] = _sprite(MarketArt.front(), _over_market)
 
-	var rain_layer: CanvasLayer = CanvasLayer.new()
-	_view.add_child(rain_layer)
+	_rain_layer = CanvasLayer.new()
+	_view.add_child(_rain_layer)
 	_rain = ArtRain.new()
-	rain_layer.add_child(_rain)
+	_rain_layer.add_child(_rain)
+
+	# What's warm, for the thermal optic: each one mirrors its sprite.
+	_heat = _viewport(true)
+	for pair: Array in [[_detective, 1.0], [_osk, 1.0], [_fixer, 1.0], [_tech, 1.0], [_body, BODY_HEAT]]:
+		_heat_of[pair[0]] = _heat_sprite(pair[1])
+	_seam = _heat_sprite(SEAM_HEAT)
+	_seam.texture = ImageTexture.create_from_image(MarketArt.heat_seam())
 
 	_back_screen = TextureRect.new()
 	_back_screen.texture = _back.get_texture()
@@ -231,6 +303,31 @@ func _build() -> void:
 	_screen.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_screen.stretch_mode = TextureRect.STRETCH_SCALE
 	add_child(_screen)
+
+	_thermal = ColorRect.new()
+	var th: ShaderMaterial = ShaderMaterial.new()
+	th.shader = THERMAL_SHADER
+	_thermal.material = th
+	_thermal.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_thermal)
+	_heat_screen = TextureRect.new()
+	_heat_screen.texture = _heat.get_texture()
+	_heat_screen.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_heat_screen.stretch_mode = TextureRect.STRETCH_SCALE
+	_heat_screen.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_heat_screen)
+
+	_reading = ColorRect.new()
+	var rd: ShaderMaterial = ShaderMaterial.new()
+	rd.shader = READING_SHADER
+	_reading.material = rd
+	_reading.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_reading)
+
+	_fade = ColorRect.new()
+	_fade.color = Color(P.INK, 0.0)
+	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_fade)
 
 	_thought = Label.new()
 	_thought.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -255,6 +352,10 @@ func _build() -> void:
 	_keys = Label.new()
 	_keys.add_theme_color_override("font_color", Color(P.RAIN, 0.8))
 	add_child(_keys)
+	_hud = _outlined(P.AMBER)
+	_hud.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_hud.visible = true
+	add_child(_hud)
 
 	_prompt = _outlined(Color("d4dce6"))
 	add_child(_prompt)
@@ -287,6 +388,23 @@ func _outlined(c: Color) -> Label:
 	return l
 
 
+func _node(into: Node) -> Node2D:
+	var n: Node2D = Node2D.new()
+	into.add_child(n)
+	return n
+
+
+func _heat_sprite(heat: float) -> Sprite2D:
+	var s: Sprite2D = Sprite2D.new()
+	s.centered = false
+	var m: ShaderMaterial = ShaderMaterial.new()
+	m.shader = HEAT_SHADER
+	m.set_shader_parameter("heat", heat)
+	s.material = m
+	_heat.add_child(s)
+	return s
+
+
 func _viewport(see_through: bool) -> SubViewport:
 	var v: SubViewport = SubViewport.new()
 	v.canvas_item_default_texture_filter = Viewport.DEFAULT_CANVAS_ITEM_TEXTURE_FILTER_NEAREST
@@ -297,18 +415,18 @@ func _viewport(see_through: bool) -> SubViewport:
 	return v
 
 
-func _sprite(img: Image, into: SubViewport = null) -> Sprite2D:
+func _sprite(img: Image, into: Node = null) -> Sprite2D:
 	var s: Sprite2D = Sprite2D.new()
 	s.centered = false
 	s.texture = ImageTexture.create_from_image(img)
-	(into if into != null else _view).add_child(s)
+	(into if into != null else _play_market).add_child(s)
 	return s
 
 
 ## A stepped fog band and the wisps that drift across it.
 func _fog_band(band: String) -> void:
-	_layers[band] = _sprite(FogArt.band(band), _back)
-	var w: Sprite2D = _sprite(FogArt.wisps(band), _back)
+	_layers[band] = _sprite(FogArt.band(band), _back_market)
+	var w: Sprite2D = _sprite(FogArt.wisps(band), _back_market)
 	w.texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
 	w.region_enabled = true
 	_wisps[band] = w
@@ -332,6 +450,8 @@ func _apply_resolution() -> void:
 	var size: Vector2i = RESOLUTIONS[res_index][0]
 	_back.size = size
 	_view.size = size
+	_heat.size = size
+	(_reading.material as ShaderMaterial).set_shader_parameter("native", Vector2(size))
 	var vol: ShaderMaterial = _back_screen.material as ShaderMaterial
 	vol.set_shader_parameter("view_size", Vector2(size))
 	_water.size = Vector2(size.x, size.y)
@@ -354,6 +474,11 @@ func _layout() -> void:
 	_screen.size = shown
 	_back_screen.position = _offset
 	_back_screen.size = shown
+	for c: Control in [_thermal, _heat_screen, _reading]:
+		c.position = _offset
+		c.size = shown
+	_fade.position = Vector2.ZERO
+	_fade.size = Vector2(win)
 	var font_px: int = roundi(float(win.y) / 46.0)
 	_thought.add_theme_font_size_override("font_size", font_px)
 	_thought.add_theme_constant_override("outline_size", maxi(2, font_px / 5))
@@ -366,7 +491,7 @@ func _layout() -> void:
 	_examine.layout(size, _scale, _offset)
 	_talk.layout(size, _scale, _offset)
 	_board.layout(size, _scale, _offset)
-	for l: Label in [_prompt, _toast]:
+	for l: Label in [_prompt, _toast, _hud]:
 		l.add_theme_font_size_override("font_size", roundi(font_px * 0.85))
 		l.add_theme_constant_override("outline_size", maxi(2, font_px / 5))
 
@@ -378,7 +503,7 @@ func _process(delta: float) -> void:
 	var dir: float = 0.0 if busy() else Input.get_axis("move_left", "move_right")
 	if dir != 0.0:
 		facing = 1 if dir > 0.0 else -1
-		detective_x = clampf(detective_x + dir * SPEED * delta, 20.0, float(MarketArt.ROOM.x - 20))
+		detective_x = clampf(detective_x + dir * SPEED * delta, 20.0, float(_room_w() - 20))
 		_walk_time += delta
 		_walk_dist += SPEED * delta
 	else:
@@ -386,35 +511,57 @@ func _process(delta: float) -> void:
 		_walk_dist = 0.0
 	if not _shooting:
 		_typed += delta * 38.0
-	if _typed > THOUGHTS[_line].length() + 140.0 and not _shooting and not _quiet:
-		if _thoughts_shown < THOUGHTS.size():
-			_next_line()
-		else:
-			_quiet = true
+	if _typed > _voice_line().length() + 140.0 and not _shooting:
+		if _narration != "":
+			_narration = ""
+			_typed = 0.0
+		elif _said != "":
+			_said = ""
+			_typed = 0.0
+		elif not _quiet:
+			if _thoughts_shown < THOUGHTS.size():
+				_next_line()
+			else:
+				_quiet = true
+	_update_fade(delta)
 	_update_world(dir != 0.0 or _shot_walk >= 0)
+	_update_heat()
+	_update_reading(delta)
 	_update_voice()
 	_update_prompt()
 	_update_toast(delta)
+	_update_hud()
 	_sound.muffled = busy()
-	_sound.update(delta, detective_x - (MarketArt.STALL_X + MarketArt.STALL_W * 0.5), _lamp.visible)
+	_sound.indoors = room == "stall"
+	var lamp_x: float = StallArt.LAMP_X if room == "stall" else MarketArt.STALL_X + MarketArt.STALL_W * 0.5
+	_sound.update(delta, detective_x - lamp_x, (_stall_lamp if room == "stall" else _lamp).visible)
 
 
 ## True while something is up in front of the market: an item close-up, a
 ## dialogue box or the case board.
 func busy() -> bool:
-	return _examine.is_open() or _talk.visible or _board.is_open()
+	return _examine.is_open() or _talk.visible or _board.is_open() or _next_room != ""
+
+
+func _room_w() -> int:
+	return ArtMarketFloor.ROOM_WIDTHS[room]
 
 
 # ---------- the case ----------
 
 ## E: uses the spot the detective is standing at.
 func interact() -> void:
-	var s: Spot = _floor.nearest(detective_x)
+	var s: Spot = _floor.nearest(room, detective_x)
 	if s == null:
 		return
 	var t: Talk = s.use()
 	if t != null and not Case.closed:
 		_show_talk(t)
+	# The chip is the examine tutorial: the voice leads him to turn it over
+	# once the body's talk is done (the voice waits while the box is up).
+	if s.id == "body" and ArtMarketFloor.chip_unexamined():
+		_narration = ""
+		say(ArtMarketFloor.CHIP_HINT)
 
 
 func _show_talk(t: Talk) -> void:
@@ -427,19 +574,62 @@ func open_board() -> void:
 	_board.open()
 
 
-## A door led out of the market: the art test has no other room yet, so the
-## detective stays here and the scene says so (after the door's own line).
-func _on_travel(room: String, _x: float) -> void:
-	if room == "market":
+## A door opened. Into a room the art test draws, the screen fades through
+## to it; anywhere else, the detective stays where he is and the scene says so
+## (after the door's own line).
+func _on_travel(to: String, _x: float) -> void:
+	if to == room or to == _next_room:
 		return
-	toast.call_deferred(_floor.unbuilt_room_line(room))
-	Case.travel.call_deferred("market", detective_x)
+	if ArtMarketFloor.is_drawn(to):
+		go_to(to)
+		return
+	toast.call_deferred(_floor.unbuilt_room_line(to))
+	Case.travel.call_deferred(room, detective_x)
+
+
+## Fades out, changes room, fades back in.
+func go_to(to: String) -> void:
+	_next_room = to
+	_fade_t = 0.0
+	_sound.play("catch")
+
+
+func _update_fade(delta: float) -> void:
+	if _next_room != "":
+		_fade_t += delta / FADE_TIME
+		if _fade_t >= 1.0:
+			_enter(_next_room)
+			_next_room = ""
+			_fade_t = 1.0
+	elif _fade_t > 0.0:
+		_fade_t = maxf(0.0, _fade_t - delta / FADE_TIME)
+	_fade.color = Color(P.INK, _fade_t)
+
+
+func _enter(to: String) -> void:
+	room = to
+	detective_x = ArtMarketFloor.ENTRY_X[to]
+	facing = 1
+	var line: String = Mind.room_line(randf(), randi())
+	if line != "":
+		say(line)
+	elif to == "market" and ArtMarketFloor.chip_unexamined():
+		say(ArtMarketFloor.CHIP_REMINDER)
+
+
+## A line of the inner voice from the case (a passenger arriving, a dose,
+## bleed-through in a new room).
+func say(text: String) -> void:
+	_said = text
+	_typed = 0.0
 
 
 func _on_detail_found(it: ExamineItem) -> void:
 	_sound.play("found")
 	if it.clue != "":
 		Case.find_clue(it.clue)
+	if it.id == "chip" and _said in [ArtMarketFloor.CHIP_HINT, ArtMarketFloor.CHIP_REMINDER]:
+		_said = ""
 
 
 func toast(text: String) -> void:
@@ -467,21 +657,22 @@ func _update_toast(delta: float) -> void:
 
 
 func _update_prompt() -> void:
-	var s: Spot = null if busy() else _floor.nearest(detective_x)
+	var s: Spot = null if busy() else _floor.nearest(room, detective_x)
 	_prompt.visible = s != null
 	if s == null:
 		return
 	_prompt.text = ArtMarketFloor.prompt(s)
 	_prompt.reset_size()
 	var cam_top: int = RESOLUTIONS[res_index][1]
-	var at: Vector2 = Vector2(ArtMarketFloor.place(s).x - _cam_x(), (PROMPT_Y_CAMS if s.id == "cams" else PROMPT_Y) - cam_top)
+	var py: float = PROMPT_Y_CAMS if s.id == "cams" else (PROMPT_Y_LOW if room == "stall" and s.id != "stall_exit" else PROMPT_Y)
+	var at: Vector2 = Vector2(ArtMarketFloor.place(s).x - _cam_x(), py - cam_top)
 	var w: float = _prompt.size.x
 	_prompt.position = _offset + at * float(_scale) - Vector2(w * 0.5, _prompt.size.y)
 	_prompt.position.x = clampf(_prompt.position.x, _offset.x + 8.0, _offset.x + _screen.size.x - w - 8.0)
 
 
 func _cam_x() -> float:
-	return floorf(clampf(detective_x - _view.size.x * 0.5, 0.0, float(MarketArt.ROOM.x - _view.size.x)))
+	return floorf(clampf(detective_x - _view.size.x * 0.5, 0.0, float(maxi(0, _room_w() - _view.size.x))))
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -493,6 +684,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			interact()
 		KEY_TAB:
 			open_board()
+		KEY_T:
+			toggle_optic()
 		KEY_R:
 			res_index = (res_index + 1) % RESOLUTIONS.size()
 			_apply_resolution()
@@ -508,7 +701,32 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_H:
 			_keys.visible = not _keys.visible
 		KEY_X:
-			_examine.open()
+			examine()
+
+
+## X: holds up what's in his pockets. The chip is there once he's taken it
+## from her hand (turning it over finds the etching, the "chip" clue); the tag
+## once he's found it; the tin and its slip are test items, always there.
+func examine() -> void:
+	var items: Array[ExamineItem] = []
+	if Case.is_set("has_chip") or Case.has_clue("chip"):
+		items.append(ExamineItem.chip())
+	if Case.has_clue("tag"):
+		items.append(ExamineItem.tag())
+	items.append(ExamineItem.tin())
+	if _examine.taken.get("tin", false):
+		items.append(ExamineItem.slip())
+	_examine.items = items
+	_examine.open(0)
+
+
+## T: the thermal optic, if he has it.
+func toggle_optic() -> void:
+	if not Case.has_optic:
+		toast("You don't have a thermal optic yet.")
+		return
+	_sound.play("turn")
+	Case.toggle_optic()
 
 
 func _next_line() -> void:
@@ -518,10 +736,14 @@ func _next_line() -> void:
 
 
 func _update_world(walking: bool) -> void:
-	var size: Vector2i = _view.size
 	var cam_top: int = RESOLUTIONS[res_index][1]
-	var cam_x: float = clampf(detective_x - size.x * 0.5, 0.0, float(MarketArt.ROOM.x - size.x))
-	cam_x = floorf(cam_x)
+	var in_market: bool = room == "market"
+	for n: CanvasItem in [_back_market, _play_market, _over_market]:
+		n.visible = in_market
+	for n: CanvasItem in [_back_stall, _play_stall]:
+		n.visible = not in_market
+	_rain_layer.visible = in_market
+	var cam_x: float = _cam_x()
 	var max_scroll: float = float(MarketArt.ROOM.x - MarketArt.VIEW.x)
 	for layer: String in _layers:
 		var factor: float = MarketArt.PARALLAX[layer]
@@ -539,6 +761,10 @@ func _update_world(walking: bool) -> void:
 	_holo.position = Vector2(market_x + 602, 58 - cam_top)
 	_holo.modulate.a = 0.85 if fmod(_time, 3.7) > 0.12 else 0.3
 	_update_fog(cam_top)
+	# Inside the stall (one screen, so the camera doesn't move).
+	_stall_lamp.position = Vector2(-cam_x, -cam_top)
+	_stall_lamp.visible = sin(_time * 19.0) + sin(_time * 5.1) > -1.5
+	_body.position = Vector2(floorf(StallArt.BODY_X - StallArt.BODY_SIZE.x * 0.5 - cam_x), MarketArt.WALK_Y - StallArt.BODY_SIZE.y + 3 - cam_top)
 
 	var breath: int = int(_time * 1.6) % 2
 	if look != Look.SKETCH:
@@ -563,6 +789,13 @@ func _update_world(walking: bool) -> void:
 	# The tech works the wrench a notch at a time.
 	_tech.texture = _tech_frames[int(_time * 1.1) % 2]
 	_place(_tech, TECH_X, ArtCharacters.TECH_SIZE, market_x, cam_top)
+	# Her passenger, at the fog's edge: only while she's with him, never quite
+	# steady.
+	var vale_spot: Spot = _floor.market.spot("passenger_vale")
+	_vale.visible = vale_spot != null and vale_spot.is_visible()
+	_vale.texture = _vale_frames[int(_time * 0.7) % 2]
+	_vale.modulate.a = 0.72 if fmod(_time * 1.3, 5.0) > 0.25 else 0.35
+	_place(_vale, ArtMarketFloor.VALE_X, ArtCharacters.VALE_SIZE, market_x, cam_top)
 
 	_water.position = Vector2(0, MarketArt.WATER_Y - cam_top)
 	(_water.material as ShaderMaterial).set_shader_parameter("line_y", float(MarketArt.WATER_Y - cam_top))
@@ -570,8 +803,50 @@ func _update_world(walking: bool) -> void:
 	_rain.water_y = MarketArt.WATER_Y - cam_top
 
 
+## The thermal optic: the cold picture over everything, and the warm drawn on
+## top of it from each warm sprite's own shape. Her passenger has no heat.
+func _update_heat() -> void:
+	var on: bool = Case.optic_on
+	_thermal.visible = on
+	_heat_screen.visible = on
+	if not on:
+		return
+	for src: Sprite2D in _heat_of:
+		var h: Sprite2D = _heat_of[src]
+		h.visible = src.is_visible_in_tree()
+		h.texture = src.texture
+		h.position = src.position
+		h.flip_h = src.flip_h
+	var door: Spot = _floor.market.spot("heat_door")
+	_seam.visible = room == "market" and door != null and door.is_visible()
+	_seam.position = Vector2(floorf(ArtMarketFloor.HEAT_DOOR_X - 22.0 - _cam_x()), MarketArt.WALK_Y - 80 - RESOLUTIONS[res_index][1])
+
+
+## A reading's white comes in while its words are up: part way for a surface
+## reading, nearly to the middle for a deep one.
+func _update_reading(delta: float) -> void:
+	var target: float = ArtMarketFloor.reading_depth(_talk.talk) if _talk.visible else 0.0
+	reading_amount = move_toward(reading_amount, target, delta * (0.8 if target > reading_amount else 1.6))
+	if _shooting:
+		reading_amount = target
+	var m: ShaderMaterial = _reading.material as ShaderMaterial
+	m.set_shader_parameter("amount", reading_amount)
+	m.set_shader_parameter("time", _time)
+	_reading.visible = reading_amount > 0.001
+
+
+func _update_hud() -> void:
+	var text: String = Case.clock_text(Case.minutes)
+	if Case.optic_on:
+		text = "THERMAL   " + text
+	_hud.text = text
+	_hud.reset_size()
+	_hud.position = _offset + Vector2(_screen.size.x - _hud.size.x - 14.0, 8.0)
+
+
 func _update_fog(cam_top: int) -> void:
-	var stepped: bool = fog == Fog.STEPPED
+	# The thermal optic sees heat through fog, so the fog falls away.
+	var stepped: bool = fog == Fog.STEPPED and not Case.optic_on
 	for band: String in FogArt.BANDS:
 		_layers[band].visible = stepped
 		var w: Sprite2D = _wisps[band]
@@ -580,9 +855,10 @@ func _update_fog(cam_top: int) -> void:
 		var drift: float = floorf(_time * FogArt.DRIFT[band])
 		w.region_rect = Rect2(-drift, 0, MarketArt.layer_width(band), MarketArt.VIEW.y)
 	var vol: ShaderMaterial = _back_screen.material as ShaderMaterial
-	vol.set_shader_parameter("volumetric", fog == Fog.VOLUMETRIC)
+	var volumetric: bool = fog == Fog.VOLUMETRIC and not Case.optic_on and room == "market"
+	vol.set_shader_parameter("volumetric", volumetric)
 	vol.set_shader_parameter("water_y", float(MarketArt.WATER_Y - cam_top))
-	if fog != Fog.VOLUMETRIC:
+	if not volumetric:
 		return
 	# The same lights the stepped fog is tinted by, moved to the screen.
 	var pos: PackedVector4Array = []
@@ -629,18 +905,30 @@ func _place(s: Sprite2D, x: float, size: Vector2i, market_x: float, cam_top: int
 	s.position = Vector2(floorf(market_x + x - size.x * 0.5), MarketArt.WALK_Y - size.y + 2 - cam_top)
 
 
+## What the voice is saying now: the opening narration, a line from the
+## case, or the next of the opening thoughts.
+func _voice_line() -> String:
+	if _narration != "":
+		return _narration
+	if _said != "":
+		return _said
+	return THOUGHTS[_line]
+
+
 func _update_voice() -> void:
-	var line: String = THOUGHTS[_line]
+	var line: String = _voice_line()
 	var shown: String = line.substr(0, int(_typed))
-	var speaking: bool = not _quiet and not busy()
-	_thought.visible = voice == Voice.THOUGHT and speaking
-	_caption.visible = voice == Voice.CAPTION and speaking
+	var speaking: bool = (not _quiet or _narration != "" or _said != "") and not busy() and voice != Voice.NONE
+	# Narration opening a scene is always the caption box (Look and Feel doc).
+	var mode: Voice = Voice.CAPTION if _narration != "" else voice
+	_thought.visible = mode == Voice.THOUGHT and speaking
+	_caption.visible = mode == Voice.CAPTION and speaking
 	var win: Vector2 = Vector2(get_window().size)
-	if voice == Voice.THOUGHT:
+	if mode == Voice.THOUGHT:
 		_thought.text = shown
 		var width: float = minf(win.x * 0.36, 640.0)
 		var cam_top: int = RESOLUTIONS[res_index][1]
-		var cam_x: float = floorf(clampf(detective_x - _view.size.x * 0.5, 0.0, float(MarketArt.ROOM.x - _view.size.x)))
+		var cam_x: float = _cam_x()
 		var head: Vector2 = Vector2(detective_x - cam_x, MarketArt.WALK_Y - _detective_size().y - 6 - cam_top)
 		var at: Vector2 = _offset + head * float(_scale)
 		_thought.size = Vector2(width, 10)
@@ -648,7 +936,7 @@ func _update_voice() -> void:
 		_thought.size.x = width
 		var h: float = _thought.get_combined_minimum_size().y
 		_thought.position = Vector2(clampf(at.x - width * 0.5, _offset.x + 16.0, _offset.x + _screen.size.x - width - 16.0), at.y - h)
-	elif voice == Voice.CAPTION:
+	elif mode == Voice.CAPTION:
 		_caption_label.text = shown
 		var width: float = minf(_screen.size.x * 0.5, 900.0)
 		_caption.size = Vector2(width, 0)
@@ -662,7 +950,7 @@ func _update_voice() -> void:
 		_caption.size = Vector2(width, h)
 		_caption.position = _offset + Vector2(_screen.size.x * 0.04, _screen.size.y - h - _screen.size.y * 0.05)
 	var res: Vector2i = _view.size
-	_keys.text = "%dx%d at x%d  |  voice: %s  |  fog: %s  |  detective: %s  |  case clock %s\nA/D move   E use   Tab case board   X examine items   R resolution   V voice   F fog   C detective   N next thought   H hide" % [res.x, res.y, _scale, VOICE_NAMES[voice], FOG_NAMES[fog], LOOK_NAMES[look], Case.clock_text(Case.minutes)]
+	_keys.text = "%dx%d at x%d  |  voice: %s  |  fog: %s  |  detective: %s\nA/D move   E use   Tab case board   T thermal optic   X examine items   R resolution   V voice   F fog   C detective   N next thought   H hide" % [res.x, res.y, _scale, VOICE_NAMES[voice], FOG_NAMES[fog], LOOK_NAMES[look]]
 
 
 # ---------- screenshots ----------
@@ -678,6 +966,7 @@ func _take_shots(dir: String) -> void:
 	DirAccess.make_dir_recursive_absolute(dir)
 	_keys.visible = false
 	_shooting = true
+	_narration = ""
 	var plan: Array[Array] = [
 		# name, resolution, voice, detective x, facing, line, fog[, walk frame, look]
 		["640-thought", 0, Voice.THOUGHT, 300.0, 1, 2, Fog.STEPPED],
@@ -739,50 +1028,80 @@ func _take_shots(dir: String) -> void:
 	get_tree().quit()
 
 
-## The playable market floor: a prompt, talking to Osk, the fixer once the
-## chip's etching is found, the tech, and the case board before and after a
-## theory holds.
+## The playable slice: the opening caption, the stall door, inside the stall
+## (plain and thermal), a surface and a deep reading of the body, Vale's
+## passenger at the fog's edge afterwards (plain and thermal, where she shows
+## no heat and the heat-sealed door shows), talking to Osk, the fixer and the
+## tech, and the case board before and after a theory holds.
 func _take_scene_shots(dir: String, only: String) -> void:
 	res_index = 0
 	_apply_resolution()
-	voice = Voice.NONE
 	fog = Fog.STEPPED
 	look = Look.TALL
 	_shot_walk = -1
-	_quiet = true
 	var plan: Array[Array] = [
-		# name, detective x, facing, what happens
-		["scene-prompt-osk", 484.0, 1, ""],
-		["scene-talk-osk", 484.0, 1, "talk"],
-		["scene-talk-fixer", 876.0, 1, "fixer"],
-		["scene-talk-tech", 1160.0, 1, "talk"],
-		["scene-board", 880.0, 1, "board"],
-		["scene-board-committed", 880.0, 1, "commit"],
+		# name, room, detective x, facing, what happens
+		["scene-caption", "market", ArtMarketFloor.START_X, 1, "caption"],
+		["scene-prompt-stall", "market", 380.0, 1, ""],
+		["scene-stall", "stall", 300.0, 1, ""],
+		["scene-stall-thermal", "stall", 300.0, 1, "optic"],
+		["scene-reading-surface", "stall", 330.0, 1, "surface"],
+		["scene-reading-deep", "stall", 330.0, 1, "deep"],
+		["scene-vale-fog", "market", 250.0, 1, "vale"],
+		["scene-vale-thermal", "market", 250.0, 1, "vale optic"],
+		["scene-prompt-osk", "market", 484.0, 1, ""],
+		["scene-talk-osk", "market", 484.0, 1, "talk"],
+		["scene-talk-fixer", "market", 876.0, 1, "fixer"],
+		["scene-talk-tech", "market", 1160.0, 1, "talk"],
+		["scene-board", "market", 880.0, 1, "board"],
+		["scene-board-committed", "market", 880.0, 1, "commit"],
 	]
 	for shot: Array in plan:
 		if not String(shot[0]).begins_with(only):
 			continue
+		Mind.reset()
 		ArtMarketFloor.start_case()
+		room = shot[1]
+		if room != "market":
+			Case.travel(room, 0.0)
+		_next_room = ""
+		_fade_t = 0.0
 		_talk.hide()
 		_board.hide()
 		_board.selected.clear()
 		_board.theory = ""
-		detective_x = shot[1]
-		facing = shot[2]
-		match String(shot[3]):
+		_narration = ""
+		_said = ""
+		_quiet = true
+		voice = Voice.NONE
+		detective_x = shot[2]
+		facing = shot[3]
+		var what: String = shot[4]
+		if what.contains("vale"):
+			Case.read_memory("vale", true)
+		if what.contains("optic"):
+			Case.toggle_optic()
+		match what:
+			"caption":
+				voice = Voice.THOUGHT
+				_narration = OPENING
+				_typed = 9999.0
 			"talk":
 				interact()
 			"fixer":
 				Case.find_clue("chip")
 				interact()
+			"surface", "deep":
+				var t: Talk = _floor.market.spot("body").use()
+				_show_talk(t.choose("Surface reading" if what == "surface" else "Deep reading"))
 			"board", "commit":
-				for id: String in ["chip", "rival", "fixerfmt"]:
+				for id: String in ["ledger", "chip", "rival", "fixerfmt"]:
 					Case.find_clue(id)
 				open_board()
 				_board.selected.assign(["ledger", "rival"])
 				_board.theory = "stolen"
 				_board.refresh()
-				if shot[3] == "commit":
+				if what == "commit":
 					_board.commit()
 		_talk.finish_typing()
 		_toasts.clear()
@@ -795,6 +1114,8 @@ func _take_scene_shots(dir: String, only: String) -> void:
 		get_viewport().get_texture().get_image().save_png(dir.path_join("%s.png" % shot[0]))
 	_talk.hide()
 	_board.hide()
+	room = "market"
+	Mind.reset()
 
 
 ## The examine test: the chip as it comes up, turning, turned over with the

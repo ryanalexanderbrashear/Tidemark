@@ -238,3 +238,16 @@ func test_entering_with_a_badge_or_vouched_avoids_the_fight() -> void:
 	_use("heat_door")
 	assert_bool(Case.hostiles_left("cold")).is_false()
 	assert_bool(market.spot("lookout").is_visible()).is_true()
+
+
+## Vale is already dead when the case opens (Alex, 2026-11-07), and Reyka
+## left about two hours before she died (sample case doc).
+func test_vale_died_before_the_case_opens_and_after_reyka_left() -> void:
+	var death: RegEx = RegEx.create_from_string("death near (\\d\\d:\\d\\d)\\. Reyka visited at (\\d\\d:\\d\\d)")
+	var m: RegExMatch = death.search(CaseCatalog.clue("thermal").text)
+	assert_object(m).is_not_null()
+	var died: int = StoryBeat.to_minutes(m.get_string(1))
+	var visited: int = StoryBeat.to_minutes(m.get_string(2))
+	assert_int(died).is_less(CaseCatalog.beat("case_opens").minutes())
+	assert_int(died - visited).is_between(90, 150)
+	assert_int(StoryBeat.to_minutes(CaseCatalog.reading("vale").readable_until)).is_greater(CaseCatalog.beat("case_opens").minutes())

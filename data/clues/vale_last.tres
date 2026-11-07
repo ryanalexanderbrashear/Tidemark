@@ -6,6 +6,6 @@
 script = ExtResource("1_clue")
 id = "vale_last"
 title = "Vale's last memory"
-text = "She let someone into the shut stall near 00:10. Reyka had left two hours before."
+text = "She let someone into the shut stall near 22:10. Reyka had left two hours before."
 source = "Memory reading"
 leftover = false

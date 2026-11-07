@@ -6,6 +6,8 @@ extends GdUnitTestSuite
 func before_test() -> void:
 	Mind.reset()
 	ArtMarketFloor.start_case()
+	# As if back from Vale's stall with her ledger read.
+	Case.find_clue("ledger")
 
 
 func after_test() -> void:
@@ -47,7 +49,7 @@ func test_the_line_types_out_and_can_be_finished() -> void:
 func test_talking_to_osk_through_the_box_finds_his_clue() -> void:
 	var box: ArtTalkBox = _box()
 	var market_floor: ArtMarketFloor = ArtMarketFloor.new()
-	box.show_talk(market_floor.nearest(ArtMarketFloor.OSK_X).use())
+	box.show_talk(market_floor.nearest("market", ArtMarketFloor.OSK_X).use())
 	assert_bool(Case.has_clue("rival")).is_true()
 	box.pick(0)
 	assert_bool(box.visible).is_false()

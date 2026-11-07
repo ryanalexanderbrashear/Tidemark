@@ -20,6 +20,9 @@ const STALL_W: int = 120
 const BACK_DOOR_X: int = 972
 const CAM_POLE_X: int = 716
 const PUMP_X: int = 1214
+## The boarded stall front that hides the heat-sealed door to Cold Storage.
+const HEAT_STALL_X: int = 148
+const HEAT_STALL_W: int = 96
 
 ## Parallax factor for each back layer, by name.
 ## Fog bands (FogArt) move with the layer they sit in front of.
@@ -155,7 +158,7 @@ static func market() -> Image:
 	var rng: RandomNumberGenerator = _rng(5)
 	# Stalls along the back of the walkway.
 	var stalls: Array[Array] = [
-		[24, 110, 130, "DECKS"], [148, 96, 112, ""], [252, 92, 140, "RECALL"],
+		[24, 110, 130, "DECKS"], [HEAT_STALL_X, HEAT_STALL_W, 112, ""], [252, 92, 140, "RECALL"],
 		[STALL_X, STALL_W, 128, ""], [STALL_X + STALL_W + 6, 104, 118, "BUY SELL"],
 		[590, 120, 150, ""], [722, 88, 120, ""], [826, 130, 136, "MEMORIES"],
 		[BACK_DOOR_X, 100, 128, ""], [1086, 120, 132, "OPEN"],
@@ -163,6 +166,8 @@ static func market() -> Image:
 	for s: Array in stalls:
 		if s[0] == STALL_X:
 			_vale_stall(img)
+		elif s[0] == HEAT_STALL_X:
+			_boarded(img, s[0], s[1], s[2])
 		elif s[0] == BACK_DOOR_X:
 			_back_door(img, s[0], s[1], s[2])
 		else:
@@ -295,6 +300,38 @@ static func _back_door(img: Image, x: int, w: int, h: int) -> void:
 	Px.glow(img, dx + dw * 0.5, dtop - 6.0, dw * 0.9, 14, P.MAGENTA, 0.3)
 	Px.glow(img, dx + dw * 0.5, float(WALK_Y), dw * 0.8, 6, P.MAGENTA, 0.12)
 	Px.text(img, dx + dw / 2 - Px.text_width("PRIVATE") / 2, dtop + 52, "PRIVATE", Color(P.RAIN, 0.35))
+
+
+## A stall front boarded over: plank on plank, nailed shut, a warning
+## stencil. Nothing to look at, unless you can see heat.
+static func _boarded(img: Image, x: int, w: int, h: int) -> void:
+	var top: int = WALK_Y - h
+	Px.poly(img, PackedVector2Array([Vector2(x - 8, top + 4), Vector2(x + w + 8, top + 4), Vector2(x + w + 2, top - 8), Vector2(x - 2, top - 8)]), Color("232a33"))
+	Px.rect(img, x, top + 4, w, h - 4, Color("131820"))
+	var rng: RandomNumberGenerator = _rng(148)
+	for by: int in range(top + 8, WALK_Y - 2, 9):
+		var shift: int = rng.randi_range(-3, 3)
+		Px.rect(img, x + 2 + shift, by, w - 4, 7, Color("1d232c") if rng.randf() < 0.5 else Color("1a2029"))
+		Px.rect(img, x + 2 + shift, by, w - 4, 1, Color("29313c"))
+		for nx: int in [x + 6 + shift, x + w - 8 + shift]:
+			Px.dot(img, nx, by + 3, P.CONCRETE)
+	Px.text(img, x + w / 2 - Px.text_width("KEEP OUT") / 2, top + 50, "KEEP OUT", Color(P.AMBER_DIM, 0.8))
+
+
+## What the thermal optic sees in the boarded stall: the outline of a door
+## behind the planks, still hot along its seal.
+static func heat_seam() -> Image:
+	var w: int = 44
+	var h: int = 80
+	var img: Image = Px.blank(w, h)
+	for y: int in range(h):
+		for x: int in range(w):
+			var edge: bool = x < 3 or x >= w - 3 or y < 3
+			if edge:
+				Px.dot(img, x, y, Color(1, 1, 1, 1.0 if (x + y) % 5 != 0 else 0.7))
+			elif x == w / 2 or x == w / 2 - 1:
+				Px.dot(img, x, y, Color(1, 1, 1, 0.55))
+	return img
 
 
 ## The market's failing pump at the east end: a boxy housing, pipes down

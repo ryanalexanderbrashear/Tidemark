@@ -16,6 +16,8 @@ const DETECTIVE_SIZE: Vector2i = Vector2i(32, 60)
 const NPC_SCALE: float = 1.5
 const OSK_SIZE: Vector2i = Vector2i(60, 90)
 const FIXER_SIZE: Vector2i = Vector2i(42, 96)
+## Ines Vale's passenger: standing, at the tall detective's scale.
+const VALE_SIZE: Vector2i = Vector2i(36, 90)
 ## Kneeling, so shorter than he'd stand.
 const TECH_SIZE: Vector2i = Vector2i(48, 65)
 const WALK_FRAMES: int = 6
@@ -176,6 +178,41 @@ static func fixer(frame: int) -> Image:
 	_rect(img, 13, 10 + bi, 5, 1, P.MAGENTA)
 	_dot(img, 12, 10 + bi, P.MAGENTA_DIM)
 	_k = 1.0
+	return img
+
+
+## Ines Vale as a passenger: still wet, turned half away, one arm out to
+## point. Drawn in the fog's own greys, and coming apart into it from the
+## knees down, so she reads as not quite there. Her look is a placeholder: the
+## docs don't describe her. Frame 1 lifts her head a pixel.
+static func vale(frame: int) -> Image:
+	var img: Image = Px.blank(VALE_SIZE.x, VALE_SIZE.y)
+	_k = NPC_SCALE
+	var b: int = frame % 2
+	var dress: Color = Color("3c4452")
+	var dress_dark: Color = Color("2c333f")
+	var skin: Color = Color("8a919b")
+	# A long coat over a slip, hanging straight and soaked.
+	_poly(img, PackedVector2Array([Vector2(8, 16), Vector2(16, 15), Vector2(18, 22), Vector2(19, 58), Vector2(6, 58), Vector2(6, 22)]), dress)
+	_poly(img, PackedVector2Array([Vector2(13, 16), Vector2(16, 15), Vector2(18, 22), Vector2(19, 58), Vector2(13, 58)]), dress_dark)
+	# The arm out, pointing.
+	_line(img, Vector2i(15, 18), Vector2i(22, 22), dress_dark)
+	_line(img, Vector2i(22, 22), Vector2i(23, 23), skin)
+	# Head bowed, hair down over the face in wet strands.
+	_ellipse(img, 11.5, 9.0 - b * 0.5, 4.2, 5.0, Color("15141a"))
+	_rect(img, 13, 8 - b, 2, 4, skin)
+	for i: int in range(4):
+		_rect(img, 8 + i * 2, 11 - b, 1, 8 + (i % 2) * 3, Color("15141a"))
+	_k = 1.0
+	Px.rim(img, Color("262d38"), Color(P.RAIN, 0.3), Color(P.RAIN, 0.35), Color(P.GLINT, 0.25))
+	# Drips, and the dissolve: from the knees down she breaks up like fog.
+	for y: int in range(56, VALE_SIZE.y):
+		var t: float = float(y - 56) / float(VALE_SIZE.y - 56)
+		for x: int in range(VALE_SIZE.x):
+			if img.get_pixel(x, y).a > 0.0 and Px.dither(x, y, t * 1.15):
+				img.set_pixel(x, y, Color(0, 0, 0, 0))
+	for y: int in range(20, 80, 7):
+		Px.dot(img, 10 + (y * 3) % 11, y + b * 2, Color(P.GLINT, 0.5))
 	return img
 
 

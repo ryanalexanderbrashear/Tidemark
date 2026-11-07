@@ -6,5 +6,5 @@
 script = ExtResource("1_clue")
 id = "thermal"
 title = "Thermal read"
-text = "Residual heat puts death near 00:15. Reyka visited at 22:10, two hours earlier."
+text = "Residual heat puts death near 22:15. Reyka visited at 20:10, two hours earlier."
 source = "Thermal optic"
