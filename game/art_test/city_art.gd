@@ -90,6 +90,20 @@ static func crown_width(i: int) -> int:
 	return int(float(w) * (1.7 if ARCOLOGIES[i][4] == "spire" else 1.95))
 
 
+## How wide the shaft is where it meets the Crown. A setback narrows as it
+## climbs, so its top step is the one the terrace and its struts must meet.
+static func top_shaft_width(i: int) -> int:
+	var w: int = ARCOLOGIES[i][2]
+	if ARCOLOGIES[i][4] == "setback":
+		return w - 2 * w / 4
+	return w
+
+
+## Where the struts under a Crown land: on the outer face of its top shaft.
+static func strut_foot_x(i: int, side: int) -> int:
+	return int(ARCOLOGIES[i][0]) + side * (top_shaft_width(i) / 2)
+
+
 ## The top of a Crown's wall. Above it, only the trees and the buildings inside.
 static func rim_y(i: int) -> int:
 	return int(ARCOLOGIES[i][3]) + int(lerpf(18.0, 30.0, depth_of(i)))
@@ -642,7 +656,7 @@ const LEAF_RIM: Color = Color("7fb8a4")
 static func _walled_crown(img: Image, i: int, body: Color, lit_side: Color, dark_side: Color, rng: RandomNumberGenerator) -> void:
 	var a: Array = ARCOLOGIES[i]
 	var cx: int = a[0]
-	var shaft_w: int = a[2]
+	var shaft_w: int = top_shaft_width(i)
 	var top: int = a[3]
 	var d: float = depth_of(i)
 	var cw: int = crown_width(i)
@@ -720,7 +734,7 @@ static func _walled_crown(img: Image, i: int, body: Color, lit_side: Color, dark
 	var thick: int = 2 if d < 0.5 else 3
 	var reach: float = float(cw - shaft_w) * 0.5
 	for side: int in [-1, 1]:
-		var shaft_edge: int = cx + side * (shaft_w / 2)
+		var shaft_edge: int = strut_foot_x(i, side)
 		for k: int in range(2):
 			var sx: int = cx + side * (cw / 2 - 3 - k * int(reach * 0.45))
 			var from: Vector2i = Vector2i(sx, rim + wh + 1)

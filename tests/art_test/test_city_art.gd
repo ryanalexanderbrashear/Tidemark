@@ -77,6 +77,22 @@ func test_each_crown_is_a_walled_garden() -> void:
 		assert_int(leaves).is_greater(10)
 
 
+func test_each_crown_is_carried_by_its_shaft() -> void:
+	# No terrace floats: the shaft runs unbroken from under each Crown down to
+	# its deck, right where the struts land on either side.
+	for i: int in CityArt.crown():
+		if CityArt.ARCOLOGIES[i][4] == "near":
+			continue
+		var img: Image = Px.blank(CityArt.VIEW.x, CityArt.VIEW.y)
+		CityArt._arcology(img, i)
+		var under: int = CityArt.rim_y(i) + CityArt.wall_height(i) + CityArt.flare_height(i)
+		for side: int in [-1, 1]:
+			var x: int = CityArt.strut_foot_x(i, side) - side
+			for y: int in range(under, CityArt.deck_y(i)):
+				assert_float(img.get_pixel(x, y).a).override_failure_message(
+					"arcology %d: gap in the shaft at (%d, %d)" % [i, x, y]).is_greater(0.9)
+
+
 func test_the_steeple_stands_in_open_water() -> void:
 	# Port Patience's steeple is the landmark: it stands between the arcologies,
 	# not behind or on a deck, so it reads on the skyline.
