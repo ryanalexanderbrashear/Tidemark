@@ -71,6 +71,12 @@ godot --headless --path . -s res://editor/art/detective_sheet.gd -- --out=/tmp/d
 
 **Placeholder sound.** `ArtSound` makes every sound in code (seeded noise and tones, no files): rain, water against the stilts, the hum of Vale's failing lamp (louder as you near it, gone when it stutters off), and one-shots for picking items up, finding a detail, a catch opening, paper, the board and dialogue. While a dialogue box, the board or a close-up is up, the rain and water muffle behind a low-pass filter (`ArtAmbience`), as the Look and Feel doc asks for during investigation.
 
+**The city from a distance.** `scenes/city_concept.tscn` is concept art of Halcyon Reach in the same code-drawn style (`CityArt`): an establishing view across open water at 640x360. Separate arcologies stand on stilts with water and fog between them; their lower decks are the Waterline (shacks, neon, string lights), joined by causeways on piers; the tallest tops clear the fog line as the Crown, with landing pads, searchlights and cars between them; the drowned old city breaks the surface along the horizon, and the stilts and mooring posts carry tidemarks. It avoids the Midgar look on purpose (no continuous deck, no numbered sectors, no single central tower), and `tests/art_test/test_city_art.gd` holds it to that. The scene adds live rain and moving cars; F6 to open it. To save it as PNGs (native and scaled up):
+
+```bash
+godot --headless --path . -s res://editor/art/city_concept.gd -- --out=/tmp/city --scale=3
+```
+
 **Examining items.** X holds up what's in the detective's pockets: the wiped memory chip once he's taken it from Vale's hand, the storage case's ID tag once he's found it, and a test tin. Each item is a small 3D box with pixel-art faces, rendered at the game's resolution and snapped to the art palette with an ink outline, so it reads as pixel art but turns freely. The chip's CS-14-07 etching is on its back: turn it over and hold it there for a moment to find it. Finding it adds the clue "The calling card" to the case; in the playable slice that's the only way to see the etching before the coroner has her. The pocket tin (a test item, not from the case) has a catch hidden on its right edge: find it, open the tin, and take out the slip inside, which then goes in the pockets like anything else.
 
 | Key (while examining) | Does |
