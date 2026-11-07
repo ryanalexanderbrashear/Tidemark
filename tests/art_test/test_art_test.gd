@@ -175,3 +175,48 @@ func test_tall_draft_planted_foot_moves_back_at_walking_speed() -> void:
 		var a: Vector2 = ArtDetectiveTall._foot(f)[0]
 		var b: Vector2 = ArtDetectiveTall._foot(f + 1)[0]
 		assert_float(a.x - b.x).is_equal_approx(step, 0.001)
+
+
+# ---------- Vale's stall and her passenger ----------
+
+func test_the_stall_is_one_screen() -> void:
+	assert_vector(Vector2(StallArt.room().get_size())).is_equal(Vector2(StallArt.SIZE))
+	assert_int(StallArt.SIZE.x).is_equal(ArtMarketFloor.ROOM_WIDTHS["stall"])
+
+
+func test_blood_in_the_stall_is_only_around_her_head() -> void:
+	assert_bool(_has_color(StallArt.room(), ArtPalette.BLOOD)).is_false()
+	var body: Image = StallArt.body()
+	for y: int in range(body.get_height()):
+		for x: int in range(body.get_width()):
+			if body.get_pixel(x, y).is_equal_approx(ArtPalette.BLOOD):
+				assert_int(x).is_less(40)
+
+
+func test_her_passenger_comes_apart_toward_her_feet() -> void:
+	var img: Image = ArtCharacters.vale(0)
+	assert_int(_count(img, 30, 50)).is_greater(_count(img, img.get_height() - 12, img.get_height()) * 2)
+	assert_bool(_has_color(img, ArtPalette.BLOOD)).is_false()
+
+
+func test_the_heat_seam_is_a_door_outline() -> void:
+	var seam: Image = MarketArt.heat_seam()
+	assert_float(seam.get_pixel(0, seam.get_height() / 2).a).is_greater(0.5)
+	assert_float(seam.get_pixel(10, seam.get_height() / 2).a).is_equal(0.0)
+
+
+func _has_color(img: Image, c: Color) -> bool:
+	for y: int in range(img.get_height()):
+		for x: int in range(img.get_width()):
+			if img.get_pixel(x, y).is_equal_approx(c):
+				return true
+	return false
+
+
+func _count(img: Image, from_y: int, to_y: int) -> int:
+	var n: int = 0
+	for y: int in range(from_y, to_y):
+		for x: int in range(img.get_width()):
+			if img.get_pixel(x, y).a > 0.5:
+				n += 1
+	return n

@@ -27,6 +27,9 @@ const HUM_RANGE: float = 220.0
 ## 0: clear, 1: fully muffled.
 var muffle: float = 0.0
 var muffled: bool = false
+## Under a roof (Vale's stall): the rain is on the tarp overhead, further off.
+var indoors: bool = false
+const INDOORS_DB: float = -8.0
 
 var _rain: AudioStreamPlayer
 var _water: AudioStreamPlayer
@@ -102,6 +105,8 @@ static func hum_db(distance: float, lamp_on: bool) -> float:
 func update(delta: float, distance_to_lamp: float, lamp_on: bool) -> void:
 	muffle = move_toward(muffle, 1.0 if muffled else 0.0, delta / FADE)
 	_hum.volume_db = hum_db(distance_to_lamp, lamp_on)
+	_rain.volume_db = RAIN_DB + (INDOORS_DB if indoors else 0.0)
+	_water.volume_db = WATER_DB + (INDOORS_DB * 1.5 if indoors else 0.0)
 	_apply()
 
 
