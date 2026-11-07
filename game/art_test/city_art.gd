@@ -121,7 +121,8 @@ static func compose(rain: bool = false) -> Image:
 	var groups: Array[Array] = [
 		# depth range, reflection row, fog after it
 		[0.0, 0.3, HORIZON, 1.0],
-		[0.3, 0.8, 295, 0.55],
+		[0.3, 0.75, 295, 0.55],
+		[0.75, 0.8, 320, 0.3],
 		[0.8, 1.1, 352, 0.2],
 	]
 	for g: Array in groups:
@@ -130,6 +131,7 @@ static func compose(rain: bool = false) -> Image:
 			_drowned_city(layer)
 			for c: Array in FAR_CROWNS:
 				_far_crown(layer, c[0], c[1], c[2])
+			_lighthouse(layer)
 		for i: int in range(ARCOLOGIES.size()):
 			var d: float = depth_of(i)
 			if d >= g[0] and d < g[1]:
@@ -140,6 +142,10 @@ static func compose(rain: bool = false) -> Image:
 				_causeway(layer, c[0], c[1])
 		if g[0] == 0.3:
 			_traffic(layer)
+			_steeple(layer)
+		if g[0] == 0.75:
+			_chimney(layer)
+			_bridge_arch(layer)
 		if g[0] == 0.8:
 			_moorings(layer)
 		_reflect(img, layer, g[2])
@@ -211,6 +217,135 @@ static func _drowned_city(img: Image) -> void:
 		elif rng.randf() < 0.25:
 			Px.rect(img, x + rng.randi_range(1, w - 2), HORIZON - 1, 1, 1, Color(P.AMBER, 0.45))
 		x += w + rng.randi_range(2, 14)
+
+
+# ---------- Port Patience ----------
+# The drowned city under Halcyon Reach (Story doc, decided 2026-11-07). A few of
+# its landmarks still break the surface between the arcologies, so players
+# see it before anyone names it.
+
+const OLD_STONE: Color = Color("5f6a78")  # weathered white paint, greyed by fog
+const OLD_BRICK: Color = Color("2c2429")
+const OLD_IRON: Color = Color("2c3748")
+## Where the landmarks stand: the steeple between the two near arcologies, the
+## lighthouse far out on the left, the chimney and bridge arch closer in.
+const STEEPLE: Vector2i = Vector2i(272, 292)
+const LIGHTHOUSE: Vector2i = Vector2i(34, 273)
+const CHIMNEY: Vector2i = Vector2i(128, 318)
+const BRIDGE: Vector3i = Vector3i(262, 344, 321)  # left x, right x, waterline
+
+
+## The meeting-house steeple, leaning a little, standing out of open water:
+## the one shape players learn to find on every skyline.
+static func _steeple(img: Image) -> void:
+	var bx: int = STEEPLE.x
+	var base: int = STEEPLE.y
+	var face: Color = OLD_STONE
+	var shade: Color = OLD_STONE.darkened(0.4)
+	var tower: int = 24     # clapboard tower above the water
+	var belfry: int = 12
+	var spire: int = 26
+	var w: int = 10
+	for y: int in range(base - tower - belfry - spire, base + 1):
+		var up: int = base - y
+		var x: int = bx + up / 16   # the lean: a pixel every 16 rows
+		if up < tower:
+			Px.rect(img, x, y, w, 1, shade if up % 3 == 0 else face)
+			Px.rect(img, x + w - 3, y, 3, 1, shade)
+			if up > 8 and up < 16:
+				Px.rect(img, x + 3, y, 3, 1, P.INK)  # a tall window, dark
+		elif up < tower + 2:
+			Px.rect(img, x - 1, y, w + 2, 1, face)  # cornice
+		elif up < tower + belfry:
+			# The bell-loft: corner posts, an arched opening, the dark inside.
+			Px.rect(img, x + 1, y, w - 2, 1, face)
+			var open_top: int = tower + belfry - 3
+			if up < open_top:
+				Px.rect(img, x + 3, y, w - 6, 1, P.INK)
+			elif up == open_top:
+				Px.rect(img, x + 4, y, w - 8, 1, P.INK)
+			Px.dot(img, x + w - 2, y, shade)
+		elif up < tower + belfry + 2:
+			Px.rect(img, x, y, w, 1, face)
+		else:
+			var t: float = float(up - tower - belfry - 2) / float(spire - 2)
+			var half: float = (float(w) * 0.5 - 1.0) * (1.0 - t) + 0.5
+			var cx: float = x + w * 0.5
+			for xx: int in range(floori(cx - half), ceili(cx + half)):
+				Px.dot(img, xx, y, face if xx < floori(cx) else shade)
+	# The weathervane, bent.
+	var top: int = base - tower - belfry - spire
+	var tip: Vector2i = Vector2i(bx + (tower + belfry + spire) / 16 + w / 2, top)
+	Px.line(img, tip, tip + Vector2i(0, -4), shade)
+	Px.line(img, tip + Vector2i(0, -4), tip + Vector2i(3, -5), shade)
+	# Wet black where the water laps it, and its own pale tidemark.
+	Px.rect(img, bx, base - 1, w, 2, Color("05080f"))
+	Px.rect(img, bx, base - 6, w, 1, Color(P.GLINT, 0.45))
+
+
+## A lighthouse far out, dark, its lamp long dead.
+static func _lighthouse(img: Image) -> void:
+	var x: int = LIGHTHOUSE.x
+	var base: int = LIGHTHOUSE.y
+	var c: Color = Color("2a3446")
+	for y: int in range(base - 22, base + 1):
+		var up: int = base - y
+		var half: int = 3 if up < 10 else 2
+		Px.rect(img, x - half, y, half * 2 + 1, 1, c if (up / 5) % 2 == 0 else c.lightened(0.12))
+	# Gallery and the dead lamp room.
+	Px.rect(img, x - 3, base - 23, 7, 1, c)
+	Px.rect(img, x - 1, base - 27, 3, 4, P.INK)
+	Px.dot(img, x, base - 26, Color(P.GLINT, 0.25))  # glass catching the city, nothing more
+	Px.rect(img, x - 2, base - 28, 5, 1, c)
+	Px.dot(img, x, base - 29, c)
+
+
+## A brick mill chimney, closer in, its top broken off.
+static func _chimney(img: Image) -> void:
+	var x: int = CHIMNEY.x
+	var base: int = CHIMNEY.y
+	var h: int = 52
+	for y: int in range(base - h, base + 1):
+		var up: int = base - y
+		var w: int = 9 if up < 34 else 8
+		if up > h - 5:
+			w = 10  # the corbelled band near the top
+		var c: Color = OLD_BRICK if up % 7 != 0 else OLD_BRICK.darkened(0.3)
+		Px.rect(img, x - w / 2, y, w, 1, c)
+		Px.dot(img, x + w - w / 2 - 1, y, OLD_BRICK.lightened(0.15))
+	# The broken top: a ragged edge.
+	for k: int in range(5):
+		Px.dot(img, x - 3 + k * 2, base - h - [1, 0, 2, 0, 1][k], OLD_BRICK)
+	Px.rect(img, x - 5, base - 1, 10, 2, Color("05080f"))
+	Px.rect(img, x - 5, base - 7, 10, 1, Color(P.GLINT, 0.4))
+
+
+## The top of an old iron bridge arch, the rest of the bridge under water.
+static func _bridge_arch(img: Image) -> void:
+	var x0: int = BRIDGE.x
+	var x1: int = BRIDGE.y
+	var water: int = BRIDGE.z
+	var span: float = float(x1 - x0)
+	var rise: float = 20.0
+	var last_top: Vector2i = Vector2i(x0, water)
+	var last_low: Vector2i = Vector2i(x0, water)
+	for k: int in range(0, int(span) + 1):
+		var t: float = float(k) / span
+		var arc: float = rise * 4.0 * t * (1.0 - t)
+		var top: Vector2i = Vector2i(x0 + k, water - roundi(arc))
+		var low: Vector2i = Vector2i(x0 + k, water - roundi(arc * 0.6))
+		Px.line(img, last_top, top, OLD_IRON)
+		Px.dot(img, top.x, top.y - 1, Color(P.RAIN, 0.35))
+		Px.line(img, last_low, low, OLD_IRON)
+		# The lattice between the two chords.
+		if k % 6 == 0 and k > 0:
+			Px.line(img, top, Vector2i(x0 + k - 6, water - roundi(rise * 4.0 * (float(k - 6) / span) * (1.0 - float(k - 6) / span) * 0.6)), OLD_IRON)
+		last_top = top
+		last_low = low
+	# Rust where the paint has gone, picked out by the city's light.
+	for k: int in range(8, int(span) - 6, 11):
+		var t: float = float(k) / span
+		Px.dot(img, x0 + k, water - roundi(rise * 4.0 * t * (1.0 - t)), Color(P.RUST, 0.9))
 
 
 ## One arcology: stilts with their tidemarks, the Waterline deck on them, the

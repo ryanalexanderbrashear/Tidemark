@@ -72,3 +72,16 @@ func test_each_crown_is_a_walled_garden() -> void:
 				if img.get_pixel(x, y).is_equal_approx(CityArt.LEAF):
 					leaves += 1
 		assert_int(leaves).is_greater(10)
+
+
+func test_the_steeple_stands_in_open_water() -> void:
+	# Port Patience's steeple is the landmark: it stands between the arcologies,
+	# not behind or on a deck, so it reads on the skyline.
+	var x0: int = CityArt.STEEPLE.x
+	var x1: int = x0 + 12
+	for i: int in range(CityArt.ARCOLOGIES.size()):
+		if absf(CityArt.depth_of(i) - 0.55) > 0.2:
+			continue
+		var cx: int = CityArt.ARCOLOGIES[i][0]
+		var half: int = CityArt.deck_width(i) / 2
+		assert_bool(x1 < cx - half or x0 > cx + half).is_true()
