@@ -54,3 +54,21 @@ func test_arcology_decks_are_separate() -> void:
 				continue
 			var gap: int = absi(int(CityArt.ARCOLOGIES[i][0]) - int(CityArt.ARCOLOGIES[j][0])) - (CityArt.deck_width(i) + CityArt.deck_width(j)) / 2
 			assert_int(gap).is_greater(8)
+
+
+func test_each_crown_is_a_walled_garden() -> void:
+	# The Crown's terraces are walled, much wider than their shafts, with trees
+	# showing over the wall.
+	var img: Image = CityArt.compose()
+	for i: int in CityArt.crown():
+		if CityArt.ARCOLOGIES[i][4] == "near":
+			continue
+		assert_int(CityArt.crown_width(i)).is_greater(int(CityArt.ARCOLOGIES[i][2]) * 3 / 2)
+		var cx: int = CityArt.ARCOLOGIES[i][0]
+		var half: int = CityArt.crown_width(i) / 2
+		var leaves: int = 0
+		for y: int in range(CityArt.rim_y(i) - 8, CityArt.rim_y(i)):
+			for x: int in range(cx - half, cx + half):
+				if img.get_pixel(x, y).is_equal_approx(CityArt.LEAF):
+					leaves += 1
+		assert_int(leaves).is_greater(10)

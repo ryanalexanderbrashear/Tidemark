@@ -6,7 +6,8 @@ extends RefCounted
 ## The city as the Story doc has it: separate corporate arcologies on stilts,
 ## with open water and fog between them. Their lower decks make up the Waterline
 ## (neon, shanties, docks), joined by causeways and bridges; the tops of the
-## tallest rise above the fog line as the Crown; the old city lies drowned below,
+## tallest rise above the fog line as the Crown, each a broad terrace walled
+## all round with a garden and buildings inside; the old city lies drowned below,
 ## and the stilts carry the tidemarks of every rise. Kept apart from Midgar on
 ## purpose: no continuous deck, no numbered sectors, no single central tower.
 ##
@@ -79,6 +80,27 @@ static func crown() -> Array[int]:
 		if int(ARCOLOGIES[i][3]) < FOG_TOP:
 			found.append(i)
 	return found
+
+
+## How wide an arcology's walled Crown is: a broad terrace, much wider than
+## the shaft that carries it.
+static func crown_width(i: int) -> int:
+	var w: int = ARCOLOGIES[i][2]
+	return int(float(w) * (1.7 if ARCOLOGIES[i][4] == "spire" else 1.95))
+
+
+## The top of a Crown's wall. Above it, only the trees and the buildings inside.
+static func rim_y(i: int) -> int:
+	return int(ARCOLOGIES[i][3]) + int(lerpf(18.0, 30.0, depth_of(i)))
+
+
+static func wall_height(i: int) -> int:
+	return int(lerpf(6.0, 12.0, depth_of(i)))
+
+
+## The flared underside that carries the terrace out over the shaft.
+static func flare_height(i: int) -> int:
+	return int(lerpf(6.0, 14.0, depth_of(i)))
 
 
 static func sign_color(name: String) -> Color:
@@ -220,38 +242,30 @@ static func _arcology(img: Image, i: int) -> void:
 		var tw: int = pod_w - tier * (pod_w - w) / 3
 		var ty: int = deck - pod_h + tier * pod_h / 3
 		_tier(img, cx - tw / 2, deck - pod_h * (3 - tier) / 3, tw, pod_h / 3 + 1, body, lit_side, rng, d)
-	# The body.
+	# The body, up to the Crown if it reaches one.
+	var crowned: bool = top < FOG_TOP
+	var rim: int = rim_y(i) if crowned else top
+	var under: int = rim + wall_height(i) + flare_height(i) if crowned else top
 	match shape:
 		"twin":
 			var sw: int = w * 2 / 5
-			_shaft(img, x0, top + 16, sw, deck, body, lit_side, dark_side, rng, d)
-			_shaft(img, x0 + w - sw, top, sw, deck, body, lit_side, dark_side, rng, d)
-			# A skybridge between the shafts, up in the Crown.
-			Px.rect(img, x0 + sw, top + 30, w - 2 * sw, 3, body)
-			Px.rect(img, x0 + sw, top + 31, w - 2 * sw, 1, Color(CROWN_LIGHT, 0.6))
-			_crown_top(img, x0 + w - sw, top, sw, rng)
-			_crown_top(img, x0, top + 16, sw, rng)
+			_shaft(img, x0, under - 2, sw, deck, body, lit_side, dark_side, rng, d)
+			_shaft(img, x0 + w - sw, under - 2, sw, deck, body, lit_side, dark_side, rng, d)
+			# A skybridge between the shafts, under the Crown.
+			for by: int in [under + 22, under + 60]:
+				Px.rect(img, x0 + sw, by, w - 2 * sw, 3, body)
+				Px.rect(img, x0 + sw, by + 1, w - 2 * sw, 1, Color(CROWN_LIGHT, 0.5))
 		"setback":
 			var steps: int = 3
-			var seg: int = (deck - top) / steps
+			var seg: int = (deck - under) / steps
 			for s: int in range(steps):
 				var sw: int = w - s * w / 4
-				var sx: int = cx - sw / 2
-				var sy: int = deck - (s + 1) * seg
-				_shaft(img, sx, sy, sw, deck - s * seg, body, lit_side, dark_side, rng, d)
-			_crown_top(img, cx - (w - 2 * w / 4) / 2, top, w - 2 * w / 4, rng)
-		"spire":
-			_shaft(img, x0, top + 22, w, deck, body, lit_side, dark_side, rng, d)
-			var pts: PackedVector2Array = [Vector2(x0 + 3, top + 23), Vector2(cx, top - 2), Vector2(x0 + w - 3, top + 23)]
-			Px.poly(img, pts, body)
-			Px.line(img, Vector2i(cx, top - 2), Vector2i(cx, top - 24), lit_side)
-			Px.dot(img, cx, top - 25, Color(P.MAGENTA, 0.9))
-			Px.glow(img, cx, top - 25, 6, 5, P.MAGENTA, 0.25)
-			_crown_top(img, x0, top + 22, w, rng)
+				var sy: int = deck - (s + 1) * seg if s < steps - 1 else under - 2
+				_shaft(img, cx - sw / 2, sy, sw, deck - s * seg, body, lit_side, dark_side, rng, d)
 		_:
-			_shaft(img, x0, top, w, deck, body, lit_side, dark_side, rng, d)
-			if top < FOG_TOP:
-				_crown_top(img, x0, top, w, rng)
+			_shaft(img, x0, under - 2, w, deck, body, lit_side, dark_side, rng, d)
+	if crowned:
+		_walled_crown(img, i, body, lit_side, dark_side, rng)
 	_deck(img, i, body, lit_side, rng)
 
 
@@ -316,7 +330,14 @@ static func _far_crown(img: Image, x: int, top: int, w: int) -> void:
 	var c: Color = Color("18233a")
 	Px.rect(img, x, top, w, HORIZON - 20 - top, c)
 	Px.rect(img, x + w - 2, top, 2, HORIZON - 20 - top, Color("202e48"))
-	Px.rect(img, x, top, w, 1, Color(CROWN_LIGHT, 0.45))
+	# A walled terrace too, too far to see more than its wall and a few treetops.
+	Px.rect(img, x - 3, top, w + 6, 2, Color("223049"))
+	Px.rect(img, x - 3, top, w + 6, 1, Color(CROWN_LIGHT, 0.4))
+	for tx: int in range(x - 2, x + w + 3, 2):
+		if (tx * 5) % 3 != 0:
+			Px.dot(img, tx, top - 1, Color(LEAF_LIT, 0.8))
+	Px.rect(img, x + w / 3, top - 5, 2, 5, Color("223049"))
+	Px.dot(img, x + w / 3, top - 5, Color(CROWN_LIGHT, 0.5))
 	for wy: int in range(top + 3, FOG_TOP + 4, 3):
 		for wx: int in range(x + 1, x + w - 2, 2):
 			if (wx * 7 + wy * 13) % 5 == 0:
@@ -344,25 +365,102 @@ static func _shaft(img: Image, x: int, top: int, w: int, bottom: int, body: Colo
 			Px.dot(img, x + w - edge - 1, sy, Color(CROWN_LIGHT, 0.4))
 
 
-## The Crown: a lit crown band, a landing pad sticking out, a beacon.
-static func _crown_top(img: Image, x: int, top: int, w: int, rng: RandomNumberGenerator) -> void:
-	if top >= FOG_TOP:
-		return
-	Px.rect(img, x, top, w, 1, Color(CROWN_LIGHT, 0.8))
-	Px.rect(img, x + 1, top + 3, w - 2, 1, Color(CROWN_LIGHT, 0.35))
-	Px.glow(img, x + w * 0.5, top, w * 0.7, 10, CROWN_LIGHT, 0.12)
-	# A landing pad, out to one side, with its edge lights.
-	var pad_w: int = maxi(8, w / 2)
+## Greens for the Crown's gardens, muted so they sit in the night palette.
+const LEAF: Color = Color("1b332f")
+const LEAF_LIT: Color = Color("3d6656")
+const LEAF_RIM: Color = Color("7fb8a4")
+
+
+## A Crown: a terrace walled all round, a garden inside it, and the clean,
+## lit buildings of the people who live up here rising out of the trees. From
+## below you see the wall, the treetops over it and the towers over those.
+static func _walled_crown(img: Image, i: int, body: Color, lit_side: Color, dark_side: Color, rng: RandomNumberGenerator) -> void:
+	var a: Array = ARCOLOGIES[i]
+	var cx: int = a[0]
+	var shaft_w: int = a[2]
+	var top: int = a[3]
+	var d: float = depth_of(i)
+	var cw: int = crown_width(i)
+	var rim: int = rim_y(i)
+	var wh: int = wall_height(i)
+	var fh: int = flare_height(i)
+	var x0: int = cx - cw / 2
+	var stone: Color = Color("26344b").lerp(Color("1a2638"), d)
+	# A soft cold glow over the garden.
+	Px.glow(img, cx, rim - 4, cw * 0.65, 16, CROWN_LIGHT, 0.1)
+	# The buildings inside the walls: one tallest, the rest lower, all lit clean.
+	var count: int = maxi(4, cw / 8)
+	var hero: int = rng.randi_range(1, count - 2)
+	for k: int in range(count):
+		var bw: int = maxi(3, int(rng.randi_range(4, 10) * lerpf(0.7, 1.2, d)))
+		var bx: int = x0 + 4 + int(float(cw - 8 - bw) * (float(k) + rng.randf_range(0.1, 0.9)) / float(count))
+		var bt: int = top if k == hero else rim - rng.randi_range(7, maxi(8, (rim - top) * 4 / 5))
+		var tone: Color = Color("1e2b42").lerp(Color("121c2d"), d)
+		Px.rect(img, bx, bt, bw, rim - bt + 1, tone)
+		Px.rect(img, bx + bw - 1, bt, 1, rim - bt + 1, tone.lightened(0.15))
+		Px.rect(img, bx, bt, bw, 1, Color(CROWN_LIGHT, 0.7))
+		for wy: int in range(bt + 2, rim - 1, 2):
+			for wx: int in range(bx + 1, bx + bw - 1, 2):
+				if rng.randf() < 0.45:
+					Px.dot(img, wx, wy, Color(CROWN_LIGHT, 0.6))
+		if k == hero:
+			if a[4] == "spire":
+				var pts: PackedVector2Array = [Vector2(bx, bt + 1), Vector2(bx + bw * 0.5, bt - 14), Vector2(bx + bw, bt + 1)]
+				Px.poly(img, pts, tone)
+				var tip: int = bx + bw / 2
+				Px.line(img, Vector2i(tip, bt - 14), Vector2i(tip, bt - 30), lit_side)
+				Px.dot(img, tip, bt - 31, Color(P.MAGENTA, 0.9))
+				Px.glow(img, tip, bt - 31, 6, 5, P.MAGENTA, 0.25)
+			else:
+				var mx: int = bx + bw / 2
+				Px.line(img, Vector2i(mx, bt - 1), Vector2i(mx, bt - rng.randi_range(6, 12)), Color("2a3a52"))
+	# The garden: treetops over the wall, a rim of cold light on their crowns.
+	var tx: float = float(x0 + 2)
+	while tx < float(x0 + cw - 2):
+		var rx: float = rng.randf_range(2.0, 4.0) * lerpf(0.8, 1.3, d)
+		var ry: float = rng.randf_range(2.5, 4.5) * lerpf(0.8, 1.3, d)
+		var ty: float = float(rim) - ry * 0.5 - rng.randf_range(0.0, 3.0)
+		Px.ellipse(img, tx, ty, rx, ry, LEAF)
+		Px.rect(img, int(tx - rx * 0.5), int(ty - ry + 0.5), maxi(1, int(rx)), 1, LEAF_LIT)
+		if rng.randf() < 0.4:
+			Px.dot(img, int(tx), int(ty - ry + 0.5), Color(LEAF_RIM, 0.8))
+		tx += rx * rng.randf_range(0.9, 1.6)
+	# The wall, all round the terrace, with bastions at the corners.
+	Px.rect(img, x0, rim, cw, wh, stone)
+	Px.rect(img, x0, rim, cw, 1, Color(CROWN_LIGHT, 0.5))
+	Px.rect(img, x0 + cw - 2, rim, 2, wh, stone.lightened(0.12))
+	# Buttresses down the wall's face.
+	for bx: int in range(x0 + 6, x0 + cw - 4, 12):
+		Px.rect(img, bx, rim + 1, 2, wh - 1, stone.darkened(0.25))
+	for bx: int in [x0 - 1, x0 + cw - 3]:
+		Px.rect(img, bx, rim - 3, 4, wh + 3, stone)
+		Px.rect(img, bx, rim - 3, 4, 1, Color(CROWN_LIGHT, 0.6))
+	for sx: int in range(x0 + 4, x0 + cw - 4, 5 if d < 0.5 else 4):
+		if rng.randf() < 0.6:
+			Px.dot(img, sx, rim + wh / 2, Color(CROWN_LIGHT, 0.45))
+	# The flared underside, carrying the terrace out over the shaft.
+	var bottom_w: float = float(shaft_w) + 2.0
+	var pts: PackedVector2Array = [
+		Vector2(x0, rim + wh), Vector2(x0 + cw, rim + wh),
+		Vector2(cx + bottom_w * 0.5, rim + wh + fh), Vector2(cx - bottom_w * 0.5, rim + wh + fh),
+	]
+	Px.poly(img, pts, dark_side)
+	for k: int in range(1, 4):
+		var t: float = float(k) / 4.0
+		var from: Vector2i = Vector2i(roundi(lerpf(x0, cx - bottom_w * 0.5, 0.0) + cw * t), rim + wh)
+		var to: Vector2i = Vector2i(roundi(cx - bottom_w * 0.5 + bottom_w * t), rim + wh + fh)
+		Px.line(img, from, to, body)
+	# Lights under the terrace's lip.
+	for lx: int in range(x0 + 2, x0 + cw - 2, 4):
+		Px.dot(img, lx, rim + wh, Color(P.CYAN, 0.55))
+	# A landing pad off one side of the wall.
+	var pad_w: int = maxi(8, cw / 5)
 	var left: bool = rng.randf() < 0.5
-	var py: int = top + rng.randi_range(8, 18)
-	var px: int = x - pad_w + 2 if left else x + w - 2
-	Px.rect(img, px, py, pad_w, 2, Color("1c2a40"))
-	Px.rect(img, px + (pad_w - 2 if left else 0), py + 2, 2, 3, Color("1c2a40"))
+	var py: int = rim + 1
+	var px: int = x0 - pad_w + 1 if left else x0 + cw - 1
+	Px.rect(img, px, py, pad_w, 2, stone)
 	for lx: int in range(px, px + pad_w, 3):
 		Px.dot(img, lx, py - 1, Color(P.CYAN, 0.8))
-	# Masts with a beacon.
-	var mx: int = x + rng.randi_range(2, maxi(3, w - 3))
-	Px.line(img, Vector2i(mx, top - 1), Vector2i(mx, top - rng.randi_range(5, 12)), Color("2a3a52"))
 
 
 static func _stilts(img: Image, i: int, body: Color, dark_side: Color) -> void:
