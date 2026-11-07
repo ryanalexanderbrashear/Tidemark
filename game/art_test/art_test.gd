@@ -18,9 +18,16 @@ extends Node
 ## X opens the examine test (ExamineView): the items in the detective's pockets,
 ## held up close and turned over by hand to find what's on their other side.
 ##
-## Keys: A/D move, R switches resolution, V switches the inner voice, F switches
-## the fog, C switches the detective, E shows the next thought, X examines items,
-## H hides the key list.
+## It's also a playable slice of the case (ArtMarketFloor): the people and
+## objects on the market floor are the case's own, so E talks to them in a
+## styled box (ArtTalkBox), clues land in `Case`, Tab opens the case board
+## (ArtBoard), and the chip's etching, found by turning it over, is a clue.
+## Placeholder sound (ArtAmbience) plays under it, muffled while the detective
+## is talking, at the board or holding something up.
+##
+## Keys: A/D move, E use, Tab case board, X examine items, R switches
+## resolution, V switches the inner voice, F switches the fog, C switches the
+## detective, N shows the next thought, H hides the key list.
 ## Screenshots: run with `-- --shots=<dir>` and it saves a fixed set and quits.
 
 enum Voice { THOUGHT, CAPTION, NONE }
@@ -38,8 +45,15 @@ const VOICE_NAMES: Array[String] = ["thought text by the detective", "caption bo
 const FOG_NAMES: Array[String] = ["stepped pixel fog", "volumetric fog behind pixel art", "no fog"]
 ## Walking pace: about 1.5 walk cycles a second with ArtDetective's stride.
 const SPEED: float = 54.0
-const OSK_X: float = 512.0
-const FIXER_X: float = 905.0
+const OSK_X: float = ArtMarketFloor.OSK_X
+const FIXER_X: float = ArtMarketFloor.FIXER_X
+const TECH_X: float = ArtMarketFloor.TECH_X
+## Where prompts sit over a spot (native y): above everyone's heads, or under
+## the camera on its pole.
+const PROMPT_Y: float = 178.0
+const PROMPT_Y_CAMS: float = 96.0
+## Seconds a toast stays up.
+const TOAST_TIME: float = 2.8
 
 ## Placeholder lines for the test. They lean on what the docs settle (Vale, the
 ## market, the badge), but they're not canon dialogue.
@@ -52,7 +66,7 @@ const THOUGHTS: Array[String] = [
 var res_index: int = 0
 var voice: Voice = Voice.THOUGHT
 var fog: Fog = Fog.STEPPED
-var detective_x: float = 300.0
+var detective_x: float = ArtMarketFloor.START_X
 enum Look { CLOSER, TALL, SKETCH }
 const LOOK_NAMES: Array[String] = ["closer to final", "tall rim-lit draft", "first sketch"]
 ## The tall draft by default: Osk and the fixer are drawn to its scale.
@@ -71,6 +85,7 @@ var _wisps: Dictionary[String, Sprite2D] = {}
 var _detective: Sprite2D
 var _osk: Sprite2D
 var _fixer: Sprite2D
+var _tech: Sprite2D
 var _holo: Sprite2D
 var _lamp: Sprite2D
 var _water: ColorRect
@@ -82,13 +97,26 @@ var _tall_walk: Array[ImageTexture] = []
 var _tall_idle: Array[ImageTexture] = []
 var _osk_frames: Array[ImageTexture] = []
 var _fixer_frames: Array[ImageTexture] = []
+var _tech_frames: Array[ImageTexture] = []
 var _holo_frames: Array[ImageTexture] = []
 var _thought: Label
 var _caption: PanelContainer
 var _caption_label: Label
 var _keys: Label
 var _examine: ExamineView
+var _talk: ArtTalkBox
+var _board: ArtBoard
+var _sound: ArtAmbience
+var _floor: ArtMarketFloor
+var _prompt: Label
+var _toast: Label
+var _toasts: Array[String] = []
+var _toast_time: float = 0.0
 var _line: int = 0
+## After the opening thoughts have each played once, the voice goes quiet
+## until N asks for another.
+var _quiet: bool = false
+var _thoughts_shown: int = 1
 var _typed: float = 0.0
 var _time: float = 0.0
 var _walk_time: float = 0.0
@@ -103,7 +131,14 @@ var _offset: Vector2 = Vector2.ZERO
 
 func _ready() -> void:
 	get_window().content_scale_mode = Window.CONTENT_SCALE_MODE_DISABLED
+	# The case starts before the scene listens, so its starting clues don't toast.
+	ArtMarketFloor.start_case()
+	_floor = ArtMarketFloor.new()
 	_build()
+	Case.notice.connect(toast)
+	Case.travel_requested.connect(_on_travel)
+	Case.announcement.connect(func(who: String, text: String, at: String) -> void:
+		_show_talk.call_deferred(Talk.say(who, at + ".  " + text)))
 	# Only listen for resizes once the screen exists: building the art takes a
 	# few seconds, and a resize in that time used to call _layout on nothing.
 	get_window().size_changed.connect(_layout)
@@ -111,6 +146,10 @@ func _ready() -> void:
 	var shots: String = _shots_dir()
 	if shots != "":
 		_take_shots.call_deferred(shots)
+
+
+func _exit_tree() -> void:
+	_floor.release()
 
 
 func _build() -> void:
@@ -148,6 +187,7 @@ func _build() -> void:
 		_det_frames.append(ImageTexture.create_from_image(ArtCharacters.detective(f, false)))
 		_osk_frames.append(ImageTexture.create_from_image(ArtCharacters.osk(f)))
 		_fixer_frames.append(ImageTexture.create_from_image(ArtCharacters.fixer(f)))
+		_tech_frames.append(ImageTexture.create_from_image(ArtCharacters.tech(f)))
 	for f: int in range(ArtDetective.WALK_FRAMES):
 		_det_walk.append(ImageTexture.create_from_image(ArtDetective.walk(f)))
 	for f: int in range(ArtDetective.IDLE_FRAMES):
@@ -158,6 +198,7 @@ func _build() -> void:
 		_tall_idle.append(ImageTexture.create_from_image(ArtDetectiveTall.idle(f)))
 	_osk = _sprite(_osk_frames[0].get_image())
 	_fixer = _sprite(_fixer_frames[0].get_image())
+	_tech = _sprite(_tech_frames[0].get_image())
 	_detective = _sprite(_det_frames[0].get_image())
 
 	_water = ColorRect.new()
@@ -215,8 +256,35 @@ func _build() -> void:
 	_keys.add_theme_color_override("font_color", Color(P.RAIN, 0.8))
 	add_child(_keys)
 
+	_prompt = _outlined(Color("d4dce6"))
+	add_child(_prompt)
+	_toast = _outlined(P.AMBER)
+	_toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_toast.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	add_child(_toast)
+
 	_examine = ExamineView.new()
 	add_child(_examine)
+	_examine.item_shown.connect(func(_it: ExamineItem) -> void: _sound.play("pickup"))
+	_examine.item_opened.connect(func(_it: ExamineItem) -> void: _sound.play("catch"))
+	_examine.item_taken.connect(func(_it: ExamineItem) -> void: _sound.play("paper"))
+	_examine.detail_found.connect(_on_detail_found)
+	_talk = ArtTalkBox.new()
+	add_child(_talk)
+	_board = ArtBoard.new()
+	add_child(_board)
+	_board.closed.connect(func() -> void: _sound.play("board"))
+	_board.committed.connect(func(_id: String) -> void: _sound.play("found"))
+	_sound = ArtAmbience.new()
+	add_child(_sound)
+
+
+func _outlined(c: Color) -> Label:
+	var l: Label = Label.new()
+	l.add_theme_color_override("font_color", c)
+	l.add_theme_color_override("font_outline_color", Color(P.INK, 0.9))
+	l.visible = false
+	return l
 
 
 func _viewport(see_through: bool) -> SubViewport:
@@ -296,12 +364,18 @@ func _layout() -> void:
 	_keys.add_theme_font_size_override("font_size", maxi(12, roundi(float(win.y) / 70.0)))
 	_keys.position = _offset + Vector2(12, 8)
 	_examine.layout(size, _scale, _offset)
+	_talk.layout(size, _scale, _offset)
+	_board.layout(size, _scale, _offset)
+	for l: Label in [_prompt, _toast]:
+		l.add_theme_font_size_override("font_size", roundi(font_px * 0.85))
+		l.add_theme_constant_override("outline_size", maxi(2, font_px / 5))
 
 
 func _process(delta: float) -> void:
 	_time += delta
-	# The detective stands still while he has something in his hands.
-	var dir: float = 0.0 if _examine.is_open() else Input.get_axis("move_left", "move_right")
+	# The detective stands still while he has something in his hands, is
+	# talking, or is at the board.
+	var dir: float = 0.0 if busy() else Input.get_axis("move_left", "move_right")
 	if dir != 0.0:
 		facing = 1 if dir > 0.0 else -1
 		detective_x = clampf(detective_x + dir * SPEED * delta, 20.0, float(MarketArt.ROOM.x - 20))
@@ -312,17 +386,113 @@ func _process(delta: float) -> void:
 		_walk_dist = 0.0
 	if not _shooting:
 		_typed += delta * 38.0
-	if _typed > THOUGHTS[_line].length() + 140.0 and not _shooting:
-		_next_line()
+	if _typed > THOUGHTS[_line].length() + 140.0 and not _shooting and not _quiet:
+		if _thoughts_shown < THOUGHTS.size():
+			_next_line()
+		else:
+			_quiet = true
 	_update_world(dir != 0.0 or _shot_walk >= 0)
 	_update_voice()
+	_update_prompt()
+	_update_toast(delta)
+	_sound.muffled = busy()
+	_sound.update(delta, detective_x - (MarketArt.STALL_X + MarketArt.STALL_W * 0.5), _lamp.visible)
+
+
+## True while something is up in front of the market: an item close-up, a
+## dialogue box or the case board.
+func busy() -> bool:
+	return _examine.is_open() or _talk.visible or _board.is_open()
+
+
+# ---------- the case ----------
+
+## E: uses the spot the detective is standing at.
+func interact() -> void:
+	var s: Spot = _floor.nearest(detective_x)
+	if s == null:
+		return
+	var t: Talk = s.use()
+	if t != null and not Case.closed:
+		_show_talk(t)
+
+
+func _show_talk(t: Talk) -> void:
+	_sound.play("talk")
+	_talk.show_talk(t)
+
+
+func open_board() -> void:
+	_sound.play("board")
+	_board.open()
+
+
+## A door led out of the market: the art test has no other room yet, so the
+## detective stays here and the scene says so (after the door's own line).
+func _on_travel(room: String, _x: float) -> void:
+	if room == "market":
+		return
+	toast.call_deferred(_floor.unbuilt_room_line(room))
+	Case.travel.call_deferred("market", detective_x)
+
+
+func _on_detail_found(it: ExamineItem) -> void:
+	_sound.play("found")
+	if it.clue != "":
+		Case.find_clue(it.clue)
+
+
+func toast(text: String) -> void:
+	_toasts.append(text)
+	if _toasts.size() == 1:
+		_toast_time = TOAST_TIME
+
+
+func _update_toast(delta: float) -> void:
+	if _toasts.is_empty():
+		_toast.visible = false
+		return
+	_toast_time -= delta
+	if _toast_time <= 0.0:
+		_toasts.pop_front()
+		_toast_time = TOAST_TIME
+		if _toasts.is_empty():
+			_toast.visible = false
+			return
+	_toast.visible = not _examine.is_open() or _toasts[0].begins_with("New clue")
+	_toast.text = _toasts[0]
+	var width: float = minf(_screen.size.x * 0.7, 1200.0)
+	_toast.size = Vector2(width, 0)
+	_toast.position = _offset + Vector2((_screen.size.x - width) * 0.5, _screen.size.y * 0.05)
+
+
+func _update_prompt() -> void:
+	var s: Spot = null if busy() else _floor.nearest(detective_x)
+	_prompt.visible = s != null
+	if s == null:
+		return
+	_prompt.text = ArtMarketFloor.prompt(s)
+	_prompt.reset_size()
+	var cam_top: int = RESOLUTIONS[res_index][1]
+	var at: Vector2 = Vector2(ArtMarketFloor.place(s).x - _cam_x(), (PROMPT_Y_CAMS if s.id == "cams" else PROMPT_Y) - cam_top)
+	var w: float = _prompt.size.x
+	_prompt.position = _offset + at * float(_scale) - Vector2(w * 0.5, _prompt.size.y)
+	_prompt.position.x = clampf(_prompt.position.x, _offset.x + 8.0, _offset.x + _screen.size.x - w - 8.0)
+
+
+func _cam_x() -> float:
+	return floorf(clampf(detective_x - _view.size.x * 0.5, 0.0, float(MarketArt.ROOM.x - _view.size.x)))
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	var key: InputEventKey = event as InputEventKey
-	if key == null or not key.pressed or key.echo:
+	if key == null or not key.pressed or key.echo or busy():
 		return
 	match key.physical_keycode:
+		KEY_E, KEY_ENTER, KEY_KP_ENTER:
+			interact()
+		KEY_TAB:
+			open_board()
 		KEY_R:
 			res_index = (res_index + 1) % RESOLUTIONS.size()
 			_apply_resolution()
@@ -332,7 +502,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			fog = ((fog + 1) % 3) as Fog
 		KEY_C:
 			look = ((look + 1) % 3) as Look
-		KEY_E:
+		KEY_N:
+			_quiet = false
 			_next_line()
 		KEY_H:
 			_keys.visible = not _keys.visible
@@ -342,6 +513,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _next_line() -> void:
 	_line = (_line + 1) % THOUGHTS.size()
+	_thoughts_shown += 1
 	_typed = 0.0
 
 
@@ -388,6 +560,9 @@ func _update_world(walking: bool) -> void:
 	_fixer.texture = _fixer_frames[(breath + 1) % 2]
 	_fixer.flip_h = true
 	_place(_fixer, FIXER_X, ArtCharacters.FIXER_SIZE, market_x, cam_top)
+	# The tech works the wrench a notch at a time.
+	_tech.texture = _tech_frames[int(_time * 1.1) % 2]
+	_place(_tech, TECH_X, ArtCharacters.TECH_SIZE, market_x, cam_top)
 
 	_water.position = Vector2(0, MarketArt.WATER_Y - cam_top)
 	(_water.material as ShaderMaterial).set_shader_parameter("line_y", float(MarketArt.WATER_Y - cam_top))
@@ -457,8 +632,9 @@ func _place(s: Sprite2D, x: float, size: Vector2i, market_x: float, cam_top: int
 func _update_voice() -> void:
 	var line: String = THOUGHTS[_line]
 	var shown: String = line.substr(0, int(_typed))
-	_thought.visible = voice == Voice.THOUGHT
-	_caption.visible = voice == Voice.CAPTION
+	var speaking: bool = not _quiet and not busy()
+	_thought.visible = voice == Voice.THOUGHT and speaking
+	_caption.visible = voice == Voice.CAPTION and speaking
 	var win: Vector2 = Vector2(get_window().size)
 	if voice == Voice.THOUGHT:
 		_thought.text = shown
@@ -486,7 +662,7 @@ func _update_voice() -> void:
 		_caption.size = Vector2(width, h)
 		_caption.position = _offset + Vector2(_screen.size.x * 0.04, _screen.size.y - h - _screen.size.y * 0.05)
 	var res: Vector2i = _view.size
-	_keys.text = "%dx%d at x%d  |  voice: %s  |  fog: %s  |  detective: %s\nA/D move   R resolution   V voice   F fog   C detective   E next thought   X examine items   H hide" % [res.x, res.y, _scale, VOICE_NAMES[voice], FOG_NAMES[fog], LOOK_NAMES[look]]
+	_keys.text = "%dx%d at x%d  |  voice: %s  |  fog: %s  |  detective: %s  |  case clock %s\nA/D move   E use   Tab case board   X examine items   R resolution   V voice   F fog   C detective   N next thought   H hide" % [res.x, res.y, _scale, VOICE_NAMES[voice], FOG_NAMES[fog], LOOK_NAMES[look], Case.clock_text(Case.minutes)]
 
 
 # ---------- screenshots ----------
@@ -558,7 +734,67 @@ func _take_shots(dir: String) -> void:
 		native.save_png(dir.path_join("%s-native.png" % shot[0]))
 	if "examine".begins_with(only) or only.begins_with("examine"):
 		await _take_examine_shots(dir, only)
+	if "scene".begins_with(only) or only.begins_with("scene"):
+		await _take_scene_shots(dir, only)
 	get_tree().quit()
+
+
+## The playable market floor: a prompt, talking to Osk, the fixer once the
+## chip's etching is found, the tech, and the case board before and after a
+## theory holds.
+func _take_scene_shots(dir: String, only: String) -> void:
+	res_index = 0
+	_apply_resolution()
+	voice = Voice.NONE
+	fog = Fog.STEPPED
+	look = Look.TALL
+	_shot_walk = -1
+	_quiet = true
+	var plan: Array[Array] = [
+		# name, detective x, facing, what happens
+		["scene-prompt-osk", 484.0, 1, ""],
+		["scene-talk-osk", 484.0, 1, "talk"],
+		["scene-talk-fixer", 876.0, 1, "fixer"],
+		["scene-talk-tech", 1160.0, 1, "talk"],
+		["scene-board", 880.0, 1, "board"],
+		["scene-board-committed", 880.0, 1, "commit"],
+	]
+	for shot: Array in plan:
+		if not String(shot[0]).begins_with(only):
+			continue
+		ArtMarketFloor.start_case()
+		_talk.hide()
+		_board.hide()
+		_board.selected.clear()
+		_board.theory = ""
+		detective_x = shot[1]
+		facing = shot[2]
+		match String(shot[3]):
+			"talk":
+				interact()
+			"fixer":
+				Case.find_clue("chip")
+				interact()
+			"board", "commit":
+				for id: String in ["chip", "rival", "fixerfmt"]:
+					Case.find_clue(id)
+				open_board()
+				_board.selected.assign(["ledger", "rival"])
+				_board.theory = "stolen"
+				_board.refresh()
+				if shot[3] == "commit":
+					_board.commit()
+		_talk.finish_typing()
+		_toasts.clear()
+		_time = 1.0
+		_rain.warm(2.0)
+		for i: int in range(4):
+			await get_tree().process_frame
+		_talk.finish_typing()
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png(dir.path_join("%s.png" % shot[0]))
+	_talk.hide()
+	_board.hide()
 
 
 ## The examine test: the chip as it comes up, turning, turned over with the

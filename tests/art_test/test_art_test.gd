@@ -36,7 +36,7 @@ func test_every_walk_frame_is_different() -> void:
 
 func test_characters_stand_on_their_bottom_rows() -> void:
 	# Feet sit three rows up from the bottom, so _place can line them up on the walkway.
-	for img: Image in [ArtCharacters.detective(0, false), ArtCharacters.osk(0), ArtCharacters.fixer(0)]:
+	for img: Image in [ArtCharacters.detective(0, false), ArtCharacters.osk(0), ArtCharacters.fixer(0), ArtCharacters.tech(0), ArtCharacters.tech(1)]:
 		assert_bool(_row_has_pixels(img, img.get_height() - 3)).is_true()
 
 

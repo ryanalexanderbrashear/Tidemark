@@ -15,6 +15,11 @@ const WALK_Y: int = 286     # where feet go
 const WATER_Y: int = 300    # the waterline
 const STALL_X: int = 352    # Vale's stall, left edge
 const STALL_W: int = 120
+## The fixer's back room door, the security camera pole and the failing pump
+## (spots in ArtMarketFloor stand in front of them).
+const BACK_DOOR_X: int = 972
+const CAM_POLE_X: int = 716
+const PUMP_X: int = 1214
 
 ## Parallax factor for each back layer, by name.
 ## Fog bands (FogArt) move with the layer they sit in front of.
@@ -153,13 +158,17 @@ static func market() -> Image:
 		[24, 110, 130, "DECKS"], [148, 96, 112, ""], [252, 92, 140, "RECALL"],
 		[STALL_X, STALL_W, 128, ""], [STALL_X + STALL_W + 6, 104, 118, "BUY SELL"],
 		[590, 120, 150, ""], [722, 88, 120, ""], [826, 130, 136, "MEMORIES"],
-		[972, 100, 116, ""], [1086, 120, 132, "OPEN"], [1214, 80, 110, ""],
+		[BACK_DOOR_X, 100, 128, ""], [1086, 120, 132, "OPEN"],
 	]
 	for s: Array in stalls:
 		if s[0] == STALL_X:
 			_vale_stall(img)
+		elif s[0] == BACK_DOOR_X:
+			_back_door(img, s[0], s[1], s[2])
 		else:
 			_stall(img, s[0], s[1], s[2], s[3], rng)
+	_pump(img)
+	_camera_pole(img)
 	# Strings of bulbs over the walkway.
 	for span: Array in [[0, 260, 150], [260, 600, 140], [600, 930, 152], [930, 1280, 146]]:
 		var pts: PackedVector2Array = Px.cable(img, Vector2i(span[0], span[2]), Vector2i(span[1], span[2] - 4), 22, Color("070b12"))
@@ -253,6 +262,90 @@ static func _vale_stall(img: Image) -> void:
 	Px.rect(img, x + w - 5, top + 54, 4, 2, P.CYAN)
 	Px.rect(img, x + w - 5, top + 58, 4, 4, Color("1b2535"))
 	Px.glow(img, x + w - 3, top + 55, 10, 8, P.CYAN, 0.25)
+
+
+## The fixer's back room: a steel door set into a blank wall where a stall
+## would be, a slot at eye height, and the fixer's magenta over the frame.
+static func _back_door(img: Image, x: int, w: int, h: int) -> void:
+	var top: int = WALK_Y - h
+	Px.rect(img, x, top, w, h, Color("12161f"))
+	for cx: int in range(x + 3, x + w - 2, 6):
+		Px.rect(img, cx, top + 2, 1, h - 2, Color("171c27"))
+	Px.rect(img, x - 4, top, w + 8, 3, Color("0c1018"))
+	var dx: int = x + w / 2 - 17
+	var dw: int = 34
+	var dtop: int = WALK_Y - 74
+	# Frame, door, rivets, a scuffed kick plate.
+	Px.rect(img, dx - 3, dtop - 3, dw + 6, 77, Color("0a0d14"))
+	Px.rect(img, dx, dtop, dw, 74, Color("2a3240"))
+	Px.rect(img, dx, dtop, dw, 1, Color("3c4656"))
+	Px.rect(img, dx + dw - 1, dtop, 1, 74, Color("1c222d"))
+	for ry: int in [dtop + 4, dtop + 36, dtop + 68]:
+		Px.dot(img, dx + 3, ry, P.CONCRETE)
+		Px.dot(img, dx + dw - 4, ry, P.CONCRETE)
+	Px.rect(img, dx + 2, WALK_Y - 14, dw - 4, 12, Color("222934"))
+	for i: int in range(6):
+		Px.rect(img, dx + 4 + i * 5, WALK_Y - 12 + (i % 2), 3, 1, Color("303a48"))
+	# The slot, shut, with light behind it.
+	Px.rect(img, dx + 8, dtop + 22, dw - 16, 4, Color("07090e"))
+	Px.rect(img, dx + 9, dtop + 25, dw - 18, 1, Color(P.MAGENTA_DIM, 0.9))
+	Px.rect(img, dx + dw - 7, dtop + 38, 3, 8, Color("151a22"))
+	# A strip of magenta over the frame and its spill.
+	Px.rect(img, dx - 2, dtop - 8, dw + 4, 2, P.MAGENTA)
+	Px.glow(img, dx + dw * 0.5, dtop - 6.0, dw * 0.9, 14, P.MAGENTA, 0.3)
+	Px.glow(img, dx + dw * 0.5, float(WALK_Y), dw * 0.8, 6, P.MAGENTA, 0.12)
+	Px.text(img, dx + dw / 2 - Px.text_width("PRIVATE") / 2, dtop + 52, "PRIVATE", Color(P.RAIN, 0.35))
+
+
+## The market's failing pump at the east end: a boxy housing, pipes down
+## into the water, a hazard band and a work lamp left on the planks.
+static func _pump(img: Image) -> void:
+	var x: int = PUMP_X
+	var w: int = 46
+	var top: int = WALK_Y - 64
+	for px: int in [x + 6, x + 30]:
+		Px.rect(img, px, top - 70, 7, 70, Color("161d28"))
+		Px.rect(img, px + 1, top - 70, 1, 70, Color("2a3442"))
+		Px.rect(img, px - 1, top - 40, 9, 3, Color("0d1118"))
+	Px.rect(img, x, top, w, 64, Color("1d2632"))
+	Px.rect(img, x, top, w, 2, Color("3a4658"))
+	Px.rect(img, x + w - 3, top, 3, 64, Color("141a24"))
+	for hx: int in range(x + 2, x + w - 4, 6):
+		Px.rect(img, hx, top + 10, 3, 4, P.AMBER_DIM)
+		Px.rect(img, hx + 3, top + 10, 3, 4, P.INK)
+	# A gauge with its needle pinned in the amber.
+	Px.ellipse(img, x + 14, top + 28, 6, 6, Color("0c1018"))
+	Px.ellipse(img, x + 14, top + 28, 5, 5, Color("4a5563"))
+	Px.line(img, Vector2i(x + 14, top + 28), Vector2i(x + 18, top + 24), P.AMBER)
+	# Access panel hanging open, and leaking.
+	Px.rect(img, x + 24, top + 22, 16, 22, Color("07090e"))
+	Px.rect(img, x + 40, top + 22, 3, 22, Color("2a3442"))
+	for i: int in range(5):
+		Px.rect(img, x + 27 + i * 3, top + 44 + i % 2, 1, 2 + i % 3, Color(P.RAIN, 0.5))
+	# Pipes down into the water.
+	for px: int in [x + 8, x + 34]:
+		Px.rect(img, px, WALK_Y, 5, WATER_Y - WALK_Y + 4, Color("10161f"))
+	# The work lamp on the planks, throwing light up the housing.
+	Px.rect(img, x - 6, WALK_Y - 5, 5, 5, Color("1a1a1a"))
+	Px.rect(img, x - 5, WALK_Y - 5, 3, 1, P.AMBER)
+	Px.glow(img, x + 4, WALK_Y - 18.0, 34, 22, P.AMBER, 0.22)
+
+
+## A security camera on a pole between two stalls, turned back toward Vale's.
+static func _camera_pole(img: Image) -> void:
+	var x: int = CAM_POLE_X
+	Px.rect(img, x - 1, 112, 3, WALK_Y - 112, Color("0c1119"))
+	Px.rect(img, x, 112, 1, WALK_Y - 112, Color("222c3a"))
+	Px.rect(img, x - 3, WALK_Y - 4, 7, 4, Color("0c1119"))
+	# Arm and housing, looking left and down.
+	Px.rect(img, x - 8, 112, 9, 2, Color("1a2230"))
+	Px.poly(img, PackedVector2Array([Vector2(x - 22, 112), Vector2(x - 6, 109), Vector2(x - 6, 117), Vector2(x - 20, 119)]), Color("2a3442"))
+	Px.rect(img, x - 21, 112, 14, 1, Color("3c4656"))
+	Px.rect(img, x - 24, 113, 3, 5, Color("0a0d14"))
+	Px.dot(img, x - 23, 115, P.CYAN)
+	Px.glow(img, x - 23, 115, 6, 5, P.CYAN, 0.3)
+	# Its status light, still blinking for whoever pulls the feed.
+	Px.dot(img, x - 9, 111, P.AMBER)
 
 
 ## Wet planks over the water, posts going down into it.

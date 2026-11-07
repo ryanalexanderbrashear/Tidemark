@@ -3,8 +3,9 @@ extends RefCounted
 ## One thing the detective can hold up and turn over in the examine view: a box
 ## (a slab, for paper and tags) with a pixel-art image on each of its six faces,
 ## and at most one hidden detail on one face, found by turning that face to
-## the camera. Rotation test only: real items will be data, and finding a
-## detail would hand the case a clue through `Case`.
+## the camera. Real items will be data; for now they're built here, and an
+## item whose detail is a clue names it in `clue` (the art test hands it to
+## `Case` when the detail is found).
 
 ## Texels per world unit. At zoom 1 one texel is one game pixel, so close-ups
 ## sit on the same pixel grid as the market behind them.
@@ -31,6 +32,8 @@ var notes: Array[String] = []
 var detail_face: String = ""
 var detail_note: String = ""
 var detail_thought: String = ""
+## The case clue that finding the detail adds ("" for none).
+var clue: String = ""
 
 ## Items that open: the front face is a lid hinged on its left edge, and it
 ## only opens once the hidden detail (the catch) has been found.
@@ -78,6 +81,7 @@ static func chip() -> ExamineItem:
 	it.notes = ["A blank memory chip, wiped."]
 	it.detail_face = "back"
 	it.detail_note = "Etched on the casing: CS-14-07."
+	it.clue = "chip"
 	# Placeholder line, not canon dialogue.
 	it.detail_thought = "Scratched in by hand, not stamped at a factory. Someone meant this to be read."
 	var rng: RandomNumberGenerator = RandomNumberGenerator.new()

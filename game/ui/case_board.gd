@@ -129,18 +129,23 @@ func _update_commit() -> void:
 
 func _on_commit() -> void:
 	var result: TheoryCheck.Result = Case.commit_theory(_theory, _selected)
+	_message.add_theme_color_override("font_color", UiTheme.OK if result == TheoryCheck.Result.HOLDS else UiTheme.WARN)
+	_message.text = result_line(_theory, result)
 	if result == TheoryCheck.Result.HOLDS:
-		var t: Theory = CaseCatalog.theory(_theory)
-		var line: String = t.committed_line
-		if t.id == "left":
-			line += " The judge signs a warrant for his apartment." if Case.clearance else " The damage to your badge is done, though."
-		_message.add_theme_color_override("font_color", UiTheme.OK)
-		_message.text = line
 		_selected.clear()
-	else:
-		_message.add_theme_color_override("font_color", UiTheme.WARN)
-		_message.text = LINES[result]
 	_refresh()
+
+
+## What the board says after trying to commit `theory_id`. Shared with the art
+## test's board, so both say the same thing.
+static func result_line(theory_id: String, result: TheoryCheck.Result) -> String:
+	if result != TheoryCheck.Result.HOLDS:
+		return LINES[result]
+	var t: Theory = CaseCatalog.theory(theory_id)
+	var line: String = t.committed_line
+	if t.id == "left":
+		line += " The judge signs a warrant for his apartment." if Case.clearance else " The damage to your badge is done, though."
+	return line
 
 
 # _input, not _unhandled_input: Tab is also the GUI's focus-next key, and the
