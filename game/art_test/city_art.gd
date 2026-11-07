@@ -20,8 +20,8 @@ const VIEW: Vector2i = Vector2i(640, 360)
 ## Where open water meets the far distance.
 const HORIZON: int = 272
 ## The fog line: everything above FOG_TOP is the Crown, clear of the fog.
-const FOG_TOP: int = 120
-const FOG_BOTTOM: int = 178
+const FOG_TOP: int = 134
+const FOG_BOTTOM: int = 190
 const FOG_TINT: Color = Color("33435a")
 ## The Crown's own light: cold, clean, almost another world.
 const CROWN_LIGHT: Color = Color("cfe9ff")
@@ -33,17 +33,17 @@ const CROWN_LIGHT: Color = Color("cfe9ff")
 ## cropped by the frame, drawn floor by floor, and "sunk" is a dead arcology
 ## going down in the distance, its dome broken (width is its hull's).
 const ARCOLOGIES: Array[Array] = [
-	[92, 277, 30, 88, "setback", 1, 0.15],
+	[92, 277, 30, 104, "setback", 1, 0.15],
 	[300, 276, 24, 132, "slab", 2, 0.1],
-	[452, 278, 32, 70, "spire", 3, 0.2],
+	[452, 278, 32, 88, "spire", 3, 0.2],
 	[462, 289, 110, 190, "sunk", 4, 0.35],
-	[198, 293, 54, 36, "twin", 5, 0.55],
-	[372, 297, 60, 54, "setback", 6, 0.6],
+	[198, 293, 54, 56, "twin", 5, 0.55],
+	[372, 297, 60, 72, "setback", 6, 0.6],
 	[598, 352, 104, -20, "near", 7, 1.0],
 ]
 
 ## Far arcologies lost in the fog but for their Crowns: x, top row, width.
-const FAR_CROWNS: Array[Array] = [[24, 104, 12], [162, 110, 10], [258, 98, 14], [338, 112, 9], [508, 100, 12], [404, 108, 8]]
+const FAR_CROWNS: Array[Array] = [[24, 118, 12], [162, 124, 10], [258, 114, 14], [338, 126, 9], [508, 116, 12], [404, 122, 8]]
 
 ## Causeways between Waterline decks: [from arcology, to arcology]. Indices into ARCOLOGIES.
 const CAUSEWAYS: Array[Array] = [[0, 4], [4, 5], [1, 5], [5, 6], [2, 5]]
@@ -723,6 +723,24 @@ static func _walled_crown(img: Image, i: int, body: Color, lit_side: Color, dark
 		var from: Vector2i = Vector2i(roundi(lerpf(x0, cx - bottom_w * 0.5, 0.0) + cw * t), rim + wh)
 		var to: Vector2i = Vector2i(roundi(cx - bottom_w * 0.5 + bottom_w * t), rim + wh + fh)
 		Px.line(img, from, to, body)
+	# Struts from the terrace's outer edges back down to the shaft, so the
+	# overhang is carried by the core, with cables from the lip to the shaft.
+	var thick: int = 2 if d < 0.5 else 3
+	var reach: float = float(cw - shaft_w) * 0.5
+	for side: int in [-1, 1]:
+		var shaft_edge: int = cx + side * (shaft_w / 2)
+		for k: int in range(2):
+			var sx: int = cx + side * (cw / 2 - 3 - k * int(reach * 0.45))
+			var from: Vector2i = Vector2i(sx, rim + wh + 1)
+			var to: Vector2i = Vector2i(shaft_edge, rim + wh + fh + roundi(reach * (0.95 - 0.4 * k)))
+			for t: int in range(thick):
+				Px.line(img, from + Vector2i(0, t), to + Vector2i(0, t), dark_side)
+			Px.line(img, from + Vector2i(0, -1), to + Vector2i(0, -1), Color(CROWN_LIGHT, 0.3))
+			# A collar where the strut meets the shaft.
+			Px.rect(img, to.x - 1 if side > 0 else to.x - 1, to.y - 1, 3, 3, lit_side)
+		# Tension cables from the lip down to the shaft, thin and taut.
+		var lip: Vector2i = Vector2i(cx + side * (cw / 2 - 1), rim + wh)
+		Px.line(img, lip, Vector2i(shaft_edge, rim + wh + fh + roundi(reach * 1.4)), Color(P.RAIN, 0.3))
 	# Lights under the terrace's lip.
 	for lx: int in range(x0 + 2, x0 + cw - 2, 4):
 		Px.dot(img, lx, rim + wh, Color(P.CYAN, 0.55))
