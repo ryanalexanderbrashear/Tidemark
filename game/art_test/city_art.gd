@@ -151,6 +151,12 @@ static func compose(rain: bool = false) -> Image:
 		_reflect(img, layer, g[2])
 		Px.stamp(img, layer, 0, 0)
 		Px.stamp(img, fog(g[3]), 0, 0)
+		if g[0] == 0.3:
+			# The giant hologram ads hang in the air between the arcologies, in
+			# front of the far fog, light enough to glow through what's left.
+			var holo: Image = holograms()
+			_reflect(img, holo, 295)
+			Px.stamp(img, holo, 0, 0)
 	_glints(img)
 	if rain:
 		rain_still(img)
@@ -217,6 +223,133 @@ static func _drowned_city(img: Image) -> void:
 		elif rng.randf() < 0.25:
 			Px.rect(img, x + rng.randi_range(1, w - 2), HORIZON - 1, 1, 1, Color(P.AMBER, 0.45))
 		x += w + rng.randi_range(2, 14)
+
+
+# ---------- Hologram ads ----------
+# Giant floating advertisements, projected into the air between the arcologies.
+# Each is see-through, cut by scanlines, with a band that slips sideways, and
+# lights the fog around it. The products are placeholders, not canon.
+
+## A woman's face in profile, eyes closed, facing left: the big ad.
+const FACE_AT: Vector2i = Vector2i(236, 112)
+## How much bigger than its outline the face is drawn.
+const FACE_SCALE: float = 1.6
+const FACE: PackedVector2Array = [
+	Vector2(34, 0), Vector2(22, 3), Vector2(15, 10), Vector2(12, 19), Vector2(11, 25),
+	Vector2(5, 33), Vector2(9, 35), Vector2(10, 38), Vector2(7, 42), Vector2(10, 44),
+	Vector2(9, 48), Vector2(12, 52), Vector2(18, 54), Vector2(20, 60), Vector2(18, 66),
+	Vector2(46, 66), Vector2(44, 54), Vector2(48, 40), Vector2(50, 24), Vector2(46, 8),
+]
+## A panel ad hung under a drone, and a jellyfish drifting over the fog line.
+const PANEL_AT: Vector2i = Vector2i(254, 74)
+const JELLY_AT: Vector2i = Vector2i(500, 84)
+
+
+## All the hologram ads on one see-through layer.
+static func holograms() -> Image:
+	var img: Image = Px.blank(VIEW.x, VIEW.y)
+	_face_ad(img)
+	_panel_ad(img)
+	_jelly_ad(img)
+	return img
+
+
+## The face, projected up from an emitter on the twin arcology's deck.
+static func _face_ad(img: Image) -> void:
+	var k: float = FACE_SCALE
+	var shape: Image = Px.blank(ceili(56 * k), ceili(76 * k))
+	Px.poly(shape, _scaled(FACE, k), P.MAGENTA)
+	# Hair streaming back, cyan, over the back of the head.
+	var hair: PackedVector2Array = [Vector2(30, -1), Vector2(48, 4), Vector2(55, 18), Vector2(54, 40), Vector2(50, 52), Vector2(46, 30), Vector2(40, 10)]
+	Px.poly(shape, _scaled(hair, k), P.CYAN)
+	# Lit edge along the profile, and the closed eye.
+	for i: int in range(FACE.size() - 1):
+		if FACE[i].y < 56:
+			Px.line(shape, Vector2i(FACE[i] * k), Vector2i(FACE[i + 1] * k), P.MAGENTA.lerp(Color.WHITE, 0.5))
+	Px.line(shape, Vector2i(Vector2(15, 22) * k), Vector2i(Vector2(20, 23) * k), P.CYAN.lerp(Color.WHITE, 0.4))
+	Px.line(shape, Vector2i(Vector2(15, 23) * k), Vector2i(Vector2(16, 25) * k), Color(P.CYAN, 0.8))
+	# A line of text under the chin, too far to read: just its shape.
+	for i: int in range(8):
+		Px.rect(shape, roundi(6 * k) + i * 5, roundi(70 * k), 4, 2, P.CYAN)
+	var w: int = shape.get_width()
+	var h: int = shape.get_height()
+	# The projector's beam from the deck below, faint.
+	var ex: int = FACE_AT.x + w / 2
+	var ey: int = 252
+	for y: int in range(FACE_AT.y + h - 8, ey):
+		var t: float = float(ey - y) / float(ey - FACE_AT.y - h + 8)
+		var half: float = 1.0 + t * 24.0
+		for x: int in range(floori(ex - half), ceili(ex + half)):
+			if Px.dither(x, y, 0.25 * t):
+				Px.dot(img, x, y, Color(P.MAGENTA, 0.12))
+	Px.glow(img, FACE_AT.x + w * 0.5, FACE_AT.y + h * 0.45, w * 1.1, h * 0.75, P.MAGENTA, 0.14)
+	_holo_stamp(img, shape, FACE_AT.x, FACE_AT.y, 0.55, 48)
+
+
+static func _scaled(points: PackedVector2Array, k: float) -> PackedVector2Array:
+	var out: PackedVector2Array = []
+	for p: Vector2 in points:
+		out.append(p * k)
+	return out
+
+
+## A panel ad under a drone: one word, a pill, cyan.
+static func _panel_ad(img: Image) -> void:
+	var shape: Image = Px.blank(56, 26)
+	Px.rect(shape, 0, 0, 56, 1, P.CYAN)
+	Px.rect(shape, 0, 25, 56, 1, P.CYAN)
+	Px.rect(shape, 0, 0, 1, 26, P.CYAN)
+	Px.rect(shape, 55, 0, 1, 26, P.CYAN)
+	Px.screen(shape, 1, 1, 54, 24, P.CYAN_DIM, 0.5)
+	Px.text_scaled(shape, 4, 4, "SLEEP", P.CYAN.lerp(Color.WHITE, 0.4), 2)
+	# The pill: a capsule, half white, half cyan.
+	Px.ellipse(shape, 47.0, 9.0, 4.5, 2.5, Color.WHITE)
+	Px.ellipse(shape, 49.5, 9.0, 2.5, 2.5, P.CYAN)
+	Px.text(shape, 4, 17, "DOSE DEEP", P.CYAN)
+	Px.glow(img, PANEL_AT.x + 28, PANEL_AT.y + 13, 46, 26, P.CYAN, 0.14)
+	_holo_stamp(img, shape, PANEL_AT.x, PANEL_AT.y, 0.6, 12)
+	# The drone carrying it, solid, with its cables.
+	var dx: int = PANEL_AT.x + 28
+	var dy: int = PANEL_AT.y - 12
+	Px.rect(img, dx - 5, dy, 10, 3, Color("0f1724"))
+	Px.rect(img, dx - 8, dy - 1, 4, 1, Color("1e2a3c"))
+	Px.rect(img, dx + 4, dy - 1, 4, 1, Color("1e2a3c"))
+	Px.dot(img, dx, dy + 2, P.AMBER)
+	Px.line(img, Vector2i(dx - 3, dy + 3), Vector2i(PANEL_AT.x + 2, PANEL_AT.y), Color("1e2a3c"))
+	Px.line(img, Vector2i(dx + 3, dy + 3), Vector2i(PANEL_AT.x + 53, PANEL_AT.y), Color("1e2a3c"))
+
+
+## A jellyfish drifting over the fog line, amber: an ad with no words at all.
+static func _jelly_ad(img: Image) -> void:
+	var shape: Image = Px.blank(32, 44)
+	# The bell, its top half, with a bright rim.
+	for y: int in range(0, 11):
+		for x: int in range(0, 32):
+			var dx: float = (x + 0.5 - 16.0) / 15.0
+			var dy: float = (y + 0.5 - 11.0) / 11.0
+			if dx * dx + dy * dy <= 1.0:
+				Px.dot(shape, x, y, P.AMBER if dx * dx + dy * dy > 0.7 else Color(P.AMBER_DIM, 1.0))
+	Px.rect(shape, 2, 10, 28, 1, P.AMBER.lerp(Color.WHITE, 0.5))
+	# Tentacles, wavy.
+	for k: int in range(6):
+		var tx: int = 4 + k * 5
+		for y: int in range(11, 40 - (k % 3) * 5):
+			Px.dot(shape, tx + roundi(sin(y * 0.35 + k) * 1.5), y, Color(P.AMBER, 1.0 - float(y - 11) / 34.0))
+	Px.glow(img, JELLY_AT.x + 16, JELLY_AT.y + 12, 34, 30, P.AMBER, 0.14)
+	_holo_stamp(img, shape, JELLY_AT.x, JELLY_AT.y, 0.6, 18)
+
+
+## Puts a hologram on `dst`: see-through, every other row dimmer, and one
+## band of rows `slip` rows down shifted sideways, as if the signal skipped.
+static func _holo_stamp(dst: Image, src: Image, x: int, y: int, alpha: float, slip: int) -> void:
+	for yy: int in range(src.get_height()):
+		var shift: int = 2 if yy >= slip and yy < slip + 3 else 0
+		var row: float = alpha if yy % 2 == 0 else alpha * 0.45
+		for xx: int in range(src.get_width()):
+			var c: Color = src.get_pixel(xx, yy)
+			if c.a <= 0.0:
+				continue
+			Px.dot(dst, x + xx + shift, y + yy, Color(c, c.a * row))
 
 
 # ---------- Port Patience ----------
