@@ -60,11 +60,12 @@ func test_arcology_decks_are_separate() -> void:
 
 func test_each_crown_is_a_walled_garden() -> void:
 	# The Crown's terraces are walled, much wider than their shafts, with trees
-	# showing over the wall.
-	var img: Image = CityArt.compose()
+	# showing over the wall (checked on each arcology drawn alone, before fog).
 	for i: int in CityArt.crown():
 		if CityArt.ARCOLOGIES[i][4] == "near":
 			continue
+		var img: Image = Px.blank(CityArt.VIEW.x, CityArt.VIEW.y)
+		CityArt._arcology(img, i)
 		assert_int(CityArt.crown_width(i)).is_greater(int(CityArt.ARCOLOGIES[i][2]) * 3 / 2)
 		var cx: int = CityArt.ARCOLOGIES[i][0]
 		var half: int = CityArt.crown_width(i) / 2

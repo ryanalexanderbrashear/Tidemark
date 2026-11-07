@@ -236,16 +236,17 @@ static func _drowned_city(img: Image) -> void:
 # Each is see-through, cut by scanlines, with a band that slips sideways, and
 # lights the fog around it. The products are placeholders, not canon.
 
-## A woman's face in profile, eyes closed, facing left: the big ad.
-const FACE_AT: Vector2i = Vector2i(236, 112)
-## How much bigger than its outline the face is drawn.
-const FACE_SCALE: float = 1.6
-const FACE: PackedVector2Array = [
-	Vector2(34, 0), Vector2(22, 3), Vector2(15, 10), Vector2(12, 19), Vector2(11, 25),
-	Vector2(5, 33), Vector2(9, 35), Vector2(10, 38), Vector2(7, 42), Vector2(10, 44),
-	Vector2(9, 48), Vector2(12, 52), Vector2(18, 54), Vector2(20, 60), Vector2(18, 66),
-	Vector2(46, 66), Vector2(44, 54), Vector2(48, 40), Vector2(50, 24), Vector2(46, 8),
+## A whale gliding between the arcologies, facing left: the big ad, for the
+## open sea nobody down here has seen in years.
+const WHALE_AT: Vector2i = Vector2i(222, 146)
+const WHALE_SCALE: float = 1.2
+const WHALE: PackedVector2Array = [
+	Vector2(0, 18), Vector2(4, 12), Vector2(14, 8), Vector2(30, 6), Vector2(50, 7),
+	Vector2(66, 10), Vector2(78, 14), Vector2(88, 17), Vector2(95, 9), Vector2(101, 5),
+	Vector2(99, 15), Vector2(103, 27), Vector2(96, 25), Vector2(88, 20), Vector2(78, 22),
+	Vector2(60, 26), Vector2(40, 28), Vector2(22, 27), Vector2(10, 25), Vector2(3, 22),
 ]
+const WHALE_FIN: PackedVector2Array = [Vector2(28, 24), Vector2(40, 26), Vector2(36, 38), Vector2(29, 35)]
 ## A panel ad hung under a drone, and a jellyfish drifting over the fog line.
 const PANEL_AT: Vector2i = Vector2i(254, 74)
 const JELLY_AT: Vector2i = Vector2i(500, 84)
@@ -254,42 +255,33 @@ const JELLY_AT: Vector2i = Vector2i(500, 84)
 ## All the hologram ads on one see-through layer.
 static func holograms() -> Image:
 	var img: Image = Px.blank(VIEW.x, VIEW.y)
-	_face_ad(img)
+	_whale_ad(img)
 	_panel_ad(img)
 	_jelly_ad(img)
 	return img
 
 
-## The face, projected up from an emitter on the twin arcology's deck.
-static func _face_ad(img: Image) -> void:
-	var k: float = FACE_SCALE
-	var shape: Image = Px.blank(ceili(56 * k), ceili(76 * k))
-	Px.poly(shape, _scaled(FACE, k), P.MAGENTA)
-	# Hair streaming back, cyan, over the back of the head.
-	var hair: PackedVector2Array = [Vector2(30, -1), Vector2(48, 4), Vector2(55, 18), Vector2(54, 40), Vector2(50, 52), Vector2(46, 30), Vector2(40, 10)]
-	Px.poly(shape, _scaled(hair, k), P.CYAN)
-	# Lit edge along the profile, and the closed eye.
-	for i: int in range(FACE.size() - 1):
-		if FACE[i].y < 56:
-			Px.line(shape, Vector2i(FACE[i] * k), Vector2i(FACE[i + 1] * k), P.MAGENTA.lerp(Color.WHITE, 0.5))
-	Px.line(shape, Vector2i(Vector2(15, 22) * k), Vector2i(Vector2(20, 23) * k), P.CYAN.lerp(Color.WHITE, 0.4))
-	Px.line(shape, Vector2i(Vector2(15, 23) * k), Vector2i(Vector2(16, 25) * k), Color(P.CYAN, 0.8))
-	# A line of text under the chin, too far to read: just its shape.
-	for i: int in range(8):
-		Px.rect(shape, roundi(6 * k) + i * 5, roundi(70 * k), 4, 2, P.CYAN)
+## The whale: cyan, its throat grooves and fin lit, a line of text under it.
+static func _whale_ad(img: Image) -> void:
+	var k: float = WHALE_SCALE
+	var shape: Image = Px.blank(ceili(106 * k), ceili(46 * k))
+	Px.poly(shape, _scaled(WHALE, k), P.CYAN_DIM.lerp(P.CYAN, 0.6))
+	Px.poly(shape, _scaled(WHALE_FIN, k), P.CYAN)
+	# The back, lit along its top edge.
+	for i: int in range(9):
+		Px.line(shape, Vector2i(WHALE[i] * k), Vector2i(WHALE[i + 1] * k), P.CYAN.lerp(Color.WHITE, 0.5))
+	# Throat grooves along the belly, magenta.
+	for g: int in range(3):
+		var y: float = (21.0 + g * 2.0) * k
+		Px.line(shape, Vector2i(roundi(6 * k), roundi(y)), Vector2i(roundi(44 * k), roundi(y + 2.0 * k)), P.MAGENTA)
+	Px.dot(shape, roundi(10 * k), roundi(16 * k), Color.WHITE)  # the eye
+	# A line of text under it, too far to read: just its shape.
+	for i: int in range(9):
+		Px.rect(shape, roundi(30 * k) + i * 5, roundi(42 * k), 4, 2, P.MAGENTA)
 	var w: int = shape.get_width()
 	var h: int = shape.get_height()
-	# The projector's beam from the deck below, faint.
-	var ex: int = FACE_AT.x + w / 2
-	var ey: int = 252
-	for y: int in range(FACE_AT.y + h - 8, ey):
-		var t: float = float(ey - y) / float(ey - FACE_AT.y - h + 8)
-		var half: float = 1.0 + t * 24.0
-		for x: int in range(floori(ex - half), ceili(ex + half)):
-			if Px.dither(x, y, 0.25 * t):
-				Px.dot(img, x, y, Color(P.MAGENTA, 0.12))
-	Px.glow(img, FACE_AT.x + w * 0.5, FACE_AT.y + h * 0.45, w * 1.1, h * 0.75, P.MAGENTA, 0.14)
-	_holo_stamp(img, shape, FACE_AT.x, FACE_AT.y, 0.55, 48)
+	Px.glow(img, WHALE_AT.x + w * 0.5, WHALE_AT.y + h * 0.5, w * 0.75, h * 1.1, P.CYAN, 0.12)
+	_holo_stamp(img, shape, WHALE_AT.x, WHALE_AT.y, 0.55, 24)
 
 
 static func _scaled(points: PackedVector2Array, k: float) -> PackedVector2Array:
