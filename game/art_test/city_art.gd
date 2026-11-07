@@ -20,8 +20,8 @@ const VIEW: Vector2i = Vector2i(640, 360)
 ## Where open water meets the far distance.
 const HORIZON: int = 272
 ## The fog line: everything above FOG_TOP is the Crown, clear of the fog.
-const FOG_TOP: int = 120
-const FOG_BOTTOM: int = 178
+const FOG_TOP: int = 134
+const FOG_BOTTOM: int = 190
 const FOG_TINT: Color = Color("33435a")
 ## The Crown's own light: cold, clean, almost another world.
 const CROWN_LIGHT: Color = Color("cfe9ff")
@@ -30,22 +30,23 @@ const CROWN_LIGHT: Color = Color("cfe9ff")
 ## width, top row, depth (0 far .. 1 near), shape, seed.
 ## Shapes: "setback" narrows in steps, "twin" is two shafts on one deck,
 ## "spire" tapers to a mast, "slab" is a plain block, "near" is the close one
-## cropped by the frame, drawn floor by floor.
+## cropped by the frame, drawn floor by floor, and "sunk" is a dead arcology
+## going down in the distance, its dome broken (width is its hull's).
 const ARCOLOGIES: Array[Array] = [
-	[92, 277, 30, 88, "setback", 1, 0.15],
+	[92, 277, 30, 104, "setback", 1, 0.15],
 	[300, 276, 24, 132, "slab", 2, 0.1],
-	[452, 278, 32, 70, "spire", 3, 0.2],
-	[528, 275, 20, 150, "slab", 4, 0.05],
-	[198, 293, 54, 36, "twin", 5, 0.55],
-	[372, 297, 60, 54, "setback", 6, 0.6],
+	[452, 278, 32, 88, "spire", 3, 0.2],
+	[462, 289, 110, 190, "sunk", 4, 0.35],
+	[198, 293, 54, 56, "twin", 5, 0.55],
+	[372, 297, 60, 72, "setback", 6, 0.6],
 	[598, 352, 104, -20, "near", 7, 1.0],
 ]
 
 ## Far arcologies lost in the fog but for their Crowns: x, top row, width.
-const FAR_CROWNS: Array[Array] = [[24, 104, 12], [162, 110, 10], [258, 98, 14], [338, 112, 9], [508, 100, 12], [404, 108, 8]]
+const FAR_CROWNS: Array[Array] = [[24, 118, 12], [162, 124, 10], [258, 114, 14], [338, 126, 9], [508, 116, 12], [404, 122, 8]]
 
 ## Causeways between Waterline decks: [from arcology, to arcology]. Indices into ARCOLOGIES.
-const CAUSEWAYS: Array[Array] = [[0, 4], [4, 5], [1, 5], [2, 3], [5, 6], [2, 5]]
+const CAUSEWAYS: Array[Array] = [[0, 4], [4, 5], [1, 5], [5, 6], [2, 5]]
 
 ## Small neon on the Waterline decks: [arcology, offset from centre, word, color].
 const DECK_SIGNS: Array[Array] = [
@@ -89,6 +90,20 @@ static func crown_width(i: int) -> int:
 	return int(float(w) * (1.7 if ARCOLOGIES[i][4] == "spire" else 1.95))
 
 
+## How wide the shaft is where it meets the Crown. A setback narrows as it
+## climbs, so its top step is the one the terrace and its struts must meet.
+static func top_shaft_width(i: int) -> int:
+	var w: int = ARCOLOGIES[i][2]
+	if ARCOLOGIES[i][4] == "setback":
+		return w - 2 * w / 4
+	return w
+
+
+## Where the struts under a Crown land: on the outer face of its top shaft.
+static func strut_foot_x(i: int, side: int) -> int:
+	return int(ARCOLOGIES[i][0]) + side * (top_shaft_width(i) / 2)
+
+
 ## The top of a Crown's wall. Above it, only the trees and the buildings inside.
 static func rim_y(i: int) -> int:
 	return int(ARCOLOGIES[i][3]) + int(lerpf(18.0, 30.0, depth_of(i)))
@@ -121,7 +136,8 @@ static func compose(rain: bool = false) -> Image:
 	var groups: Array[Array] = [
 		# depth range, reflection row, fog after it
 		[0.0, 0.3, HORIZON, 1.0],
-		[0.3, 0.8, 295, 0.55],
+		[0.3, 0.75, 295, 0.55],
+		[0.75, 0.8, 320, 0.3],
 		[0.8, 1.1, 352, 0.2],
 	]
 	for g: Array in groups:
@@ -130,9 +146,15 @@ static func compose(rain: bool = false) -> Image:
 			_drowned_city(layer)
 			for c: Array in FAR_CROWNS:
 				_far_crown(layer, c[0], c[1], c[2])
+			_lighthouse(layer)
+		if g[0] == 0.3:
+			# The sunk arcology first, behind everything else at its distance.
+			for i: int in range(ARCOLOGIES.size()):
+				if ARCOLOGIES[i][4] == "sunk":
+					_sunk_arcology(layer, i)
 		for i: int in range(ARCOLOGIES.size()):
 			var d: float = depth_of(i)
-			if d >= g[0] and d < g[1]:
+			if d >= g[0] and d < g[1] and ARCOLOGIES[i][4] != "sunk":
 				_arcology(layer, i)
 		for c: Array in CAUSEWAYS:
 			var d: float = maxf(depth_of(c[0]), depth_of(c[1]))
@@ -140,11 +162,21 @@ static func compose(rain: bool = false) -> Image:
 				_causeway(layer, c[0], c[1])
 		if g[0] == 0.3:
 			_traffic(layer)
+			_steeple(layer)
+		if g[0] == 0.75:
+			_chimney(layer)
+			_bridge_arch(layer)
 		if g[0] == 0.8:
 			_moorings(layer)
 		_reflect(img, layer, g[2])
 		Px.stamp(img, layer, 0, 0)
 		Px.stamp(img, fog(g[3]), 0, 0)
+		if g[0] == 0.3:
+			# The giant hologram ads hang in the air between the arcologies, in
+			# front of the far fog, light enough to glow through what's left.
+			var holo: Image = holograms()
+			_reflect(img, holo, 295)
+			Px.stamp(img, holo, 0, 0)
 	_glints(img)
 	if rain:
 		rain_still(img)
@@ -211,6 +243,254 @@ static func _drowned_city(img: Image) -> void:
 		elif rng.randf() < 0.25:
 			Px.rect(img, x + rng.randi_range(1, w - 2), HORIZON - 1, 1, 1, Color(P.AMBER, 0.45))
 		x += w + rng.randi_range(2, 14)
+
+
+# ---------- Hologram ads ----------
+# Giant floating advertisements, projected into the air between the arcologies.
+# Each is see-through, cut by scanlines, with a band that slips sideways, and
+# lights the fog around it. The products are placeholders, not canon.
+
+## A whale gliding between the arcologies, facing left: the big ad, for the
+## open sea nobody down here has seen in years.
+const WHALE_AT: Vector2i = Vector2i(222, 146)
+const WHALE_SCALE: float = 1.2
+const WHALE: PackedVector2Array = [
+	Vector2(0, 18), Vector2(4, 12), Vector2(14, 8), Vector2(30, 6), Vector2(50, 7),
+	Vector2(66, 10), Vector2(78, 14), Vector2(88, 17), Vector2(95, 9), Vector2(101, 5),
+	Vector2(99, 15), Vector2(103, 27), Vector2(96, 25), Vector2(88, 20), Vector2(78, 22),
+	Vector2(60, 26), Vector2(40, 28), Vector2(22, 27), Vector2(10, 25), Vector2(3, 22),
+]
+const WHALE_FIN: PackedVector2Array = [Vector2(28, 24), Vector2(40, 26), Vector2(36, 38), Vector2(29, 35)]
+## A panel ad hung under a drone, and a jellyfish drifting over the fog line.
+const PANEL_AT: Vector2i = Vector2i(254, 74)
+const JELLY_AT: Vector2i = Vector2i(500, 84)
+
+
+## All the hologram ads on one see-through layer.
+static func holograms() -> Image:
+	var img: Image = Px.blank(VIEW.x, VIEW.y)
+	_whale_ad(img)
+	_panel_ad(img)
+	_jelly_ad(img)
+	return img
+
+
+## The whale: cyan, its throat grooves and fin lit, a line of text under it.
+static func _whale_ad(img: Image) -> void:
+	var k: float = WHALE_SCALE
+	var shape: Image = Px.blank(ceili(106 * k), ceili(46 * k))
+	Px.poly(shape, _scaled(WHALE, k), P.CYAN_DIM.lerp(P.CYAN, 0.6))
+	Px.poly(shape, _scaled(WHALE_FIN, k), P.CYAN)
+	# The back, lit along its top edge.
+	for i: int in range(9):
+		Px.line(shape, Vector2i(WHALE[i] * k), Vector2i(WHALE[i + 1] * k), P.CYAN.lerp(Color.WHITE, 0.5))
+	# Throat grooves along the belly, magenta.
+	for g: int in range(3):
+		var y: float = (21.0 + g * 2.0) * k
+		Px.line(shape, Vector2i(roundi(6 * k), roundi(y)), Vector2i(roundi(44 * k), roundi(y + 2.0 * k)), P.MAGENTA)
+	Px.dot(shape, roundi(10 * k), roundi(16 * k), Color.WHITE)  # the eye
+	# A line of text under it, too far to read: just its shape.
+	for i: int in range(9):
+		Px.rect(shape, roundi(30 * k) + i * 5, roundi(42 * k), 4, 2, P.MAGENTA)
+	var w: int = shape.get_width()
+	var h: int = shape.get_height()
+	Px.glow(img, WHALE_AT.x + w * 0.5, WHALE_AT.y + h * 0.5, w * 0.75, h * 1.1, P.CYAN, 0.12)
+	_holo_stamp(img, shape, WHALE_AT.x, WHALE_AT.y, 0.55, 24)
+
+
+static func _scaled(points: PackedVector2Array, k: float) -> PackedVector2Array:
+	var out: PackedVector2Array = []
+	for p: Vector2 in points:
+		out.append(p * k)
+	return out
+
+
+## A panel ad under a drone: one word, a pill, cyan.
+static func _panel_ad(img: Image) -> void:
+	var shape: Image = Px.blank(56, 26)
+	Px.rect(shape, 0, 0, 56, 1, P.CYAN)
+	Px.rect(shape, 0, 25, 56, 1, P.CYAN)
+	Px.rect(shape, 0, 0, 1, 26, P.CYAN)
+	Px.rect(shape, 55, 0, 1, 26, P.CYAN)
+	Px.screen(shape, 1, 1, 54, 24, P.CYAN_DIM, 0.5)
+	Px.text_scaled(shape, 4, 4, "SLEEP", P.CYAN.lerp(Color.WHITE, 0.4), 2)
+	# The pill: a capsule, half white, half cyan.
+	Px.ellipse(shape, 47.0, 9.0, 4.5, 2.5, Color.WHITE)
+	Px.ellipse(shape, 49.5, 9.0, 2.5, 2.5, P.CYAN)
+	Px.text(shape, 4, 17, "DOSE DEEP", P.CYAN)
+	Px.glow(img, PANEL_AT.x + 28, PANEL_AT.y + 13, 46, 26, P.CYAN, 0.14)
+	_holo_stamp(img, shape, PANEL_AT.x, PANEL_AT.y, 0.6, 12)
+	# The drone carrying it, solid, with its cables.
+	var dx: int = PANEL_AT.x + 28
+	var dy: int = PANEL_AT.y - 12
+	Px.rect(img, dx - 5, dy, 10, 3, Color("0f1724"))
+	Px.rect(img, dx - 8, dy - 1, 4, 1, Color("1e2a3c"))
+	Px.rect(img, dx + 4, dy - 1, 4, 1, Color("1e2a3c"))
+	Px.dot(img, dx, dy + 2, P.AMBER)
+	Px.line(img, Vector2i(dx - 3, dy + 3), Vector2i(PANEL_AT.x + 2, PANEL_AT.y), Color("1e2a3c"))
+	Px.line(img, Vector2i(dx + 3, dy + 3), Vector2i(PANEL_AT.x + 53, PANEL_AT.y), Color("1e2a3c"))
+
+
+## A jellyfish drifting over the fog line, amber: an ad with no words at all.
+static func _jelly_ad(img: Image) -> void:
+	var shape: Image = Px.blank(32, 44)
+	# The bell, its top half, with a bright rim.
+	for y: int in range(0, 11):
+		for x: int in range(0, 32):
+			var dx: float = (x + 0.5 - 16.0) / 15.0
+			var dy: float = (y + 0.5 - 11.0) / 11.0
+			if dx * dx + dy * dy <= 1.0:
+				Px.dot(shape, x, y, P.AMBER if dx * dx + dy * dy > 0.7 else Color(P.AMBER_DIM, 1.0))
+	Px.rect(shape, 2, 10, 28, 1, P.AMBER.lerp(Color.WHITE, 0.5))
+	# Tentacles, wavy.
+	for k: int in range(6):
+		var tx: int = 4 + k * 5
+		for y: int in range(11, 40 - (k % 3) * 5):
+			Px.dot(shape, tx + roundi(sin(y * 0.35 + k) * 1.5), y, Color(P.AMBER, 1.0 - float(y - 11) / 34.0))
+	Px.glow(img, JELLY_AT.x + 16, JELLY_AT.y + 12, 34, 30, P.AMBER, 0.14)
+	_holo_stamp(img, shape, JELLY_AT.x, JELLY_AT.y, 0.6, 18)
+
+
+## Puts a hologram on `dst`: see-through, every other row dimmer, and one
+## band of rows `slip` rows down shifted sideways, as if the signal skipped.
+static func _holo_stamp(dst: Image, src: Image, x: int, y: int, alpha: float, slip: int) -> void:
+	for yy: int in range(src.get_height()):
+		var shift: int = 2 if yy >= slip and yy < slip + 3 else 0
+		var row: float = alpha if yy % 2 == 0 else alpha * 0.45
+		for xx: int in range(src.get_width()):
+			var c: Color = src.get_pixel(xx, yy)
+			if c.a <= 0.0:
+				continue
+			Px.dot(dst, x + xx + shift, y + yy, Color(c, c.a * row))
+
+
+# ---------- Port Patience ----------
+# The drowned city under Halcyon Reach (Story doc, decided 2026-11-07). A few of
+# its landmarks still break the surface between the arcologies, so players
+# see it before anyone names it.
+
+const OLD_STONE: Color = Color("5f6a78")  # weathered white paint, greyed by fog
+const OLD_BRICK: Color = Color("2c2429")
+const OLD_IRON: Color = Color("2c3748")
+## Where the landmarks stand: the steeple between the two near arcologies, the
+## lighthouse far out on the left, the chimney and bridge arch closer in.
+const STEEPLE: Vector2i = Vector2i(272, 292)
+const LIGHTHOUSE: Vector2i = Vector2i(34, 273)
+const CHIMNEY: Vector2i = Vector2i(128, 318)
+const BRIDGE: Vector3i = Vector3i(262, 344, 321)  # left x, right x, waterline
+
+
+## The meeting-house steeple, leaning a little, standing out of open water:
+## the one shape players learn to find on every skyline.
+static func _steeple(img: Image) -> void:
+	var bx: int = STEEPLE.x
+	var base: int = STEEPLE.y
+	var face: Color = OLD_STONE
+	var shade: Color = OLD_STONE.darkened(0.4)
+	var tower: int = 24     # clapboard tower above the water
+	var belfry: int = 12
+	var spire: int = 26
+	var w: int = 10
+	for y: int in range(base - tower - belfry - spire, base + 1):
+		var up: int = base - y
+		var x: int = bx + up / 16   # the lean: a pixel every 16 rows
+		if up < tower:
+			Px.rect(img, x, y, w, 1, shade if up % 3 == 0 else face)
+			Px.rect(img, x + w - 3, y, 3, 1, shade)
+			if up > 8 and up < 16:
+				Px.rect(img, x + 3, y, 3, 1, P.INK)  # a tall window, dark
+		elif up < tower + 2:
+			Px.rect(img, x - 1, y, w + 2, 1, face)  # cornice
+		elif up < tower + belfry:
+			# The bell-loft: corner posts, an arched opening, the dark inside.
+			Px.rect(img, x + 1, y, w - 2, 1, face)
+			var open_top: int = tower + belfry - 3
+			if up < open_top:
+				Px.rect(img, x + 3, y, w - 6, 1, P.INK)
+			elif up == open_top:
+				Px.rect(img, x + 4, y, w - 8, 1, P.INK)
+			Px.dot(img, x + w - 2, y, shade)
+		elif up < tower + belfry + 2:
+			Px.rect(img, x, y, w, 1, face)
+		else:
+			var t: float = float(up - tower - belfry - 2) / float(spire - 2)
+			var half: float = (float(w) * 0.5 - 1.0) * (1.0 - t) + 0.5
+			var cx: float = x + w * 0.5
+			for xx: int in range(floori(cx - half), ceili(cx + half)):
+				Px.dot(img, xx, y, face if xx < floori(cx) else shade)
+	# The weathervane, bent.
+	var top: int = base - tower - belfry - spire
+	var tip: Vector2i = Vector2i(bx + (tower + belfry + spire) / 16 + w / 2, top)
+	Px.line(img, tip, tip + Vector2i(0, -4), shade)
+	Px.line(img, tip + Vector2i(0, -4), tip + Vector2i(3, -5), shade)
+	# Wet black where the water laps it, and its own pale tidemark.
+	Px.rect(img, bx, base - 1, w, 2, Color("05080f"))
+	Px.rect(img, bx, base - 6, w, 1, Color(P.GLINT, 0.45))
+
+
+## A lighthouse far out, dark, its lamp long dead.
+static func _lighthouse(img: Image) -> void:
+	var x: int = LIGHTHOUSE.x
+	var base: int = LIGHTHOUSE.y
+	var c: Color = Color("2a3446")
+	for y: int in range(base - 22, base + 1):
+		var up: int = base - y
+		var half: int = 3 if up < 10 else 2
+		Px.rect(img, x - half, y, half * 2 + 1, 1, c if (up / 5) % 2 == 0 else c.lightened(0.12))
+	# Gallery and the dead lamp room.
+	Px.rect(img, x - 3, base - 23, 7, 1, c)
+	Px.rect(img, x - 1, base - 27, 3, 4, P.INK)
+	Px.dot(img, x, base - 26, Color(P.GLINT, 0.25))  # glass catching the city, nothing more
+	Px.rect(img, x - 2, base - 28, 5, 1, c)
+	Px.dot(img, x, base - 29, c)
+
+
+## A brick mill chimney, closer in, its top broken off.
+static func _chimney(img: Image) -> void:
+	var x: int = CHIMNEY.x
+	var base: int = CHIMNEY.y
+	var h: int = 52
+	for y: int in range(base - h, base + 1):
+		var up: int = base - y
+		var w: int = 9 if up < 34 else 8
+		if up > h - 5:
+			w = 10  # the corbelled band near the top
+		var c: Color = OLD_BRICK if up % 7 != 0 else OLD_BRICK.darkened(0.3)
+		Px.rect(img, x - w / 2, y, w, 1, c)
+		Px.dot(img, x + w - w / 2 - 1, y, OLD_BRICK.lightened(0.15))
+	# The broken top: a ragged edge.
+	for k: int in range(5):
+		Px.dot(img, x - 3 + k * 2, base - h - [1, 0, 2, 0, 1][k], OLD_BRICK)
+	Px.rect(img, x - 5, base - 1, 10, 2, Color("05080f"))
+	Px.rect(img, x - 5, base - 7, 10, 1, Color(P.GLINT, 0.4))
+
+
+## The top of an old iron bridge arch, the rest of the bridge under water.
+static func _bridge_arch(img: Image) -> void:
+	var x0: int = BRIDGE.x
+	var x1: int = BRIDGE.y
+	var water: int = BRIDGE.z
+	var span: float = float(x1 - x0)
+	var rise: float = 20.0
+	var last_top: Vector2i = Vector2i(x0, water)
+	var last_low: Vector2i = Vector2i(x0, water)
+	for k: int in range(0, int(span) + 1):
+		var t: float = float(k) / span
+		var arc: float = rise * 4.0 * t * (1.0 - t)
+		var top: Vector2i = Vector2i(x0 + k, water - roundi(arc))
+		var low: Vector2i = Vector2i(x0 + k, water - roundi(arc * 0.6))
+		Px.line(img, last_top, top, OLD_IRON)
+		Px.dot(img, top.x, top.y - 1, Color(P.RAIN, 0.35))
+		Px.line(img, last_low, low, OLD_IRON)
+		# The lattice between the two chords.
+		if k % 6 == 0 and k > 0:
+			Px.line(img, top, Vector2i(x0 + k - 6, water - roundi(rise * 4.0 * (float(k - 6) / span) * (1.0 - float(k - 6) / span) * 0.6)), OLD_IRON)
+		last_top = top
+		last_low = low
+	# Rust where the paint has gone, picked out by the city's light.
+	for k: int in range(8, int(span) - 6, 11):
+		var t: float = float(k) / span
+		Px.dot(img, x0 + k, water - roundi(rise * 4.0 * t * (1.0 - t)), Color(P.RUST, 0.9))
 
 
 ## One arcology: stilts with their tidemarks, the Waterline deck on them, the
@@ -336,8 +616,7 @@ static func _far_crown(img: Image, x: int, top: int, w: int) -> void:
 	for tx: int in range(x - 2, x + w + 3, 2):
 		if (tx * 5) % 3 != 0:
 			Px.dot(img, tx, top - 1, Color(LEAF_LIT, 0.8))
-	Px.rect(img, x + w / 3, top - 5, 2, 5, Color("223049"))
-	Px.dot(img, x + w / 3, top - 5, Color(CROWN_LIGHT, 0.5))
+	_dome(img, x + w * 0.5, float(top), w * 0.5 + 2.0, 6.0, 0.0)
 	for wy: int in range(top + 3, FOG_TOP + 4, 3):
 		for wx: int in range(x + 1, x + w - 2, 2):
 			if (wx * 7 + wy * 13) % 5 == 0:
@@ -377,7 +656,7 @@ const LEAF_RIM: Color = Color("7fb8a4")
 static func _walled_crown(img: Image, i: int, body: Color, lit_side: Color, dark_side: Color, rng: RandomNumberGenerator) -> void:
 	var a: Array = ARCOLOGIES[i]
 	var cx: int = a[0]
-	var shaft_w: int = a[2]
+	var shaft_w: int = top_shaft_width(i)
 	var top: int = a[3]
 	var d: float = depth_of(i)
 	var cw: int = crown_width(i)
@@ -450,6 +729,24 @@ static func _walled_crown(img: Image, i: int, body: Color, lit_side: Color, dark
 		var from: Vector2i = Vector2i(roundi(lerpf(x0, cx - bottom_w * 0.5, 0.0) + cw * t), rim + wh)
 		var to: Vector2i = Vector2i(roundi(cx - bottom_w * 0.5 + bottom_w * t), rim + wh + fh)
 		Px.line(img, from, to, body)
+	# Struts from the terrace's outer edges back down to the shaft, so the
+	# overhang is carried by the core, with cables from the lip to the shaft.
+	var thick: int = 2 if d < 0.5 else 3
+	var reach: float = float(cw - shaft_w) * 0.5
+	for side: int in [-1, 1]:
+		var shaft_edge: int = strut_foot_x(i, side)
+		for k: int in range(2):
+			var sx: int = cx + side * (cw / 2 - 3 - k * int(reach * 0.45))
+			var from: Vector2i = Vector2i(sx, rim + wh + 1)
+			var to: Vector2i = Vector2i(shaft_edge, rim + wh + fh + roundi(reach * (0.95 - 0.4 * k)))
+			for t: int in range(thick):
+				Px.line(img, from + Vector2i(0, t), to + Vector2i(0, t), dark_side)
+			Px.line(img, from + Vector2i(0, -1), to + Vector2i(0, -1), Color(CROWN_LIGHT, 0.3))
+			# A collar where the strut meets the shaft.
+			Px.rect(img, to.x - 1 if side > 0 else to.x - 1, to.y - 1, 3, 3, lit_side)
+		# Tension cables from the lip down to the shaft, thin and taut.
+		var lip: Vector2i = Vector2i(cx + side * (cw / 2 - 1), rim + wh)
+		Px.line(img, lip, Vector2i(shaft_edge, rim + wh + fh + roundi(reach * 1.4)), Color(P.RAIN, 0.3))
 	# Lights under the terrace's lip.
 	for lx: int in range(x0 + 2, x0 + cw - 2, 4):
 		Px.dot(img, lx, rim + wh, Color(P.CYAN, 0.55))
@@ -461,8 +758,91 @@ static func _walled_crown(img: Image, i: int, body: Color, lit_side: Color, dark
 	Px.rect(img, px, py, pad_w, 2, stone)
 	for lx: int in range(px, px + pad_w, 3):
 		Px.dot(img, lx, py - 1, Color(P.CYAN, 0.8))
+	# The dome: glass on a lattice over the whole garden, rain running off it.
+	# A wide terrace gets a second, smaller dome beside the first.
+	var ry: float = float(rim - top) + 5.0
+	_dome(img, float(cx), float(rim), cw * 0.5 - 1.0, ry, d)
+	if cw > 80:
+		_dome(img, float(x0 + cw / 4), float(rim), cw * 0.24, ry * 0.55, d)
 
 
+## Glass for the domes: a cold sea-green, so the glass reads apart from the night.
+const GLASS: Color = Color("3f7f7c")
+const GLASS_LIT: Color = Color("9fd8cf")
+
+
+## A glass-lattice dome: a flattened half-ellipse standing on row `base`, the
+## glass a dither so what's under it shows through, the lattice in lit lines,
+## and a bright crescent where the city's light catches the top.
+static func _dome(img: Image, cx: float, base: float, rx: float, ry: float, d: float) -> void:
+	var cell: float = lerpf(5.0, 8.0, d)
+	for y: int in range(floori(base - ry), int(base)):
+		for x: int in range(floori(cx - rx), ceili(cx + rx)):
+			var u: float = (x + 0.5 - cx) / rx
+			var v: float = (base - (y + 0.5)) / ry
+			var r: float = u * u + v * v
+			if r > 1.0:
+				continue
+			# The lattice runs along the dome's curve: meridians and rings.
+			var lon: float = asin(clampf(u / sqrt(maxf(1.0 - v * v, 0.0001)), -1.0, 1.0)) * rx / cell
+			var lat: float = v * ry / (cell * 0.7)
+			var on_line: bool = absf(lon - roundf(lon)) < 0.12 or absf(lat - roundf(lat)) < 0.14
+			if r > 0.9:
+				Px.dot(img, x, y, Color(GLASS_LIT, 0.55))  # the rim of the glass
+			elif on_line:
+				Px.dot(img, x, y, Color(GLASS_LIT, 0.28))
+			elif Px.dither(x, y, 0.35):
+				Px.dot(img, x, y, Color(GLASS, 0.45))
+			# The crescent of light on the upper left.
+			if u < -0.1 and v > 0.45 and r > 0.7 and r <= 0.9:
+				Px.dot(img, x, y, Color(CROWN_LIGHT, 0.45))
+
+
+## A dead arcology going down far out on the water: its hull tilted, the
+## dome over it broken open, its legs already gone under.
+static func _sunk_arcology(img: Image, i: int) -> void:
+	var a: Array = ARCOLOGIES[i]
+	var cx: float = float(a[0])
+	var base: float = float(a[1])
+	var rx: float = float(a[2]) * 0.78
+	var ry: float = rx * 0.62
+	var tilt: float = 0.13   # radians, right side down
+	var hull: Color = Color("152136")
+	var ring: Color = Color("0f1828")
+	var cs: float = cos(tilt)
+	var sn: float = sin(tilt)
+	for y: int in range(floori(base - rx), int(base)):
+		for x: int in range(floori(cx - rx - 4), ceili(cx + rx + 4)):
+			var px: float = x + 0.5 - cx
+			var py: float = y + 0.5 - (base + 6.0)
+			var u: float = (px * cs + py * sn) / rx
+			var v: float = -(-px * sn + py * cs) / ry
+			if v < -0.35 or u * u + v * v > 1.0:
+				continue
+			var c: Color = hull
+			if v < 0.12:
+				c = ring  # the hull's structural ring, under the dome
+				if v > 0.02 and v < 0.07 and int(x) % 3 == 0:
+					c = Color("0b111c")  # dead windows
+			else:
+				var lon: float = u * 13.0
+				var lat: float = v * 8.0
+				if absf(lon - roundf(lon)) < 0.1 or absf(lat - roundf(lat)) < 0.12:
+					c = Color("2f4a55")
+				# Panes gone: the dark inside showing through.
+				var hole: int = (int(floorf(lon + 13.0)) * 31 + int(floorf(lat)) * 17) % 7
+				if hole == 0 or (u > 0.3 and hole < 3):
+					c = Color("0a1019")
+			Px.dot(img, x, y, c)
+	# Water breaking against it.
+	var rng: RandomNumberGenerator = _rng(61)
+	for k: int in range(26):
+		var fx: int = int(cx - rx) + rng.randi_range(0, int(rx * 2.0))
+		Px.rect(img, fx, int(base) - 1 - rng.randi_range(0, 2), rng.randi_range(1, 4), 1, Color(P.RAIN, 0.45))
+
+
+## The legs: an arcade of arches under the deck, the end legs curving out
+## like buttresses as they go down into the water.
 static func _stilts(img: Image, i: int, body: Color, dark_side: Color) -> void:
 	var a: Array = ARCOLOGIES[i]
 	var cx: int = a[0]
@@ -474,19 +854,38 @@ static func _stilts(img: Image, i: int, body: Color, dark_side: Color) -> void:
 	var leg_w: int = maxi(2, int(lerpf(2.0, 12.0, d)))
 	var x0: int = cx - dw / 2 + 2
 	var span: float = float(dw - 4 - leg_w) / float(legs - 1)
+	var h: int = foot - deck
+	var flare: int = maxi(1, leg_w)
+	var lit: Color = body.lightened(0.08)
 	var xs: Array[int] = []
 	for l: int in range(legs):
-		var lx: int = x0 + roundi(span * l)
-		xs.append(lx)
-		Px.rect(img, lx, deck, leg_w, foot - deck + 2, dark_side)
-		Px.rect(img, lx + leg_w - maxi(1, leg_w / 4), deck, maxi(1, leg_w / 4), foot - deck + 2, body.lightened(0.08))
-		_tidemarks(img, lx, leg_w, foot, d)
-	# Cross-bracing between the legs.
+		xs.append(x0 + roundi(span * l))
+	# The spandrels: solid between the deck and each arch's curve.
+	var spring: float = float(deck) + float(h) * 0.7
 	for l: int in range(legs - 1):
-		var a0: Vector2i = Vector2i(xs[l] + leg_w, deck + 2)
-		var b0: Vector2i = Vector2i(xs[l + 1], foot - (foot - deck) / 3)
-		Px.line(img, a0, b0, dark_side.darkened(0.2))
-		Px.line(img, Vector2i(xs[l + 1], deck + 2), Vector2i(xs[l] + leg_w, foot - (foot - deck) / 3), dark_side.darkened(0.2))
+		var left: int = xs[l] + leg_w
+		var right: int = xs[l + 1]
+		var half: float = float(right - left) * 0.5
+		var mid: float = float(left) + half
+		for x: int in range(left, right):
+			var u: float = (x + 0.5 - mid) / half
+			var y_arch: float = spring - (spring - float(deck) - 2.0) * sqrt(maxf(0.0, 1.0 - u * u))
+			Px.rect(img, x, deck, 1, int(y_arch) - deck, dark_side)
+			Px.dot(img, x, int(y_arch), lit)  # the arch's lit edge
+	# The legs, flaring at the foot; the end legs lean outward as they go down.
+	for l: int in range(legs):
+		for y: int in range(deck, foot + 2):
+			var t: float = float(y - deck) / float(maxi(h, 1))
+			var lean: int = 0
+			if l == 0:
+				lean = -roundi(float(flare) * t * t * 1.5)
+			elif l == legs - 1:
+				lean = roundi(float(flare) * t * t * 1.5)
+			var widen: int = roundi(float(flare) * maxf(0.0, t - 0.75) * 2.0)
+			var lx: int = xs[l] + lean - widen / 2
+			Px.rect(img, lx, y, leg_w + widen, 1, dark_side)
+			Px.dot(img, lx + leg_w + widen - 1, y, lit)
+		_tidemarks(img, xs[l] + (-roundi(flare * 1.5) if l == 0 else (roundi(flare * 1.5) if l == legs - 1 else 0)) - flare / 2, leg_w + flare, foot, d)
 
 
 ## The tidemarks: pale lines left on a stilt by each rise of the water, oldest

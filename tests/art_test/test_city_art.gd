@@ -52,17 +52,20 @@ func test_arcology_decks_are_separate() -> void:
 		for j: int in range(i + 1, n):
 			if absf(CityArt.depth_of(i) - CityArt.depth_of(j)) > 0.2:
 				continue
+			if CityArt.ARCOLOGIES[i][4] == "sunk" or CityArt.ARCOLOGIES[j][4] == "sunk":
+				continue  # the sunk one has no deck left
 			var gap: int = absi(int(CityArt.ARCOLOGIES[i][0]) - int(CityArt.ARCOLOGIES[j][0])) - (CityArt.deck_width(i) + CityArt.deck_width(j)) / 2
 			assert_int(gap).is_greater(8)
 
 
 func test_each_crown_is_a_walled_garden() -> void:
 	# The Crown's terraces are walled, much wider than their shafts, with trees
-	# showing over the wall.
-	var img: Image = CityArt.compose()
+	# showing over the wall (checked on each arcology drawn alone, before fog).
 	for i: int in CityArt.crown():
 		if CityArt.ARCOLOGIES[i][4] == "near":
 			continue
+		var img: Image = Px.blank(CityArt.VIEW.x, CityArt.VIEW.y)
+		CityArt._arcology(img, i)
 		assert_int(CityArt.crown_width(i)).is_greater(int(CityArt.ARCOLOGIES[i][2]) * 3 / 2)
 		var cx: int = CityArt.ARCOLOGIES[i][0]
 		var half: int = CityArt.crown_width(i) / 2
@@ -72,3 +75,42 @@ func test_each_crown_is_a_walled_garden() -> void:
 				if img.get_pixel(x, y).is_equal_approx(CityArt.LEAF):
 					leaves += 1
 		assert_int(leaves).is_greater(10)
+
+
+func test_each_crown_is_carried_by_its_shaft() -> void:
+	# No terrace floats: the shaft runs unbroken from under each Crown down to
+	# its deck, right where the struts land on either side.
+	for i: int in CityArt.crown():
+		if CityArt.ARCOLOGIES[i][4] == "near":
+			continue
+		var img: Image = Px.blank(CityArt.VIEW.x, CityArt.VIEW.y)
+		CityArt._arcology(img, i)
+		var under: int = CityArt.rim_y(i) + CityArt.wall_height(i) + CityArt.flare_height(i)
+		for side: int in [-1, 1]:
+			var x: int = CityArt.strut_foot_x(i, side) - side
+			for y: int in range(under, CityArt.deck_y(i)):
+				assert_float(img.get_pixel(x, y).a).override_failure_message(
+					"arcology %d: gap in the shaft at (%d, %d)" % [i, x, y]).is_greater(0.9)
+
+
+func test_the_steeple_stands_in_open_water() -> void:
+	# Port Patience's steeple is the landmark: it stands between the arcologies,
+	# not behind or on a deck, so it reads on the skyline.
+	var x0: int = CityArt.STEEPLE.x
+	var x1: int = x0 + 12
+	for i: int in range(CityArt.ARCOLOGIES.size()):
+		if absf(CityArt.depth_of(i) - 0.55) > 0.2 or CityArt.ARCOLOGIES[i][4] == "sunk":
+			continue
+		var cx: int = CityArt.ARCOLOGIES[i][0]
+		var half: int = CityArt.deck_width(i) / 2
+		assert_bool(x1 < cx - half or x0 > cx + half).is_true()
+
+
+func test_one_arcology_is_sinking_and_left_out_of_the_crown() -> void:
+	# The dead arcology going down in the distance has no Crown any more.
+	var sunk: Array[int] = []
+	for i: int in range(CityArt.ARCOLOGIES.size()):
+		if CityArt.ARCOLOGIES[i][4] == "sunk":
+			sunk.append(i)
+	assert_int(sunk.size()).is_equal(1)
+	assert_bool(sunk[0] in CityArt.crown()).is_false()
