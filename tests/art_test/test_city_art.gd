@@ -52,6 +52,8 @@ func test_arcology_decks_are_separate() -> void:
 		for j: int in range(i + 1, n):
 			if absf(CityArt.depth_of(i) - CityArt.depth_of(j)) > 0.2:
 				continue
+			if CityArt.ARCOLOGIES[i][4] == "sunk" or CityArt.ARCOLOGIES[j][4] == "sunk":
+				continue  # the sunk one has no deck left
 			var gap: int = absi(int(CityArt.ARCOLOGIES[i][0]) - int(CityArt.ARCOLOGIES[j][0])) - (CityArt.deck_width(i) + CityArt.deck_width(j)) / 2
 			assert_int(gap).is_greater(8)
 
@@ -80,8 +82,18 @@ func test_the_steeple_stands_in_open_water() -> void:
 	var x0: int = CityArt.STEEPLE.x
 	var x1: int = x0 + 12
 	for i: int in range(CityArt.ARCOLOGIES.size()):
-		if absf(CityArt.depth_of(i) - 0.55) > 0.2:
+		if absf(CityArt.depth_of(i) - 0.55) > 0.2 or CityArt.ARCOLOGIES[i][4] == "sunk":
 			continue
 		var cx: int = CityArt.ARCOLOGIES[i][0]
 		var half: int = CityArt.deck_width(i) / 2
 		assert_bool(x1 < cx - half or x0 > cx + half).is_true()
+
+
+func test_one_arcology_is_sinking_and_left_out_of_the_crown() -> void:
+	# The dead arcology going down in the distance has no Crown any more.
+	var sunk: Array[int] = []
+	for i: int in range(CityArt.ARCOLOGIES.size()):
+		if CityArt.ARCOLOGIES[i][4] == "sunk":
+			sunk.append(i)
+	assert_int(sunk.size()).is_equal(1)
+	assert_bool(sunk[0] in CityArt.crown()).is_false()

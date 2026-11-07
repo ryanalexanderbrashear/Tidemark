@@ -30,12 +30,13 @@ const CROWN_LIGHT: Color = Color("cfe9ff")
 ## width, top row, depth (0 far .. 1 near), shape, seed.
 ## Shapes: "setback" narrows in steps, "twin" is two shafts on one deck,
 ## "spire" tapers to a mast, "slab" is a plain block, "near" is the close one
-## cropped by the frame, drawn floor by floor.
+## cropped by the frame, drawn floor by floor, and "sunk" is a dead arcology
+## going down in the distance, its dome broken (width is its hull's).
 const ARCOLOGIES: Array[Array] = [
 	[92, 277, 30, 88, "setback", 1, 0.15],
 	[300, 276, 24, 132, "slab", 2, 0.1],
 	[452, 278, 32, 70, "spire", 3, 0.2],
-	[528, 275, 20, 150, "slab", 4, 0.05],
+	[462, 289, 110, 190, "sunk", 4, 0.35],
 	[198, 293, 54, 36, "twin", 5, 0.55],
 	[372, 297, 60, 54, "setback", 6, 0.6],
 	[598, 352, 104, -20, "near", 7, 1.0],
@@ -45,7 +46,7 @@ const ARCOLOGIES: Array[Array] = [
 const FAR_CROWNS: Array[Array] = [[24, 104, 12], [162, 110, 10], [258, 98, 14], [338, 112, 9], [508, 100, 12], [404, 108, 8]]
 
 ## Causeways between Waterline decks: [from arcology, to arcology]. Indices into ARCOLOGIES.
-const CAUSEWAYS: Array[Array] = [[0, 4], [4, 5], [1, 5], [2, 3], [5, 6], [2, 5]]
+const CAUSEWAYS: Array[Array] = [[0, 4], [4, 5], [1, 5], [5, 6], [2, 5]]
 
 ## Small neon on the Waterline decks: [arcology, offset from centre, word, color].
 const DECK_SIGNS: Array[Array] = [
@@ -132,9 +133,14 @@ static func compose(rain: bool = false) -> Image:
 			for c: Array in FAR_CROWNS:
 				_far_crown(layer, c[0], c[1], c[2])
 			_lighthouse(layer)
+		if g[0] == 0.3:
+			# The sunk arcology first, behind everything else at its distance.
+			for i: int in range(ARCOLOGIES.size()):
+				if ARCOLOGIES[i][4] == "sunk":
+					_sunk_arcology(layer, i)
 		for i: int in range(ARCOLOGIES.size()):
 			var d: float = depth_of(i)
-			if d >= g[0] and d < g[1]:
+			if d >= g[0] and d < g[1] and ARCOLOGIES[i][4] != "sunk":
 				_arcology(layer, i)
 		for c: Array in CAUSEWAYS:
 			var d: float = maxf(depth_of(c[0]), depth_of(c[1]))
@@ -604,8 +610,7 @@ static func _far_crown(img: Image, x: int, top: int, w: int) -> void:
 	for tx: int in range(x - 2, x + w + 3, 2):
 		if (tx * 5) % 3 != 0:
 			Px.dot(img, tx, top - 1, Color(LEAF_LIT, 0.8))
-	Px.rect(img, x + w / 3, top - 5, 2, 5, Color("223049"))
-	Px.dot(img, x + w / 3, top - 5, Color(CROWN_LIGHT, 0.5))
+	_dome(img, x + w * 0.5, float(top), w * 0.5 + 2.0, 6.0, 0.0)
 	for wy: int in range(top + 3, FOG_TOP + 4, 3):
 		for wx: int in range(x + 1, x + w - 2, 2):
 			if (wx * 7 + wy * 13) % 5 == 0:
@@ -729,8 +734,91 @@ static func _walled_crown(img: Image, i: int, body: Color, lit_side: Color, dark
 	Px.rect(img, px, py, pad_w, 2, stone)
 	for lx: int in range(px, px + pad_w, 3):
 		Px.dot(img, lx, py - 1, Color(P.CYAN, 0.8))
+	# The dome: glass on a lattice over the whole garden, rain running off it.
+	# A wide terrace gets a second, smaller dome beside the first.
+	var ry: float = float(rim - top) + 5.0
+	_dome(img, float(cx), float(rim), cw * 0.5 - 1.0, ry, d)
+	if cw > 80:
+		_dome(img, float(x0 + cw / 4), float(rim), cw * 0.24, ry * 0.55, d)
 
 
+## Glass for the domes: a cold sea-green, so the glass reads apart from the night.
+const GLASS: Color = Color("3f7f7c")
+const GLASS_LIT: Color = Color("9fd8cf")
+
+
+## A glass-lattice dome: a flattened half-ellipse standing on row `base`, the
+## glass a dither so what's under it shows through, the lattice in lit lines,
+## and a bright crescent where the city's light catches the top.
+static func _dome(img: Image, cx: float, base: float, rx: float, ry: float, d: float) -> void:
+	var cell: float = lerpf(5.0, 8.0, d)
+	for y: int in range(floori(base - ry), int(base)):
+		for x: int in range(floori(cx - rx), ceili(cx + rx)):
+			var u: float = (x + 0.5 - cx) / rx
+			var v: float = (base - (y + 0.5)) / ry
+			var r: float = u * u + v * v
+			if r > 1.0:
+				continue
+			# The lattice runs along the dome's curve: meridians and rings.
+			var lon: float = asin(clampf(u / sqrt(maxf(1.0 - v * v, 0.0001)), -1.0, 1.0)) * rx / cell
+			var lat: float = v * ry / (cell * 0.7)
+			var on_line: bool = absf(lon - roundf(lon)) < 0.12 or absf(lat - roundf(lat)) < 0.14
+			if r > 0.9:
+				Px.dot(img, x, y, Color(GLASS_LIT, 0.55))  # the rim of the glass
+			elif on_line:
+				Px.dot(img, x, y, Color(GLASS_LIT, 0.28))
+			elif Px.dither(x, y, 0.35):
+				Px.dot(img, x, y, Color(GLASS, 0.45))
+			# The crescent of light on the upper left.
+			if u < -0.1 and v > 0.45 and r > 0.7 and r <= 0.9:
+				Px.dot(img, x, y, Color(CROWN_LIGHT, 0.45))
+
+
+## A dead arcology going down far out on the water: its hull tilted, the
+## dome over it broken open, its legs already gone under.
+static func _sunk_arcology(img: Image, i: int) -> void:
+	var a: Array = ARCOLOGIES[i]
+	var cx: float = float(a[0])
+	var base: float = float(a[1])
+	var rx: float = float(a[2]) * 0.78
+	var ry: float = rx * 0.62
+	var tilt: float = 0.13   # radians, right side down
+	var hull: Color = Color("152136")
+	var ring: Color = Color("0f1828")
+	var cs: float = cos(tilt)
+	var sn: float = sin(tilt)
+	for y: int in range(floori(base - rx), int(base)):
+		for x: int in range(floori(cx - rx - 4), ceili(cx + rx + 4)):
+			var px: float = x + 0.5 - cx
+			var py: float = y + 0.5 - (base + 6.0)
+			var u: float = (px * cs + py * sn) / rx
+			var v: float = -(-px * sn + py * cs) / ry
+			if v < -0.35 or u * u + v * v > 1.0:
+				continue
+			var c: Color = hull
+			if v < 0.12:
+				c = ring  # the hull's structural ring, under the dome
+				if v > 0.02 and v < 0.07 and int(x) % 3 == 0:
+					c = Color("0b111c")  # dead windows
+			else:
+				var lon: float = u * 13.0
+				var lat: float = v * 8.0
+				if absf(lon - roundf(lon)) < 0.1 or absf(lat - roundf(lat)) < 0.12:
+					c = Color("2f4a55")
+				# Panes gone: the dark inside showing through.
+				var hole: int = (int(floorf(lon + 13.0)) * 31 + int(floorf(lat)) * 17) % 7
+				if hole == 0 or (u > 0.3 and hole < 3):
+					c = Color("0a1019")
+			Px.dot(img, x, y, c)
+	# Water breaking against it.
+	var rng: RandomNumberGenerator = _rng(61)
+	for k: int in range(26):
+		var fx: int = int(cx - rx) + rng.randi_range(0, int(rx * 2.0))
+		Px.rect(img, fx, int(base) - 1 - rng.randi_range(0, 2), rng.randi_range(1, 4), 1, Color(P.RAIN, 0.45))
+
+
+## The legs: an arcade of arches under the deck, the end legs curving out
+## like buttresses as they go down into the water.
 static func _stilts(img: Image, i: int, body: Color, dark_side: Color) -> void:
 	var a: Array = ARCOLOGIES[i]
 	var cx: int = a[0]
@@ -742,19 +830,38 @@ static func _stilts(img: Image, i: int, body: Color, dark_side: Color) -> void:
 	var leg_w: int = maxi(2, int(lerpf(2.0, 12.0, d)))
 	var x0: int = cx - dw / 2 + 2
 	var span: float = float(dw - 4 - leg_w) / float(legs - 1)
+	var h: int = foot - deck
+	var flare: int = maxi(1, leg_w)
+	var lit: Color = body.lightened(0.08)
 	var xs: Array[int] = []
 	for l: int in range(legs):
-		var lx: int = x0 + roundi(span * l)
-		xs.append(lx)
-		Px.rect(img, lx, deck, leg_w, foot - deck + 2, dark_side)
-		Px.rect(img, lx + leg_w - maxi(1, leg_w / 4), deck, maxi(1, leg_w / 4), foot - deck + 2, body.lightened(0.08))
-		_tidemarks(img, lx, leg_w, foot, d)
-	# Cross-bracing between the legs.
+		xs.append(x0 + roundi(span * l))
+	# The spandrels: solid between the deck and each arch's curve.
+	var spring: float = float(deck) + float(h) * 0.7
 	for l: int in range(legs - 1):
-		var a0: Vector2i = Vector2i(xs[l] + leg_w, deck + 2)
-		var b0: Vector2i = Vector2i(xs[l + 1], foot - (foot - deck) / 3)
-		Px.line(img, a0, b0, dark_side.darkened(0.2))
-		Px.line(img, Vector2i(xs[l + 1], deck + 2), Vector2i(xs[l] + leg_w, foot - (foot - deck) / 3), dark_side.darkened(0.2))
+		var left: int = xs[l] + leg_w
+		var right: int = xs[l + 1]
+		var half: float = float(right - left) * 0.5
+		var mid: float = float(left) + half
+		for x: int in range(left, right):
+			var u: float = (x + 0.5 - mid) / half
+			var y_arch: float = spring - (spring - float(deck) - 2.0) * sqrt(maxf(0.0, 1.0 - u * u))
+			Px.rect(img, x, deck, 1, int(y_arch) - deck, dark_side)
+			Px.dot(img, x, int(y_arch), lit)  # the arch's lit edge
+	# The legs, flaring at the foot; the end legs lean outward as they go down.
+	for l: int in range(legs):
+		for y: int in range(deck, foot + 2):
+			var t: float = float(y - deck) / float(maxi(h, 1))
+			var lean: int = 0
+			if l == 0:
+				lean = -roundi(float(flare) * t * t * 1.5)
+			elif l == legs - 1:
+				lean = roundi(float(flare) * t * t * 1.5)
+			var widen: int = roundi(float(flare) * maxf(0.0, t - 0.75) * 2.0)
+			var lx: int = xs[l] + lean - widen / 2
+			Px.rect(img, lx, y, leg_w + widen, 1, dark_side)
+			Px.dot(img, lx + leg_w + widen - 1, y, lit)
+		_tidemarks(img, xs[l] + (-roundi(flare * 1.5) if l == 0 else (roundi(flare * 1.5) if l == legs - 1 else 0)) - flare / 2, leg_w + flare, foot, d)
 
 
 ## The tidemarks: pale lines left on a stilt by each rise of the water, oldest
