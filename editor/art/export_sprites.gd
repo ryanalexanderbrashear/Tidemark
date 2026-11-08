@@ -46,12 +46,9 @@ func _init() -> void:
 
 func _export(cast: GDScript, figure: GDScript, id: String, dir: String) -> Error:
 	var size: Vector2i = cast.size(id)
-	var anims: Dictionary = cast.anims(id) if id != "detective" else {"idle": 4, "walk": 8}
+	var anims: Dictionary = cast.anims(id)
 	var parts: Array[String] = []
-	if id == "detective":
-		parts = ["sprite"]
-	else:
-		parts.assign(figure.PARTS)
+	parts.assign(figure.PARTS)
 
 	var cols: int = 0
 	for a: String in anims:

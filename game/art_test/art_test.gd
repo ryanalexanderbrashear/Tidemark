@@ -11,10 +11,11 @@ extends Node
 ## window's own resolution behind the crisp pixel-art playable layer.
 ##
 ## The detective starts as the tall, rim-lit draft of the "rain-worn tracer"
-## (ArtDetectiveTall, toward Replaced's look), with the market's people drawn
-## closer to final on the same rig and light (ArtCast). C cycles to the 64 px
-## pass (ArtDetective) and to the first proof-of-concept sprites, to compare;
-## those looks bring back the first sketches of Osk, the fixer, the tech and Vale.
+## The detective and the market's people are drawn closer to final on one
+## realistic 8-head body and light (ArtCast). C cycles to the earlier detective
+## drafts to compare: the 64 px pass (ArtDetective), the tall rim-lit draft
+## (ArtDetectiveTall), and the first proof-of-concept sprites; the 64 px pass and
+## the first sketch bring back the first sketches of Osk, the fixer, the tech and Vale.
 ##
 ## X opens the examine test (ExamineView): the items in the detective's pockets,
 ## held up close and turned over by hand to find what's on their other side.
@@ -87,10 +88,10 @@ var res_index: int = 0
 var voice: Voice = Voice.THOUGHT
 var fog: Fog = Fog.STEPPED
 var detective_x: float = ArtMarketFloor.START_X
-enum Look { CLOSER, TALL, SKETCH }
-const LOOK_NAMES: Array[String] = ["closer to final", "tall rim-lit draft", "first sketch"]
-## The tall draft by default: Osk and the fixer are drawn to its scale.
-var look: Look = Look.TALL
+enum Look { CLOSER, TALL, SKETCH, FINAL }
+const LOOK_NAMES: Array[String] = ["64 px pass", "tall rim-lit draft", "first sketch", "8-head cast"]
+## The whole cast on the 8-head body (ArtCast) by default.
+var look: Look = Look.FINAL
 var facing: int = 1
 
 ## Two viewports at native resolution: the background (sky to shanties, with
@@ -145,6 +146,8 @@ var _det_walk: Array[ImageTexture] = []
 var _det_idle: Array[ImageTexture] = []
 var _tall_walk: Array[ImageTexture] = []
 var _tall_idle: Array[ImageTexture] = []
+var _final_walk: Array[ImageTexture] = []
+var _final_idle: Array[ImageTexture] = []
 var _osk_frames: Array[ImageTexture] = []
 var _fixer_frames: Array[ImageTexture] = []
 var _tech_frames: Array[ImageTexture] = []
@@ -263,6 +266,10 @@ func _build() -> void:
 		_tall_walk.append(ImageTexture.create_from_image(ArtDetectiveTall.walk(f)))
 	for f: int in range(ArtDetectiveTall.IDLE_FRAMES):
 		_tall_idle.append(ImageTexture.create_from_image(ArtDetectiveTall.idle(f)))
+	for img: Image in ArtCast.frames("detective", "walk"):
+		_final_walk.append(ImageTexture.create_from_image(img))
+	for img: Image in ArtCast.frames("detective", "idle"):
+		_final_idle.append(ImageTexture.create_from_image(img))
 	for id: String in CAST_ANIMS:
 		var list: Array[ImageTexture] = []
 		for img: Image in ArtCast.frames(id, CAST_ANIMS[id]):
@@ -704,7 +711,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		KEY_F:
 			fog = ((fog + 1) % 3) as Fog
 		KEY_C:
-			look = ((look + 1) % 3) as Look
+			look = ((look + 1) % 4) as Look
 		KEY_N:
 			_quiet = false
 			_next_line()
@@ -778,10 +785,17 @@ func _update_world(walking: bool) -> void:
 
 	var breath: int = int(_time * 1.6) % 2
 	if look != Look.SKETCH:
-		var tall: bool = look == Look.TALL
-		var walks: Array[ImageTexture] = _tall_walk if tall else _det_walk
-		var idles: Array[ImageTexture] = _tall_idle if tall else _det_idle
-		var stride: float = ArtDetectiveTall.STRIDE if tall else ArtDetective.STRIDE
+		var walks: Array[ImageTexture] = _det_walk
+		var idles: Array[ImageTexture] = _det_idle
+		var stride: float = ArtDetective.STRIDE
+		if look == Look.TALL:
+			walks = _tall_walk
+			idles = _tall_idle
+			stride = ArtDetectiveTall.STRIDE
+		elif look == Look.FINAL:
+			walks = _final_walk
+			idles = _final_idle
+			stride = ArtCast.build("detective").stride
 		var walk_frame: int = int(_walk_dist / (stride / float(walks.size()))) % walks.size()
 		if _shot_walk >= 0:
 			walk_frame = _shot_walk
@@ -791,7 +805,7 @@ func _update_world(walking: bool) -> void:
 		_detective.texture = _det_frames[walk_frame] if walking else _det_frames[ArtCharacters.WALK_FRAMES + breath]
 	_detective.flip_h = facing < 0
 	_place(_detective, detective_x, _detective_size(), market_x, cam_top)
-	var cast: bool = look == Look.TALL
+	var cast: bool = look == Look.TALL or look == Look.FINAL
 	# Osk faces left, toward Vale's stall: the first sketch was drawn that way,
 	# the cast is drawn facing right.
 	_osk.texture = _cast_frame("osk") if cast else _osk_frames[breath]
@@ -911,6 +925,8 @@ func _detective_size() -> Vector2i:
 			return ArtDetective.SIZE
 		Look.TALL:
 			return ArtDetectiveTall.SIZE
+		Look.FINAL:
+			return ArtCast.size("detective")
 	return ArtCharacters.DETECTIVE_SIZE
 
 
@@ -922,7 +938,7 @@ func _cast_frame(id: String, offset: int = 0) -> ImageTexture:
 
 
 func _npc_size(id: String) -> Vector2i:
-	if look == Look.TALL:
+	if look == Look.TALL or look == Look.FINAL:
 		return ArtCast.size(id)
 	match id:
 		"osk":
@@ -1023,9 +1039,9 @@ func _take_shots(dir: String) -> void:
 		["detective-tall-idle", 0, Voice.NONE, 300.0, 1, 0, Fog.STEPPED, -1, Look.TALL],
 		["detective-tall-walk", 0, Voice.NONE, 300.0, 1, 0, Fog.STEPPED, 1, Look.TALL],
 		["detective-tall-volumetric", 0, Voice.NONE, 300.0, 1, 0, Fog.VOLUMETRIC, 6, Look.TALL],
-		["npcs-osk", 0, Voice.NONE, 440.0, 1, 0, Fog.STEPPED, -1, Look.TALL],
-		["npcs-fixer", 0, Voice.NONE, 830.0, 1, 0, Fog.STEPPED, -1, Look.TALL],
-		["npcs-tech", 0, Voice.NONE, 1120.0, 1, 0, Fog.STEPPED, -1, Look.TALL],
+		["npcs-osk", 0, Voice.NONE, 440.0, 1, 0, Fog.STEPPED, -1, Look.FINAL],
+		["npcs-fixer", 0, Voice.NONE, 830.0, 1, 0, Fog.STEPPED, -1, Look.FINAL],
+		["npcs-tech", 0, Voice.NONE, 1120.0, 1, 0, Fog.STEPPED, -1, Look.FINAL],
 	]
 	var only: String = _only_prefix()
 	for shot: Array in plan:
@@ -1039,7 +1055,7 @@ func _take_shots(dir: String) -> void:
 		_line = shot[5]
 		fog = shot[6]
 		_shot_walk = shot[7] if shot.size() > 7 else -1
-		look = shot[8] if shot.size() > 8 else Look.TALL
+		look = shot[8] if shot.size() > 8 else Look.FINAL
 		_typed = 9999.0
 		_time = 1.0
 		_rain.warm(2.0)
@@ -1072,7 +1088,7 @@ func _take_scene_shots(dir: String, only: String) -> void:
 	res_index = 0
 	_apply_resolution()
 	fog = Fog.STEPPED
-	look = Look.TALL
+	look = Look.FINAL
 	_shot_walk = -1
 	var plan: Array[Array] = [
 		# name, room, detective x, facing, what happens
@@ -1163,7 +1179,7 @@ func _take_examine_shots(dir: String, only: String) -> void:
 	detective_x = 300.0
 	facing = 1
 	fog = Fog.STEPPED
-	look = Look.TALL
+	look = Look.FINAL
 	_shot_walk = -1
 	_examine.still = true
 	var plan: Array[Array] = [

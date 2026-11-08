@@ -2,8 +2,9 @@ extends SceneTree
 ## Saves review images of the cast (ArtCast):
 ##   godot --headless --path . -s res://editor/art/cast_sheet.gd -- --out=<dir> [--scale=4]
 ## Writes cast-lineup.png (everyone standing on the market's night blue, side
-## by side, at whole-pixel scale) and <id>-sheet.png per character (one row per
-## animation).
+## by side, at whole-pixel scale), cast-anatomy.png (each character's bare
+## body beside them dressed, over the 8-head chart's lines, 12 px a head) and
+## <id>-sheet.png per character (one row per animation).
 
 
 func _init() -> void:
@@ -39,9 +40,26 @@ func _init() -> void:
 		x += s.x + gap
 	_save(lineup, out.path_join("cast-lineup.png"), scale)
 
+	# The anatomy chart: head lines every 12 px up from the soles.
+	var chart: Image = Image.create_empty(width * 2, height + 24, false, Image.FORMAT_RGBA8)
+	chart.fill(Color("111b2b"))
+	var sole: int = height + 2
+	for k: int in range(9):
+		chart.fill_rect(Rect2i(0, sole - k * 12, chart.get_width(), 1), Color("26354b"))
+	x = gap
 	for id: String in ids:
 		var s: Vector2i = cast.size(id)
-		var anims: Dictionary = cast.anims(id) if id != "detective" else {"idle": 4, "walk": 8}
+		var bare: Image = cast.dummy(id)
+		chart.blend_rect(bare, Rect2i(Vector2i.ZERO, s), Vector2i(x, height + 4 - s.y))
+		var img: Image = cast.frame(id, "idle" if id != "vale" else "passenger", 0)
+		chart.blend_rect(img, Rect2i(Vector2i.ZERO, s), Vector2i(x + s.x, height + 4 - s.y))
+		px.text(chart, x + s.x - px.text_width(id) / 2, height + 12, id, Color("8a96a6"))
+		x += s.x * 2 + gap
+	_save(chart, out.path_join("cast-anatomy.png"), scale)
+
+	for id: String in ids:
+		var s: Vector2i = cast.size(id)
+		var anims: Dictionary = cast.anims(id)
 		var cols: int = 0
 		for a: String in anims:
 			cols = maxi(cols, anims[a])

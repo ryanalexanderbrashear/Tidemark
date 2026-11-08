@@ -47,8 +47,6 @@ func test_drawing_is_the_same_every_time() -> void:
 
 func test_layers_put_back_together_make_the_frame() -> void:
 	for id: String in ArtCast.IDS:
-		if id == "detective":
-			continue
 		for anim: String in ArtCast.anims(id):
 			var layers: Dictionary = {}
 			var img: Image = ArtCast.frame(id, anim, 2, layers)
@@ -108,6 +106,33 @@ func test_aseprite_file_holds_the_frames_layers_and_tags() -> void:
 	var drawn: Image = layers["legs"]
 	assert_bool(legs.get_data() == drawn.get_region(drawn.get_used_rect()).get_data()).is_true()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+
+
+func test_everyone_is_built_on_eight_heads() -> void:
+	# SLYNYRD's chart: a head is 12 px at full height, crotch at half height,
+	# wrist level with the crotch, knee at six heads.
+	for id: String in ArtCast.IDS:
+		var b: ArtFigure.Build = ArtCast.build(id)
+		var unit: float = ArtFigure.FULL_HEIGHT * b.stature / 8.0
+		var sole: float = b.ankle_y + 4.0
+		assert_float((sole - b.top_y) / unit).is_equal_approx(8.0, 0.01)
+		assert_float(b.hip_y - b.top_y).is_between(unit * 3.7, unit * 4.1)
+		var wrist: float = b.shoulder_y + 2.5 + b.upper_arm + b.forearm
+		assert_float(wrist - b.top_y).is_between(unit * 3.9, unit * 4.4)
+		var knee: float = b.hip_y + b.thigh
+		assert_float(knee - b.top_y).is_between(unit * 5.8, unit * 6.4)
+
+
+func test_the_bare_body_is_drawn_in_chart_colours_only() -> void:
+	var img: Image = ArtCast.dummy("detective")
+	var allowed: Array[Color] = [ArtFigure.DUMMY_HEAD, ArtFigure.DUMMY_NECK, ArtFigure.DUMMY_TORSO, ArtFigure.DUMMY_ARM, ArtFigure.DUMMY_LEG, ArtFigure.DUMMY_FAR]
+	for y: int in range(img.get_height()):
+		for x: int in range(img.get_width()):
+			var c: Color = img.get_pixel(x, y)
+			if c.a > 0.0:
+				assert_bool(allowed.any(func(a: Color) -> bool: return a.is_equal_approx(c))).is_true()
+	# And drawing it leaves the dressed character as it was.
+	assert_bool(ArtCast.build("detective").dummy).is_false()
 
 
 func _row_has_pixels(img: Image, y: int) -> bool:

@@ -1,8 +1,8 @@
 class_name ArtCast
 extends RefCounted
-## The cast, drawn closer to final on one rig (ArtFigure) in the tall
-## detective's style: realistic proportions, no outline, cool neon rim and warm
-## lamp light. The Drowned Market's people (Osk, the fixer, the maintenance
+## The cast, drawn closer to final on one rig (ArtFigure): a realistic 8-head
+## body (SLYNYRD's anatomy chart, which Alex picked), no outline, cool neon rim
+## and warm lamp light. The Drowned Market's people (Osk, the fixer, the maintenance
 ## tech, Vale's passenger) stand in the art test; the later cast (Anton Leith,
 ## Cass Doran, Juno "Velvet" Kade, Pell) are drawn here for the line-up and the
 ## sprite exporter.
@@ -18,8 +18,7 @@ extends RefCounted
 const P = preload("res://game/art_test/art_palette.gd")
 const Figure = preload("res://game/art_test/art_figure.gd")
 
-## Everyone drawn on the rig, in line-up order. The detective is drawn by
-## ArtDetectiveTall but is listed so the exporter and line-up include him.
+## Everyone drawn on the rig, in line-up order.
 const IDS: Array[String] = ["detective", "osk", "fixer", "tech", "vale", "leith", "cass", "velvet", "pell"]
 
 const NAMES: Dictionary[String, String] = {
@@ -58,16 +57,20 @@ static func anims(id: String) -> Dictionary[String, int]:
 
 
 static func size(id: String) -> Vector2i:
-	if id == "detective":
-		return ArtDetectiveTall.SIZE
 	return build(id).size
 
 
 static func frame(id: String, anim: String, f: int, layers: Variant = null) -> Image:
-	if id == "detective":
-		return ArtDetectiveTall.walk(f) if anim == "walk" else ArtDetectiveTall.idle(f)
+	return Figure.draw(build(id), pose(id, anim, f), layers)
+
+
+## The bare body under a character, in the chart's flat colours, standing.
+static func dummy(id: String) -> Image:
 	var b: Figure.Build = build(id)
-	return Figure.draw(b, pose(id, anim, f), layers)
+	b.dummy = true
+	var img: Image = Figure.draw(b, Figure.idle_pose(b, 0))
+	b.dummy = false
+	return img
 
 
 static func frames(id: String, anim: String) -> Array[Image]:
@@ -88,7 +91,7 @@ static func pose(id: String, anim: String, f: int) -> Figure.Pose:
 			p.pocket = false
 			p.far_arm = true
 			if anim == "idle":
-				p.far_swing = -0.4
+				p.far_swing = -0.3
 				p.far_bend = 0.05
 		"fixer":
 			if anim == "idle":
@@ -99,7 +102,7 @@ static func pose(id: String, anim: String, f: int) -> Figure.Pose:
 		"vale":
 			# Turned half away, one arm out to point. Frame 2-3 she lifts her head.
 			p.breath = [0, 0, 1, 1][posmod(f, 4)]
-			p.near_hand = Vector2(b.cx + 17.0, b.shoulder_y + 4.0 - float(p.breath))
+			p.near_hand = Vector2(b.cx + 21.0, b.shoulder_y + 9.0 - float(p.breath))
 			p.near_elbow = Vector2(0, 1)
 			p.pocket = false
 			p.far_arm = true
@@ -108,8 +111,8 @@ static func pose(id: String, anim: String, f: int) -> Figure.Pose:
 		"leith":
 			if anim == "idle":
 				# Hands clasped behind his back, upright, patient.
-				p.near_hand = Vector2(b.cx - 6.0, b.belt_y + 2.0 - float(p.breath))
-				p.near_elbow = Vector2(-1, 0.2)
+				p.near_hand = Vector2(b.cx - 6.5, b.belt_y + 6.0 - float(p.breath))
+				p.near_elbow = Vector2(-0.5, 1)
 				p.pocket = false
 		"velvet":
 			if anim == "idle":
@@ -131,19 +134,20 @@ static func pose(id: String, anim: String, f: int) -> Figure.Pose:
 ## both hands on the wrench. The wrench turns a notch a frame.
 static func _kneel(b: Figure.Build, p: Figure.Pose, f: int) -> void:
 	p.breath = 0
-	p.drop = b.ankle_y - 17.0 - b.hip_y
+	# Thigh upright over the back knee, which rests on the planks.
+	p.drop = b.ankle_y + 0.5 - b.thigh - b.hip_y
 	p.lean = 5
-	p.far_foot = Vector2(b.cx - 17.0, b.ankle_y + 1.0)
+	p.far_foot = Vector2(b.cx - b.shin + 2.0, b.ankle_y)
 	p.far_heel = 5.0
 	p.far_knee = Vector2(0, 1)
 	p.far_toe_back = true
-	p.near_foot = Vector2(b.cx + 17.0, b.ankle_y)
+	p.near_foot = Vector2(b.cx + b.thigh * 0.85, b.ankle_y)
 	p.walking = false
 	# A ratchet: three pulls, then the handle goes back for the next.
 	var turn: float = float(posmod(f, 4))
-	p.near_hand = Vector2(b.cx + 22.0, b.hip_y + p.drop - 7.0 - turn)
+	p.near_hand = Vector2(b.cx + 25.0, b.hip_y + p.drop - 9.0 - turn)
 	p.near_elbow = Vector2(0, 1)
-	p.far_hand = Vector2(b.cx + 20.0, b.hip_y + p.drop - 5.0 - turn)
+	p.far_hand = Vector2(b.cx + 23.0, b.hip_y + p.drop - 7.0 - turn)
 	p.far_elbow = Vector2(0, 1)
 	p.far_arm = true
 	p.pocket = false
@@ -154,6 +158,8 @@ static func build(id: String) -> Figure.Build:
 		return _builds[id]
 	var b: Figure.Build = Figure.Build.new()
 	match id:
+		"detective":
+			_detective(b)
 		"osk":
 			_osk(b)
 		"fixer":
@@ -180,21 +186,62 @@ static func _key(extra: Dictionary[String, Color]) -> Dictionary[String, Color]:
 	return k
 
 
+## The detective, the "rain-worn tracer" Alex picked (2026-11-06): an open
+## storm coat to the knee, short hair and stubble, the steel ocular plate with
+## its cyan iris, the reading port behind the ear, steel braces down the shins.
+## Moved onto the 8-head body; ArtDetectiveTall is the earlier draft.
+static func _detective(b: Figure.Build) -> void:
+	b.proportion(Vector2i(50, 100), 1.0, 22.0)
+	b.hem_y = b.top_y + 12.0 * 6.0
+	b.coat = ArtDetectiveTall.COAT
+	b.coat_lit = ArtDetectiveTall.COAT_LIT
+	b.coat_shade = ArtDetectiveTall.COAT_SHADE
+	b.coat_deep = ArtDetectiveTall.COAT_DEEP
+	b.inner = ArtDetectiveTall.SWEATER
+	b.pants = ArtDetectiveTall.PANTS
+	b.pants_far = ArtDetectiveTall.PANTS_FAR
+	b.boot = ArtDetectiveTall.BOOT
+	b.skin = ArtDetectiveTall.SKIN
+	b.skin_shade = ArtDetectiveTall.SKIN_SHADE
+	b.hand = ArtDetectiveTall.SKIN_SHADE
+	b.hand_lit = Color("c49373")
+	b.head.assign(ArtDetectiveTall.HEAD)
+	b.head_key = ArtDetectiveTall.HEAD_KEY.duplicate()
+	b.glow_keys = "c"
+	b.neck = Rect2i(3, 10, 6, 6)
+	b.props_front = func(img: Image, bb: Figure.Build, p: Figure.Pose, j: Dictionary[String, Vector2]) -> void:
+		# Steel braces down the front of each shin, catching a glint at the knee.
+		for side: String in ["far", "near"]:
+			var knee: Vector2 = j[side + "_knee"]
+			var ankle: Vector2 = p.far_foot if side == "far" else p.near_foot
+			var shin: Vector2 = ankle - knee
+			var n: int = maxi(roundi(shin.length()), 1)
+			var c: Color = ArtDetectiveTall.BRACE if side == "near" else ArtDetectiveTall.BRACE.darkened(0.4)
+			for i: int in range(2, n - 2):
+				var at: Vector2 = knee + shin * (float(i) / float(n)) + Vector2(bb.leg_w[2] - 0.6, 0)
+				Px.dot(img, roundi(at.x), roundi(at.y), c)
+			if side == "near":
+				Px.rect(img, roundi(knee.x) + 1, roundi(knee.y) - 1, 2, 3, ArtDetectiveTall.BRACE)
+				Px.dot(img, roundi(knee.x) + 2, roundi(knee.y) - 1, ArtDetectiveTall.BRACE_LIT)
+
+
 ## Osk, the rival broker: short and broad, bald, goggles pushed up on his
 ## forehead, a brown work jacket under a clear rain poncho, an LED-trimmed
 ## umbrella and a broker's memory case. (Kept from the first sketch.)
 static func _osk(b: Figure.Build) -> void:
-	b.proportion(Vector2i(64, 96), 0.9, 30.0)
-	b.chest_front = 10.0
-	b.chest_back = 10.5
-	b.waist_front = 10.0
-	b.waist_back = 9.0
-	b.hem_y = b.hip_y + 5.0
+	b.proportion(Vector2i(66, 100), 0.88, 30.0)
+	b.chest_front = 9.3
+	b.chest_back = 8.5
+	b.waist_front = 9.0
+	b.waist_back = 6.3
+	b.groin = 7.5
+	b.seat = 8.0
+	b.hem_y = b.hip_y + 8.0
 	b.open_front = false
 	b.collar = false
-	b.leg_w = [4.2, 3.4, 3.2, 2.4]
-	b.arm_w = [3.4, 3.0, 2.4]
-	b.stride = 40.0
+	b.leg_w = [5.6, 4.2, 4.0, 2.6]
+	b.calf = 3.0
+	b.arm_w = [3.3, 2.8, 2.2]
 	b.coat = Color("3a2724")
 	b.coat_lit = Color("5a3d32")
 	b.coat_shade = Color("261a19")
@@ -205,7 +252,7 @@ static func _osk(b: Figure.Build) -> void:
 	b.skin_shade = Color("5e4842")
 	b.hand = Color("5e4842")
 	b.hand_lit = Color("b08670")
-	b.neck = Rect2i(2, 11, 8, 5)
+	b.neck = Rect2i(2, 10, 8, 5)
 	b.head = [
 		"....rrrrrw....",
 		"..rssssssssw..",
@@ -232,7 +279,7 @@ static func _osk(b: Figure.Build) -> void:
 		# The poncho: clear plastic hanging a pixel off him from the shoulders
 		# to below the jacket, with wet creases.
 		var t: Vector2 = j["top"]
-		var hem: int = roundi(bb.hip_y + 8.0) + p.bob
+		var hem: int = roundi(bb.hem_y + 3.0) + p.bob
 		var under: Image = img.duplicate() as Image
 		for y: int in range(roundi(t.y) - 1, hem):
 			for x: int in range(img.get_width()):
@@ -269,15 +316,18 @@ static func _osk(b: Figure.Build) -> void:
 ## lower face pale and narrow under it. Cables run over the shoulder into the
 ## hood. (Kept from the first sketch, with a face.)
 static func _fixer(b: Figure.Build) -> void:
-	b.proportion(Vector2i(44, 100), 1.08, 20.0)
-	b.chest_front = 6.5
-	b.chest_back = 7.5
-	b.waist_front = 5.5
-	b.waist_back = 6.0
+	b.proportion(Vector2i(46, 106), 1.05, 20.0)
+	b.chest_front = 6.8
+	b.chest_back = 6.5
+	b.waist_front = 4.8
+	b.waist_back = 4.8
+	b.groin = 5.0
+	b.seat = 6.5
 	b.hem_y = b.ankle_y - 12.0
 	b.collar = false
-	b.leg_w = [3.0, 2.4, 2.3, 1.7]
-	b.arm_w = [2.5, 2.1, 1.7]
+	b.leg_w = [4.2, 3.0, 2.9, 1.8]
+	b.calf = 2.0
+	b.arm_w = [2.4, 2.0, 1.5]
 	b.coat = Color("1d1828")
 	b.coat_lit = Color("332a46")
 	b.coat_shade = Color("15111e")
@@ -289,7 +339,7 @@ static func _fixer(b: Figure.Build) -> void:
 	b.skin_shade = Color("5a4c50")
 	b.hand = Color("5a4c50")
 	b.hand_lit = Color("a8928a")
-	b.neck = Rect2i(4, 11, 5, 4)
+	b.neck = Rect2i(4, 10, 5, 6)
 	b.head = [
 		"....rrrhhh....",
 		"..rrhhhhhhhw..",
@@ -319,12 +369,14 @@ static func _fixer(b: Figure.Build) -> void:
 ## The maintenance tech: older, grey-bearded, a knit cap with a headlamp, a
 ## green work jacket with a dull reflective band. Works the pump on one knee.
 static func _tech(b: Figure.Build) -> void:
-	b.proportion(Vector2i(60, 92), 0.97, 26.0)
-	b.chest_front = 8.5
-	b.chest_back = 9.0
-	b.waist_front = 7.5
-	b.waist_back = 7.5
-	b.hem_y = b.hip_y + 4.0
+	b.proportion(Vector2i(70, 100), 0.95, 30.0)
+	b.chest_front = 8.3
+	b.chest_back = 8.0
+	b.waist_front = 6.5
+	b.waist_back = 5.8
+	b.groin = 6.0
+	b.seat = 7.5
+	b.hem_y = b.hip_y + 7.0
 	b.open_front = false
 	b.belt = false
 	b.collar = false
@@ -361,12 +413,12 @@ static func _tech(b: Figure.Build) -> void:
 		if p.drop <= 0.0:
 			return
 		# A tool bag on the planks behind him.
-		Px.rect(img, roundi(bb.cx) - 23, roundi(bb.ankle_y) - 2, 10, 6, Color("2a2622"))
-		Px.rect(img, roundi(bb.cx) - 22, roundi(bb.ankle_y) - 4, 8, 2, Color("1a1714"))
+		Px.rect(img, roundi(bb.cx) - 22, roundi(bb.ankle_y) - 2, 10, 6, Color("2a2622"))
+		Px.rect(img, roundi(bb.cx) - 21, roundi(bb.ankle_y) - 4, 8, 2, Color("1a1714"))
 	b.props_front = func(img: Image, bb: Figure.Build, p: Figure.Pose, j: Dictionary[String, Vector2]) -> void:
 		# The reflective band, across the chest.
 		var t: Vector2 = j["top"]
-		var y: int = roundi(t.y) + 13
+		var y: int = roundi(t.y) + 14
 		for x: int in range(roundi(bb.cx - bb.chest_back) + 1, roundi(bb.cx + bb.chest_front + float(p.lean) * 0.8)):
 			if Px.is_solid(img, x, y):
 				img.set_pixel(x, y, Color("6a6f5a"))
@@ -385,16 +437,19 @@ static func _tech(b: Figure.Build) -> void:
 ## one arm out to point. Drawn in the fog's greys, coming apart into it from
 ## the knees down, so she reads as not quite there. (Kept from the first sketch.)
 static func _vale(b: Figure.Build) -> void:
-	b.proportion(Vector2i(44, 92), 0.95, 18.0)
-	b.chest_front = 6.0
-	b.chest_back = 6.5
-	b.waist_front = 5.0
-	b.waist_back = 5.5
+	b.proportion(Vector2i(54, 96), 0.92, 18.0)
+	b.chest_front = 7.3
+	b.chest_back = 6.0
+	b.waist_front = 4.8
+	b.waist_back = 4.3
+	b.groin = 5.0
+	b.seat = 7.0
 	b.hem_y = b.ankle_y - 14.0
 	b.belt = false
 	b.collar = false
-	b.leg_w = [2.8, 2.2, 2.1, 1.5]
-	b.arm_w = [2.2, 1.9, 1.5]
+	b.leg_w = [4.4, 3.0, 2.9, 1.7]
+	b.calf = 2.2
+	b.arm_w = [2.1, 1.8, 1.3]
 	b.coat = Color("3c4452")
 	b.coat_lit = Color("56606f")
 	b.coat_shade = Color("2c333f")
@@ -407,7 +462,7 @@ static func _vale(b: Figure.Build) -> void:
 	b.skin_shade = Color("6a717b")
 	b.hand = Color("8a919b")
 	b.hand_lit = Color("a6adb6")
-	b.neck = Rect2i(4, 11, 4, 4)
+	b.neck = Rect2i(4, 10, 4, 6)
 	b.head = [
 		"....rrrr......",
 		"..rhhhhhhw....",
@@ -427,7 +482,7 @@ static func _vale(b: Figure.Build) -> void:
 	b.head_key = _key({"h": Color("15141a"), "s": b.skin, "S": b.skin_shade, "r": Color("4a5560"), "w": Color("9aa3ad")})
 	b.finish = func(img: Image, bb: Figure.Build, p: Figure.Pose, _j: Dictionary[String, Vector2]) -> void:
 		# Greyed toward the fog, then coming apart from the knees down.
-		var knee: int = roundi(bb.hip_y + 10.0)
+		var knee: int = roundi(bb.hip_y + bb.thigh * 0.8)
 		var h: int = img.get_height()
 		for y: int in range(h):
 			for x: int in range(img.get_width()):
@@ -449,11 +504,13 @@ static func _vale(b: Figure.Build) -> void:
 ## straight back; clean-shaven, a thin pleased mouth. The only pale figure in
 ## the cast, so he reads as "the man in white" from across a dark room.
 static func _leith(b: Figure.Build) -> void:
-	b.proportion(Vector2i(46, 96), 1.05, 21.0)
-	b.chest_front = 7.5
-	b.chest_back = 8.5
-	b.waist_front = 6.0
-	b.waist_back = 7.0
+	b.proportion(Vector2i(48, 104), 1.04, 21.0)
+	b.chest_front = 7.8
+	b.chest_back = 7.0
+	b.waist_front = 5.0
+	b.waist_back = 5.0
+	b.groin = 5.5
+	b.seat = 7.0
 	b.hem_y = b.ankle_y - 10.0
 	b.open_front = false
 	b.belt = false
@@ -502,17 +559,20 @@ static func _leith(b: Figure.Build) -> void:
 ## worn boots, a pack strap. No cyberware. Gender is still open in the docs,
 ## so the look is deliberately neither.
 static func _cass(b: Figure.Build) -> void:
-	b.proportion(Vector2i(44, 90), 0.93, 20.0)
-	b.chest_front = 6.5
-	b.chest_back = 7.5
-	b.waist_front = 6.0
-	b.waist_back = 6.5
-	b.hem_y = b.hip_y + 5.0
+	b.proportion(Vector2i(46, 94), 0.9, 22.0)
+	b.chest_front = 7.3
+	b.chest_back = 6.5
+	b.waist_front = 5.5
+	b.waist_back = 4.8
+	b.groin = 5.5
+	b.seat = 6.8
+	b.hem_y = b.hip_y + 7.0
 	b.open_front = false
 	b.belt = false
 	b.collar = false
-	b.leg_w = [3.0, 2.5, 2.4, 1.9]
-	b.arm_w = [2.6, 2.2, 1.8]
+	b.leg_w = [4.5, 3.3, 3.1, 2.0]
+	b.calf = 2.3
+	b.arm_w = [2.6, 2.1, 1.6]
 	b.coat = Color("2e4a4c")
 	b.coat_lit = Color("456668")
 	b.coat_shade = Color("1f3335")
@@ -524,7 +584,7 @@ static func _cass(b: Figure.Build) -> void:
 	b.skin_shade = Color("4f3e39")
 	b.hand = Color("4f3e39")
 	b.hand_lit = Color("a07c68")
-	b.neck = Rect2i(4, 11, 5, 4)
+	b.neck = Rect2i(4, 10, 5, 6)
 	b.head = [
 		"....rrrhh....",
 		"..rhhhhhhhw..",
@@ -559,16 +619,19 @@ static func _cass(b: Figure.Build) -> void:
 ## the waist over a slip dress, heeled boots, a sleek black bob with a blunt
 ## fringe, and a reading port at the nape that glows faintly when it's in use.
 static func _velvet(b: Figure.Build) -> void:
-	b.proportion(Vector2i(42, 94), 0.97, 19.0)
-	b.chest_front = 6.0
-	b.chest_back = 6.5
+	b.proportion(Vector2i(46, 98), 0.94, 20.0)
+	b.chest_front = 7.5
+	b.chest_back = 6.0
 	b.waist_front = 4.5
-	b.waist_back = 5.0
-	b.hem_y = b.ankle_y - 16.0
+	b.waist_back = 4.3
+	b.groin = 5.0
+	b.seat = 7.2
+	b.hem_y = b.ankle_y - 18.0
 	b.collar = true
 	b.heel = 2.0
-	b.leg_w = [2.8, 2.1, 2.0, 1.4]
-	b.arm_w = [2.2, 1.9, 1.5]
+	b.leg_w = [4.4, 3.0, 2.8, 1.5]
+	b.calf = 2.2
+	b.arm_w = [2.1, 1.8, 1.3]
 	b.coat = Color("3a1d33")
 	b.coat_lit = Color("62305a")
 	b.coat_shade = Color("27131f")
@@ -581,7 +644,7 @@ static func _velvet(b: Figure.Build) -> void:
 	b.skin_shade = Color("5c4643")
 	b.hand = Color("5c4643")
 	b.hand_lit = Color("b48a7c")
-	b.neck = Rect2i(4, 11, 4, 4)
+	b.neck = Rect2i(4, 10, 4, 6)
 	b.head = [
 		"....rrrhh....",
 		"..rhhhhhhhw..",
@@ -613,16 +676,19 @@ static func _velvet(b: Figure.Build) -> void:
 ## stubs (the signal optic comes from this rig), a many-pocketed vest over a
 ## hoodie, a satchel on a strap across the chest.
 static func _pell(b: Figure.Build) -> void:
-	b.proportion(Vector2i(50, 92), 0.94, 22.0)
-	b.chest_front = 9.0
-	b.chest_back = 10.0
-	b.waist_front = 9.0
-	b.waist_back = 8.0
-	b.hem_y = b.hip_y + 6.0
+	b.proportion(Vector2i(54, 98), 0.92, 24.0)
+	b.chest_front = 8.8
+	b.chest_back = 8.5
+	b.waist_front = 8.5
+	b.waist_back = 6.3
+	b.groin = 7.0
+	b.seat = 8.0
+	b.hem_y = b.hip_y + 8.0
 	b.collar = false
 	b.belt = false
-	b.leg_w = [3.6, 3.0, 2.8, 2.1]
-	b.arm_w = [3.0, 2.6, 2.1]
+	b.leg_w = [5.2, 3.8, 3.6, 2.3]
+	b.calf = 2.7
+	b.arm_w = [3.0, 2.5, 2.0]
 	b.coat = Color("3b3a2f")
 	b.coat_lit = Color("57564a")
 	b.coat_shade = Color("29281f")
@@ -634,7 +700,7 @@ static func _pell(b: Figure.Build) -> void:
 	b.skin_shade = Color("554340")
 	b.hand = Color("2a2624")
 	b.hand_lit = Color("8a7060")
-	b.neck = Rect2i(3, 11, 7, 4)
+	b.neck = Rect2i(3, 10, 7, 5)
 	b.head = [
 		"....rrrr......",
 		"..rhhhhhhw....",
