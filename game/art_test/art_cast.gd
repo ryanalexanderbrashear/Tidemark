@@ -205,10 +205,23 @@ static func _detective(b: Figure.Build) -> void:
 	b.skin_shade = ArtDetectiveTall.SKIN_SHADE
 	b.hand = ArtDetectiveTall.SKIN_SHADE
 	b.hand_lit = Color("c49373")
-	b.head.assign(ArtDetectiveTall.HEAD)
+	b.head = [
+		"..rrrrrrrw..",
+		".rhhhhhhhhw.",
+		"rhhhhhhhhhw.",
+		"rhhhhhhhhsw.",
+		"rhhhhhhhSsw.",
+		"rhhhhhhmcsw.",
+		"rphheSSSSsss",
+		"rhhheSSSSsw.",
+		"rhhSSSSSSsw.",
+		".rSSSSSSSzw.",
+		"..rSSSSSSsw.",
+		"....SSSSSw..",
+	]
 	b.head_key = ArtDetectiveTall.HEAD_KEY.duplicate()
 	b.glow_keys = "c"
-	b.neck = Rect2i(3, 10, 6, 6)
+	b.neck = Rect2i(2, 9, 6, 7)
 	b.props_front = func(img: Image, bb: Figure.Build, p: Figure.Pose, j: Dictionary[String, Vector2]) -> void:
 		# Steel braces down the front of each shin, catching a glint at the knee.
 		for side: String in ["far", "near"]:
@@ -252,21 +265,20 @@ static func _osk(b: Figure.Build) -> void:
 	b.skin_shade = Color("5e4842")
 	b.hand = Color("5e4842")
 	b.hand_lit = Color("b08670")
-	b.neck = Rect2i(2, 10, 8, 5)
+	b.neck = Rect2i(2, 9, 7, 6)
 	b.head = [
-		"....rrrrrw....",
-		"..rssssssssw..",
-		".rSsssssssssw.",
-		"rSSqqqqqqqqGGw",
-		"rSSSSSSssssGGw",
-		"rSSSSSSSbbsssw",
-		"rSSeeSSSSdSssw",
-		"rSSeeSSSSSsssw",
-		"rSSSSSSSSSSsss",
-		"rSSSSSSSSzzzsw",
-		".rSSSSSSzzzzsw",
-		".rSSSSSSSzzzw.",
-		"..SSSSSSSSSS..",
+		"..rrrrrrrw..",
+		".rssssssssw.",
+		"rSssssssssw.",
+		"rSSqqqqqqGGG",
+		"rSSSSSSSssw.",
+		"rSSSSSSbbsw.",
+		"rSSSeSSSdsss",
+		"rSSSeSSSSsw.",
+		"rSSSSSSSzzw.",
+		".rSSSSSzzzw.",
+		"..rSSzzzzzw.",
+		"....zzzzz...",
 	]
 	b.head_key = _key({"s": b.skin, "S": b.skin_shade, "q": Color("1a1410"), "G": Color("6a4a22")})
 	b.props_back = func(img: Image, _b: Figure.Build, _p: Figure.Pose, j: Dictionary[String, Vector2]) -> void:
@@ -339,22 +351,21 @@ static func _fixer(b: Figure.Build) -> void:
 	b.skin_shade = Color("5a4c50")
 	b.hand = Color("5a4c50")
 	b.hand_lit = Color("a8928a")
-	b.neck = Rect2i(4, 10, 5, 6)
+	b.neck = Rect2i(3, 9, 5, 7)
 	b.head = [
-		"....rrrhhh....",
-		"..rrhhhhhhhw..",
-		".rhhhhhhhhhhw.",
-		"rhhhhhhhhhhhhw",
-		"rhhhhhhhkkkkhw",
-		"rhhhhhhkkkkkkh",
-		"rhhhhhhkVVVVVV",
-		"rhhhhhhkkSssw.",
-		"rhhhhhhkkSsssw",
-		"rhhhhhhkSSzsw.",
-		".rhhhhhhkSzw..",
-		"..rhhhhhhhh...",
-		"..rhhhhhhhhh..",
-		"...hhhhhhhhh..",
+		"..rrrhhhw...",
+		".rhhhhhhhhw.",
+		"rhhhhhhhhhhw",
+		"rhhhhhhhkkkh",
+		"rhhhhhhkkkkh",
+		"rhhhhhhkVVVV",
+		"rhhhhhhkkSss",
+		"rhhhhhhkSSw.",
+		"rhhhhhhkSzw.",
+		"rhhhhhhhkSw.",
+		".rhhhhhhhhh.",
+		"..rhhhhhhhh.",
+		"...hhhhhhh..",
 	]
 	b.head_key = _key({"h": Color("221c30"), "k": P.INK, "V": P.MAGENTA, "s": b.skin, "S": b.skin_shade})
 	b.glow_keys = "V"
@@ -363,7 +374,7 @@ static func _fixer(b: Figure.Build) -> void:
 		for i: int in range(5):
 			Px.dot(img, roundi(t.x) - 4 + (i % 2), roundi(t.y) + 1 + i * 4, P.MAGENTA_DIM)
 		var at: Vector2 = j["head"]
-		Px.dot(img, roundi(at.x) + 7, roundi(at.y) + 6, Color(P.MAGENTA, 0.5))
+		Px.dot(img, roundi(at.x) + 8, roundi(at.y) + 5, Color(P.MAGENTA, 0.5))
 
 
 ## The maintenance tech: older, grey-bearded, a knit cap with a headlamp, a
@@ -392,19 +403,18 @@ static func _tech(b: Figure.Build) -> void:
 	b.hand = Color("2a2a26")
 	b.hand_lit = Color("4a4a42")
 	b.head = [
-		"....rrrrw.....",
-		"..rhhhhhhhw...",
-		".rhhhhhhhhhw..",
-		"rhhhhhhhhhhLL.",
-		"rqqqqqqqqqqqw.",
-		"rgggSSSSbbssw.",
-		"rggeSSSSSdssw.",
-		"rggeSSSSSSsssw",
-		"rgggSSSSSSssw.",
-		".rggSyyyyyysw.",
-		"..rgyyyyyyyw..",
-		"...yyyyyyyw...",
-		"....yyyyy.....",
+		"..rrrrrrw...",
+		".rhhhhhhhhw.",
+		"rhhhhhhhhhLL",
+		"rqqqqqqqqqq.",
+		"rgggSSSbbsw.",
+		"rggeSSSSdsw.",
+		"rggeSSSSSsss",
+		"rgggSSSSSsw.",
+		".rggSyyyyyw.",
+		"..ryyyyyyyw.",
+		"...yyyyyyw..",
+		"....yyyyy...",
 	]
 	b.head_key = _key({"h": Color("2a2f35"), "q": Color("1c2024"), "g": Color("46484c"), "y": Color("4c4a48"),
 		"s": b.skin, "S": b.skin_shade, "L": P.AMBER})
@@ -462,22 +472,22 @@ static func _vale(b: Figure.Build) -> void:
 	b.skin_shade = Color("6a717b")
 	b.hand = Color("8a919b")
 	b.hand_lit = Color("a6adb6")
-	b.neck = Rect2i(4, 10, 4, 6)
+	b.neck = Rect2i(3, 9, 5, 7)
 	b.head = [
-		"....rrrr......",
-		"..rhhhhhhw....",
-		".rhhhhhhhhw...",
-		"rhhhhhhhhhhw..",
-		"rhhhhhhhhshw..",
-		"rhhhhhhhhsshw.",
-		"rhhhhhhhbsshw.",
-		"rhhhhhhhssshw.",
-		"rhhhhhhhSsshw.",
-		"rhhhhhhhSzshh.",
-		"rhhhhhhhhSSh..",
-		"rhhh.hhh.hh...",
-		"rh.h.h.h..h...",
-		"r..h...h......",
+		"..rrrrrr....",
+		".rhhhhhhhw..",
+		"rhhhhhhhhhw.",
+		"rhhhhhhhhsw.",
+		"rhhhhhhhhsw.",
+		"rhhhhhhhbsw.",
+		"rhhhhhhhSsss",
+		"rhhhhhhhSsw.",
+		"rhhhhhhhSzw.",
+		"rhhhhhhhSsw.",
+		"rhhhhhhhhS..",
+		"rhhh.hhhh...",
+		"rh.h.h.h....",
+		"r..h...h....",
 	]
 	b.head_key = _key({"h": Color("15141a"), "s": b.skin, "S": b.skin_shade, "r": Color("4a5560"), "w": Color("9aa3ad")})
 	b.finish = func(img: Image, bb: Figure.Build, p: Figure.Pose, _j: Dictionary[String, Vector2]) -> void:
@@ -527,19 +537,18 @@ static func _leith(b: Figure.Build) -> void:
 	b.hand = Color("aab1ba")
 	b.hand_lit = Color("cfd5dc")
 	b.head = [
-		"....rrrhhh...",
-		"..rrhhhhhhhw.",
-		".rhhhhhhhhhhw",
-		"rhhhhhhhhhssw",
-		"rhhhhhhhhsssw",
-		"rhhhhhhhbbssw",
-		"rhhhhSSSSlSsw",
-		"rhhheSSSSSsssw",
-		"rhhheSSSSSSssw",
-		"rhhhSSSSSSsss.",
-		".rhSSSSSSmmmw.",
-		"..rSSSSSSssw..",
-		"...SSSSSSsw...",
+		"..rrrrrrrw..",
+		".rhhhhhhhhw.",
+		"rhhhhhhhhhw.",
+		"rhhhhhhhhsw.",
+		"rhhhhhhhSsw.",
+		"rhhhhhSSlsw.",
+		"rhhheSSSSsss",
+		"rhhheSSSSsw.",
+		"rhhSSSSSSsw.",
+		".rSSSSSSmsw.",
+		"..rSSSSSSsw.",
+		"....SSSSsw..",
 	]
 	b.head_key = _key({"h": Color("2a2a2e"), "s": b.skin, "S": b.skin_shade, "l": Color("b6c2c8"), "m": Color("4a3436")})
 	b.props_front = func(img: Image, bb: Figure.Build, p: Figure.Pose, j: Dictionary[String, Vector2]) -> void:
@@ -584,20 +593,20 @@ static func _cass(b: Figure.Build) -> void:
 	b.skin_shade = Color("4f3e39")
 	b.hand = Color("4f3e39")
 	b.hand_lit = Color("a07c68")
-	b.neck = Rect2i(4, 10, 5, 6)
+	b.neck = Rect2i(3, 9, 5, 7)
 	b.head = [
-		"....rrrhh....",
-		"..rhhhhhhhw..",
-		".rhhhhhhhhhw.",
-		"rhhhhhhhhhhhw",
-		"rhhhhhhhhhhsw",
-		"rhhhhhhhhbssw",
-		"rhhhheSSSdSsw",
-		"rhhheSSSSSsssw",
-		"rhhhSSSSSSssw.",
-		".rhhSSSSSmsw..",
-		"..rSSSSSSsw...",
-		"...SSSSSsw....",
+		"..rrrrrhh...",
+		".rhhhhhhhhw.",
+		"rhhhhhhhhhhw",
+		"rhhhhhhhhhs.",
+		"rhhhhhhhhSw.",
+		"rhhhhhhhdsw.",
+		"rhhheSSSSsss",
+		"rhhheSSSSsw.",
+		"rhhhSSSSSsw.",
+		".rhSSSSSmsw.",
+		"..rSSSSSSw..",
+		"....SSSSw...",
 	]
 	b.head_key = _key({"h": Color("2a1c18"), "s": b.skin, "S": b.skin_shade, "m": Color("4a3230")})
 	b.props_back = func(img: Image, bb: Figure.Build, _p: Figure.Pose, j: Dictionary[String, Vector2]) -> void:
@@ -644,21 +653,20 @@ static func _velvet(b: Figure.Build) -> void:
 	b.skin_shade = Color("5c4643")
 	b.hand = Color("5c4643")
 	b.hand_lit = Color("b48a7c")
-	b.neck = Rect2i(4, 10, 4, 6)
+	b.neck = Rect2i(3, 9, 5, 7)
 	b.head = [
-		"....rrrhh....",
-		"..rhhhhhhhw..",
-		".rhhhhhhhhhw.",
-		"rhhhhhhhhhhhw",
-		"rhhhhhhhhhhhw",
-		"rhhhhhhhhhhhw",
-		"rhhhhhhhSdSsw",
-		"rhhhhhhSSSsssw",
-		"rhhhhhhSSSssw.",
-		"rhhhhhhSSllw..",
-		"rhhhhhhhSSsw..",
-		".rhhhhhhSsw...",
-		"..Q....SS.....",
+		"..rrrrrhh...",
+		".rhhhhhhhhw.",
+		"rhhhhhhhhhhw",
+		"rhhhhhhhhhhw",
+		"rhhhhhhhhhs.",
+		"rhhhhhhhdsw.",
+		"rhhhhhhSSsss",
+		"rhhhhhhSSsw.",
+		"rhhhhhhSSlw.",
+		"rhhhhhhhSsw.",
+		".rhhhhhhSw..",
+		"..Q....SS...",
 	]
 	b.head_key = _key({"h": Color("0b0a10"), "s": b.skin, "S": b.skin_shade, "l": Color("5a2438"), "Q": P.MAGENTA,
 		"w": Color("b98c78"), "r": Color("6a4a78")})
@@ -700,21 +708,20 @@ static func _pell(b: Figure.Build) -> void:
 	b.skin_shade = Color("554340")
 	b.hand = Color("2a2624")
 	b.hand_lit = Color("8a7060")
-	b.neck = Rect2i(3, 10, 7, 5)
+	b.neck = Rect2i(2, 9, 6, 6)
 	b.head = [
-		"....rrrr......",
-		"..rhhhhhhw....",
-		".rhhhhhhhhw...",
-		"rqqqqqqqqqqq..",
-		"rhhhhSSSOOOO..",
-		"rhhheSSSOAOO..",
-		"rhhheSSSSOOsw.",
-		"rhhhSSSSSSsssw",
-		"rhhSSSSSSSsssw",
-		".rSSSSSzzzzsw.",
-		".rSSSSzzzzzw..",
-		"..SSSSzzzzw...",
-		"...SSSSzz.....",
+		"..rrrrrr....",
+		".rhhhhhhhw..",
+		"rhhhhhhhhhw.",
+		"rqqqqqqqqqqq",
+		"rhhhhSSSOOOO",
+		"rhhheSSSOAOO",
+		"rhhheSSSSOOs",
+		"rhhhSSSSSsw.",
+		"rhhSSSSSzzw.",
+		".rSSSSzzzzw.",
+		"..rSSzzzzw..",
+		"....zzzz....",
 	]
 	b.head_key = _key({"h": Color("4a4a4e"), "q": Color("22262c"), "O": Color("2c333c"), "A": P.AMBER,
 		"s": b.skin, "S": b.skin_shade})

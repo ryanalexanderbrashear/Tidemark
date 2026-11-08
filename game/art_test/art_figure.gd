@@ -106,7 +106,10 @@ class Build:
 	var hand_lit: Color = Color("c49373")
 
 	## The head in profile facing right, one character per pixel, keyed by
-	## `head_key`. About 12 rows from crown to chin, the face at the right.
+	## `head_key`. 12 rows from crown to chin and about 11 deep, a block rather
+	## than a ball, as on SLYNYRD's chart: a flat crown, the back of the skull
+	## straight down to the ear, the face a straight plane at column 10 with the
+	## nose one pixel past it, and the jaw cutting back from the chin to the neck.
 	var head: Array[String] = []
 	var head_key: Dictionary[String, Color] = {}
 	## Keys that glow (eyes, visors, lamps): drawn after the light, so they stay bright.
@@ -505,7 +508,7 @@ static func _arm(img: Image, b: Build, sh: Vector2, elbow: Vector2, hand: Vector
 
 static func _head(img: Image, b: Build, j: Dictionary[String, Vector2]) -> void:
 	var at: Vector2i = Vector2i(j["head"].round())
-	Px.rect(img, at.x + b.neck.position.x, at.y + b.neck.position.y, b.neck.size.x, b.neck.size.y, DUMMY_NECK if b.dummy else b.skin_shade)
+	Px.rect(img, at.x + b.neck.position.x, at.y + b.neck.position.y, b.neck.size.x, b.neck.size.y, DUMMY_NECK if b.dummy else b.skin_shade.darkened(0.3))
 	if not b.dummy:
 		Px.dot(img, at.x + b.neck.end.x - 1, at.y + b.neck.position.y + 2, b.hand_lit)
 	for y: int in range(b.head.size()):
