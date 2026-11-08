@@ -85,7 +85,7 @@ static func room() -> Image:
 	Px.ellipse(img, 470, WALK_Y - 40, 6, 3, Color("2a3442"))
 	Px.dot(img, 468, WALK_Y - 41, P.CYAN_DIM)
 	# Counter, with the ledger open under the lamp.
-	var cy: int = WALK_Y - 44
+	var cy: int = WALK_Y - MarketArt.COUNTER_H
 	Px.rect(img, 150, cy, 116, 4, Color("2a3442"))
 	Px.rect(img, 154, cy + 4, 108, WALK_Y - cy - 4, Color("161c27"))
 	Px.rect(img, 154, cy + 4, 108, 1, Color("0c1018"))
