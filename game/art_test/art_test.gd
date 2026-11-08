@@ -11,9 +11,10 @@ extends Node
 ## window's own resolution behind the crisp pixel-art playable layer.
 ##
 ## The detective starts as the tall, rim-lit draft of the "rain-worn tracer"
-## (ArtDetectiveTall, toward Replaced's look), and Osk and the fixer are drawn to
-## his scale. C cycles to the 64 px pass (ArtDetective) and to the first
-## proof-of-concept sprite, to compare.
+## (ArtDetectiveTall, toward Replaced's look), with the market's people drawn
+## closer to final on the same rig and light (ArtCast). C cycles to the 64 px
+## pass (ArtDetective) and to the first proof-of-concept sprites, to compare;
+## those looks bring back the first sketches of Osk, the fixer, the tech and Vale.
 ##
 ## X opens the examine test (ExamineView): the items in the detective's pockets,
 ## held up close and turned over by hand to find what's on their other side.
@@ -147,6 +148,10 @@ var _tall_idle: Array[ImageTexture] = []
 var _osk_frames: Array[ImageTexture] = []
 var _fixer_frames: Array[ImageTexture] = []
 var _tech_frames: Array[ImageTexture] = []
+## The closer-to-final cast (ArtCast), by character, for the tall look.
+var _cast_frames: Dictionary[String, Array] = {}
+## Which of each character's animations plays in the market.
+const CAST_ANIMS: Dictionary[String, String] = {"osk": "idle", "fixer": "idle", "tech": "work", "vale": "passenger"}
 var _holo_frames: Array[ImageTexture] = []
 var _thought: Label
 var _caption: PanelContainer
@@ -258,6 +263,11 @@ func _build() -> void:
 		_tall_walk.append(ImageTexture.create_from_image(ArtDetectiveTall.walk(f)))
 	for f: int in range(ArtDetectiveTall.IDLE_FRAMES):
 		_tall_idle.append(ImageTexture.create_from_image(ArtDetectiveTall.idle(f)))
+	for id: String in CAST_ANIMS:
+		var list: Array[ImageTexture] = []
+		for img: Image in ArtCast.frames(id, CAST_ANIMS[id]):
+			list.append(ImageTexture.create_from_image(img))
+		_cast_frames[id] = list
 	_osk = _sprite(_osk_frames[0].get_image())
 	_fixer = _sprite(_fixer_frames[0].get_image())
 	_tech = _sprite(_tech_frames[0].get_image())
@@ -781,21 +791,25 @@ func _update_world(walking: bool) -> void:
 		_detective.texture = _det_frames[walk_frame] if walking else _det_frames[ArtCharacters.WALK_FRAMES + breath]
 	_detective.flip_h = facing < 0
 	_place(_detective, detective_x, _detective_size(), market_x, cam_top)
-	_osk.texture = _osk_frames[breath]
-	_place(_osk, OSK_X, ArtCharacters.OSK_SIZE, market_x, cam_top)
-	_fixer.texture = _fixer_frames[(breath + 1) % 2]
+	var cast: bool = look == Look.TALL
+	# Osk faces left, toward Vale's stall: the first sketch was drawn that way,
+	# the cast is drawn facing right.
+	_osk.texture = _cast_frame("osk") if cast else _osk_frames[breath]
+	_osk.flip_h = cast
+	_place(_osk, OSK_X, _npc_size("osk"), market_x, cam_top)
+	_fixer.texture = _cast_frame("fixer", 1) if cast else _fixer_frames[(breath + 1) % 2]
 	_fixer.flip_h = true
-	_place(_fixer, FIXER_X, ArtCharacters.FIXER_SIZE, market_x, cam_top)
+	_place(_fixer, FIXER_X, _npc_size("fixer"), market_x, cam_top)
 	# The tech works the wrench a notch at a time.
-	_tech.texture = _tech_frames[int(_time * 1.1) % 2]
-	_place(_tech, TECH_X, ArtCharacters.TECH_SIZE, market_x, cam_top)
+	_tech.texture = _cast_frame("tech") if cast else _tech_frames[int(_time * 1.1) % 2]
+	_place(_tech, TECH_X, _npc_size("tech"), market_x, cam_top)
 	# Her passenger, at the fog's edge: only while she's with him, never quite
 	# steady.
 	var vale_spot: Spot = _floor.market.spot("passenger_vale")
 	_vale.visible = vale_spot != null and vale_spot.is_visible()
-	_vale.texture = _vale_frames[int(_time * 0.7) % 2]
+	_vale.texture = _cast_frame("vale") if cast else _vale_frames[int(_time * 0.7) % 2]
 	_vale.modulate.a = 0.72 if fmod(_time * 1.3, 5.0) > 0.25 else 0.35
-	_place(_vale, ArtMarketFloor.VALE_X, ArtCharacters.VALE_SIZE, market_x, cam_top)
+	_place(_vale, ArtMarketFloor.VALE_X, _npc_size("vale"), market_x, cam_top)
 
 	_water.position = Vector2(0, MarketArt.WATER_Y - cam_top)
 	(_water.material as ShaderMaterial).set_shader_parameter("line_y", float(MarketArt.WATER_Y - cam_top))
@@ -900,6 +914,26 @@ func _detective_size() -> Vector2i:
 	return ArtCharacters.DETECTIVE_SIZE
 
 
+## The frame of a cast member's market animation now, `offset` frames along
+## so neighbours don't breathe together.
+func _cast_frame(id: String, offset: int = 0) -> ImageTexture:
+	var list: Array = _cast_frames[id]
+	return list[(int(_time * ArtCast.FPS[CAST_ANIMS[id]]) + offset) % list.size()]
+
+
+func _npc_size(id: String) -> Vector2i:
+	if look == Look.TALL:
+		return ArtCast.size(id)
+	match id:
+		"osk":
+			return ArtCharacters.OSK_SIZE
+		"fixer":
+			return ArtCharacters.FIXER_SIZE
+		"tech":
+			return ArtCharacters.TECH_SIZE
+	return ArtCharacters.VALE_SIZE
+
+
 func _place(s: Sprite2D, x: float, size: Vector2i, market_x: float, cam_top: int) -> void:
 	# Feet on the walkway; sprites' last two rows are below the shoe line.
 	s.position = Vector2(floorf(market_x + x - size.x * 0.5), MarketArt.WALK_Y - size.y + 2 - cam_top)
@@ -991,6 +1025,7 @@ func _take_shots(dir: String) -> void:
 		["detective-tall-volumetric", 0, Voice.NONE, 300.0, 1, 0, Fog.VOLUMETRIC, 6, Look.TALL],
 		["npcs-osk", 0, Voice.NONE, 440.0, 1, 0, Fog.STEPPED, -1, Look.TALL],
 		["npcs-fixer", 0, Voice.NONE, 830.0, 1, 0, Fog.STEPPED, -1, Look.TALL],
+		["npcs-tech", 0, Voice.NONE, 1120.0, 1, 0, Fog.STEPPED, -1, Look.TALL],
 	]
 	var only: String = _only_prefix()
 	for shot: Array in plan:

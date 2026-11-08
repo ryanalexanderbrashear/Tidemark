@@ -34,4 +34,5 @@ The design lives outside this repo, in Claude Docs and Alex's Google Drive desig
 - Case content (rooms, spots, dialogue) lives in `game/case/drowned_market.gd`. Each spot's action returns a `Talk` or null.
 - Scripts run with `-s` can't name the `Case` autoload at compile time. Load such code at runtime (see `editor/ci/check_scripts.gd`).
 - Schemas in `game/data/` are `@tool` scripts.
+- Characters are drawn in code on one rig (`ArtFigure`), cast in `game/art_test/art_cast.gd`. `editor/art/export_sprites.gd` writes them out as layered Aseprite files, PNG sheets and Godot SpriteFrames for hand editing.
 - CI must be green before merging. Branch off `main` for each piece of work.
