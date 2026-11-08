@@ -135,6 +135,17 @@ func test_the_bare_body_is_drawn_in_chart_colours_only() -> void:
 	assert_bool(ArtCast.build("detective").dummy).is_false()
 
 
+func test_doors_and_counters_fit_the_cast() -> void:
+	# Everyone gets through a doorway without stooping, and a counter comes to
+	# about the hip, between the waist and the crotch.
+	for id: String in ArtCast.IDS:
+		var b: ArtFigure.Build = ArtCast.build(id)
+		var sole: float = b.ankle_y + 4.0
+		assert_float(sole - b.top_y).is_less(MarketArt.DOOR_H - 4.0)
+		if b.stature >= 1.0:
+			assert_float(float(MarketArt.COUNTER_H)).is_between(sole - b.hip_y, sole - b.belt_y)
+
+
 func _row_has_pixels(img: Image, y: int) -> bool:
 	for x: int in range(img.get_width()):
 		if img.get_pixel(x, y).a > 0.5:

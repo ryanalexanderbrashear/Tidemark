@@ -847,7 +847,7 @@ func _update_heat() -> void:
 		h.flip_h = src.flip_h
 	var door: Spot = _floor.market.spot("heat_door")
 	_seam.visible = room == "market" and door != null and door.is_visible()
-	_seam.position = Vector2(floorf(ArtMarketFloor.HEAT_DOOR_X - 22.0 - _cam_x()), MarketArt.WALK_Y - 80 - RESOLUTIONS[res_index][1])
+	_seam.position = Vector2(floorf(ArtMarketFloor.HEAT_DOOR_X - 22.0 - _cam_x()), MarketArt.WALK_Y - MarketArt.DOOR_H - RESOLUTIONS[res_index][1])
 
 
 ## A reading's white comes in while its words are up: part way for a surface
