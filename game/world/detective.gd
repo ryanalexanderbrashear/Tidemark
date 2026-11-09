@@ -1,13 +1,15 @@
 class_name Detective
 extends CharacterBody2D
 ## The player, on the 8-head cast (ArtCast "detective"): moves at a brisk jog,
-## dashes, jumps, fires a stun pistol, takes hits. Origin at the feet, in
-## native pixels.
+## dashes, slides, jumps, fires a stun pistol, takes hits. Origin at the feet,
+## in native pixels.
 ##
-## His pace is the one his run cycle is drawn for. The dash is his reinforced
-## legs (starting cyberware): a short burst along the ground or once in the
-## air that bolts and blows pass through. The jump clears a little over his own
-## height, the grey box's jump at the game's scale. His jump, fall, dash and
+## His pace is the one his run cycle is drawn for. The dash and slide are his
+## reinforced legs (starting cyberware). The dash is a short burst along the
+## ground or once in the air that bolts and blows pass through. The slide
+## (down + dash, on the ground) goes further and lower: no protection, but
+## his body drops under shots at chest height. The jump clears a little over
+## his own height, the grey box's jump at the game's scale. His jump, fall and
 ## aim are placeholder poses (frames of the run, and a pistol held out) until
 ## they're drawn.
 
@@ -23,8 +25,16 @@ const DASH_SECONDS: float = 0.16
 const DASH_COOLDOWN: float = 0.5
 ## Seconds between afterimages left along a dash.
 const TRAIL_SECONDS: float = 0.04
-## The run frame held through a dash: the far foot striking, legs spread.
-const DASH_FRAME: int = 0
+## The slide (down + dash): starts at SLIDE_SPEED and eases to SLIDE_END_SPEED,
+## about one and a quarter of his heights in all. Shares the dash's cooldown.
+const SLIDE_SPEED: float = 300.0
+const SLIDE_END_SPEED: float = 140.0
+const SLIDE_SECONDS: float = 0.38
+## His body's height while sliding, for hits: under a chest-high shot.
+const SLIDE_HEIGHT: float = 34.0
+## Seconds into a dash or slide when its second frame takes over.
+const DASH_FRAME_SECONDS: float = 0.06
+const SLIDE_FRAME_SECONDS: float = 0.1
 const JUMP_SPEED: float = 440.0
 const GRAVITY: float = 1200.0
 ## Letting go of jump while still rising cuts the jump short.
@@ -50,6 +60,8 @@ var _dash_ready: float = 0.0
 ## Whether his one air dash is spent; landing gives it back.
 var _air_dashed: bool = false
 var _trail: float = 0.0
+## Seconds left of the slide under way (0 when not sliding).
+var sliding: float = 0.0
 ## Set by whoever runs him: input is ignored while true.
 var frozen: bool = false
 var sprite: CastSprite
@@ -71,7 +83,7 @@ func _ready() -> void:
 	shape.position = Vector2(0, -BODY.y / 2.0)
 	add_child(shape)
 	floor_snap_length = 3.0
-	var anims: Array[String] = ["idle", "walk", "run"]
+	var anims: Array[String] = ["idle", "walk", "run", "dash", "slide"]
 	sprite = CastSprite.new("detective", anims)
 	add_child(sprite)
 	var b: ArtFigure.Build = ArtCast.build("detective")
@@ -91,10 +103,15 @@ func _physics_process(delta: float) -> void:
 	if is_on_floor():
 		_air_dashed = false
 	_dash_ready -= delta
-	if not frozen and dashing <= 0.0 and Input.is_action_just_pressed("dash"):
-		_start_dash(dir)
+	if not frozen and dashing <= 0.0 and sliding <= 0.0 and Input.is_action_just_pressed("dash"):
+		if is_on_floor() and Input.is_action_pressed("move_down"):
+			_start_slide(dir)
+		else:
+			_start_dash(dir)
 	if dashing > 0.0:
 		_dash_step(delta)
+	elif sliding > 0.0:
+		_slide_step(delta)
 	else:
 		velocity.x = dir * SPEED
 		if dir != 0.0:
@@ -114,7 +131,7 @@ func _physics_process(delta: float) -> void:
 	_invulnerable = maxf(0.0, _invulnerable - delta)
 	_cooldown -= delta
 	_aim = maxf(0.0, _aim - delta)
-	if not frozen and dashing <= 0.0 and Input.is_action_pressed("shoot") and _cooldown <= 0.0:
+	if not frozen and dashing <= 0.0 and sliding <= 0.0 and Input.is_action_pressed("shoot") and _cooldown <= 0.0:
 		_cooldown = SHOT_COOLDOWN
 		_aim = AIM_SECONDS
 		var bolt: Bolt = Bolt.make(position + Vector2(facing * 14.0, -40.0), Vector2(facing * SHOT_SPEED, 0.0), true)
@@ -148,8 +165,33 @@ func _dash_step(delta: float) -> void:
 		_leave_afterimage()
 
 
-## A fading copy of his sprite where he stands: placeholder dash art, the
-## reinforced legs' blur.
+## Starts a slide the way he's pushing, or the way he faces.
+func _start_slide(dir: float) -> void:
+	if _dash_ready > 0.0:
+		return
+	_dash_dir = signf(dir) if dir != 0.0 else facing
+	facing = _dash_dir
+	sliding = SLIDE_SECONDS
+	_dash_ready = DASH_COOLDOWN
+	_aim = 0.0
+
+
+## One frame of a slide: along the floor, slowing. Jump breaks out of it into
+## a jump; running off a ledge ends it and he falls.
+func _slide_step(delta: float) -> void:
+	var t: float = 1.0 - sliding / SLIDE_SECONDS
+	velocity.x = _dash_dir * lerpf(SLIDE_SPEED, SLIDE_END_SPEED, t)
+	velocity.y += GRAVITY * delta
+	sliding = maxf(0.0, sliding - delta)
+	_walk_dist = 0.0
+	if not is_on_floor() and velocity.y > 1.0:
+		sliding = 0.0
+	elif not frozen and Input.is_action_just_pressed("jump"):
+		sliding = 0.0
+		velocity.y = -JUMP_SPEED
+
+
+## A fading copy of his sprite where he stands: the reinforced legs' blur.
 func _leave_afterimage() -> void:
 	var ghost: Sprite2D = Sprite2D.new()
 	ghost.centered = false
@@ -168,7 +210,9 @@ func _leave_afterimage() -> void:
 ## airborne run frames while he's off the ground.
 func _pose() -> void:
 	if dashing > 0.0:
-		sprite.show_frame("run", DASH_FRAME)
+		sprite.show_frame("dash", 0 if DASH_SECONDS - dashing < DASH_FRAME_SECONDS else 1)
+	elif sliding > 0.0:
+		sprite.show_frame("slide", 0 if SLIDE_SECONDS - sliding < SLIDE_FRAME_SECONDS else 1)
 	elif not is_on_floor() and absf(velocity.y) > 1.0:
 		sprite.show_frame("run", RISE_FRAME if velocity.y < 0.0 else FALL_FRAME)
 	elif velocity.x != 0.0:
@@ -183,9 +227,10 @@ func _pose() -> void:
 	sprite.visible = _invulnerable <= 0.0 or int(_clock * 20.0) % 2 == 1
 
 
-## His body in the room (native pixels), for hits.
+## His body in the room (native pixels), for hits: low while he slides.
 func hit_box() -> Rect2:
-	return Rect2(position + Vector2(-BODY.x / 2.0, -BODY.y), BODY)
+	var size: Vector2 = Vector2(BODY.x, SLIDE_HEIGHT) if sliding > 0.0 else BODY
+	return Rect2(position + Vector2(-size.x / 2.0, -size.y), size)
 
 
 func hurt() -> void:

@@ -304,6 +304,60 @@ static func run_pose(b: Build, frame: int) -> Pose:
 	return p
 
 
+## A dash on his reinforced legs, 2 frames: the launch (driving off the back
+## foot, the front foot reaching low and long, arms flung back) and the glide
+## (crouched lower, the back leg trailing, the coat streaming). He leans hard
+## into it; both stay on the ground so the dash reads as a skim, not a jump.
+static func dash_pose(b: Build, frame: int) -> Pose:
+	var f: int = posmod(frame, 2)
+	var p: Pose = Pose.new()
+	p.frame = frame
+	p.walking = true
+	p.lean = roundi([8.0, 10.0][f] * K)
+	p.drop = [4.0, 6.0][f] * K
+	p.near_foot = Vector2(b.cx + [15.0, 17.0][f] * K, b.ankle_y)
+	p.near_heel = 0.0
+	p.far_foot = Vector2(b.cx - [17.0, 19.0][f] * K, b.ankle_y)
+	p.far_heel = [7.0, 6.0][f] * K
+	p.far_knee = Vector2(1, 0.3)
+	p.near_knee = Vector2(1, -0.2)
+	# Arms swept back and a little out, elbows nearly straight.
+	p.near_swing = -[0.75, 0.9][f]
+	p.near_bend = 0.35
+	p.far_swing = -[0.95, 1.1][f]
+	p.far_bend = 0.3
+	p.pocket = false
+	return p
+
+
+## A slide: a dash dropped to the floor, 2 frames. He sits low, the near leg
+## out in front along the planks and the far one bent under it, knee up,
+## leaning back with the far hand trailing toward the floor and the near arm
+## out for balance. Frame 0 drops into it; frame 1 is held, lower.
+static func slide_pose(b: Build, frame: int) -> Pose:
+	var f: int = posmod(frame, 2)
+	var p: Pose = Pose.new()
+	p.frame = frame
+	p.walking = true
+	# Hips down to about a thigh's length off the floor.
+	p.drop = b.ankle_y - b.thigh * [0.6, 0.4][f] - b.hip_y
+	p.lean = roundi([-4.0, -8.0][f] * K)
+	# Leaning back shortens the torso as seen from the side.
+	p.breath = -roundi([4.0, 9.0][f] * K)
+	p.near_foot = Vector2(b.cx + (b.thigh + b.shin) * [0.75, 0.8][f], b.ankle_y - 3.0 * K)
+	p.near_knee = Vector2(0, -1)
+	# The far leg bent under the near one, knee up, foot flat on the planks.
+	p.far_foot = Vector2(b.cx + b.thigh * [0.55, 0.65][f], b.ankle_y)
+	p.far_knee = Vector2(0.3, -1)
+	var hip_y: float = b.hip_y + p.drop
+	p.far_hand = Vector2(b.cx - 13.0 * K, minf(hip_y + 5.0 * K, b.ankle_y - 3.0))
+	p.far_elbow = Vector2(-0.3, -1)
+	p.near_swing = [0.8, 1.0][f]
+	p.near_bend = 0.5
+	p.pocket = false
+	return p
+
+
 ## [ankle, heel lift] at run frame `f`. Down for frames 0 to 2, sliding back
 ## from strike to push off; then the heel kicks up behind, the knee drives
 ## through and the foot reaches out for the next strike.
@@ -539,7 +593,8 @@ static func _torso(img: Image, b: Build, p: Pose, j: Dictionary[String, Vector2]
 	var l: float = float(p.lean)
 	var cx: float = b.cx
 	var belt: float = b.belt_y + float(p.bob) + p.drop
-	var hem: float = b.hem_y + float(p.bob) + p.drop
+	# A coat long enough to reach the floor (in a slide) pools on it.
+	var hem: float = minf(b.hem_y + float(p.bob) + p.drop, b.sole_y - 3.0)
 	var long: bool = b.hem_y > b.hip_y + 9.0 * K
 	var shape: PackedVector2Array = _outline(b, p, j, b.ease, hem, long)
 	Px.poly(img, shape, b.coat)
