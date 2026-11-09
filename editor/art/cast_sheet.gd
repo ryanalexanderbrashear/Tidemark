@@ -3,7 +3,7 @@ extends SceneTree
 ##   godot --headless --path . -s res://editor/art/cast_sheet.gd -- --out=<dir> [--scale=4]
 ## Writes cast-lineup.png (everyone standing on the market's night blue, side
 ## by side, at whole-pixel scale), cast-anatomy.png (each character's bare
-## body beside them dressed, over the 8-head chart's lines, 12 px a head) and
+## body beside them dressed, over the 8-head chart's lines, a head apart) and
 ## <id>-sheet.png per character (one row per animation).
 
 
@@ -40,12 +40,13 @@ func _init() -> void:
 		x += s.x + gap
 	_save(lineup, out.path_join("cast-lineup.png"), scale)
 
-	# The anatomy chart: head lines every 12 px up from the soles.
+	# The anatomy chart: head lines a head apart up from the soles.
+	var head: int = roundi(float(load("res://game/art_test/art_figure.gd").HEAD))
 	var chart: Image = Image.create_empty(width * 2, height + 24, false, Image.FORMAT_RGBA8)
 	chart.fill(Color("111b2b"))
 	var sole: int = height + 2
 	for k: int in range(9):
-		chart.fill_rect(Rect2i(0, sole - k * 12, chart.get_width(), 1), Color("26354b"))
+		chart.fill_rect(Rect2i(0, sole - k * head, chart.get_width(), 1), Color("26354b"))
 	x = gap
 	for id: String in ids:
 		var s: Vector2i = cast.size(id)

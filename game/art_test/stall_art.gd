@@ -20,7 +20,7 @@ const BODY_X: float = 372.0
 const SAMPLE_X: float = 540.0
 ## The body sprite's size; it's its own sprite so the thermal optic can show
 ## what heat is left in it.
-const BODY_SIZE: Vector2i = Vector2i(92, 22)
+const BODY_SIZE: Vector2i = Vector2i(80, 22)
 ## The dying tube in the roof, and where its light falls.
 const LAMP_X: int = 330
 
@@ -142,12 +142,12 @@ static func body() -> Image:
 	Px.rect(img, 2, floor_y + 1, 30, 1, P.BLOOD)
 	Px.rect(img, 26, floor_y + 2, 10, 1, Color(P.BLOOD, 0.7))
 	# Legs, coat, back.
-	Px.rect(img, 62, floor_y - 4, 26, 4, Color("1c222c"))
-	Px.rect(img, 84, floor_y - 3, 6, 3, Color("080b12"))
-	Px.poly(img, PackedVector2Array([Vector2(22, floor_y - 8), Vector2(66, floor_y - 9), Vector2(68, floor_y), Vector2(20, floor_y)]), Color("2b2a33"))
-	Px.rect(img, 24, floor_y - 9, 40, 1, Color("3a3946"))
+	Px.rect(img, 50, floor_y - 3, 20, 3, Color("1c222c"))
+	Px.rect(img, 68, floor_y - 3, 5, 3, Color("080b12"))
+	Px.poly(img, PackedVector2Array([Vector2(20, floor_y - 6), Vector2(50, floor_y - 7), Vector2(53, floor_y), Vector2(18, floor_y)]), Color("2b2a33"))
+	Px.rect(img, 22, floor_y - 7, 28, 1, Color("3a3946"))
 	# Hair, wet, fanned on the boards.
-	Px.ellipse(img, 14, floor_y - 4, 9, 5, Color("120f14"))
+	Px.ellipse(img, 15, floor_y - 3, 7, 4, Color("120f14"))
 	for i: int in range(5):
 		Px.rect(img, 3 + i * 3, floor_y - 1, 2, 2, Color("120f14"))
 	# The arm reaching out, the chip in her hand.
