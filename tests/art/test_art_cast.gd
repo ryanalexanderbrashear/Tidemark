@@ -15,7 +15,7 @@ func test_everyone_stands_on_the_third_row_from_the_bottom() -> void:
 				var img: Image = frames[f]
 				var h: int = img.get_height()
 				# Vale's passenger comes apart before her feet: she has none to stand
-				# on. A sprint leaves the ground between strides (frames 3 and 7).
+				# on. A run leaves the ground between strides (frames 3 and 7).
 				var airborne: bool = anim == "run" and f % 4 == 3
 				if id != "vale" and not airborne:
 					assert_bool(_row_has_pixels(img, h - 3)).override_failure_message("%s %s: no soles on row h-3" % [id, anim]).is_true()
@@ -152,9 +152,9 @@ func test_doors_and_counters_fit_the_cast() -> void:
 		assert_float(b.sole_y).is_equal(float(b.size.y) - 2.0)
 
 
-func test_the_detective_sprints() -> void:
-	# His reinforced legs: a run cycle as long as the walk, covering far more
-	# ground a cycle, with both feet off the floor between strides.
+func test_the_detective_runs() -> void:
+	# His everyday pace: a run cycle as long as the walk, covering more ground
+	# a cycle, with both feet off the floor between strides.
 	var anims: Dictionary[String, int] = ArtCast.anims("detective")
 	assert_int(anims.get("run", 0)).is_equal(anims["walk"])
 	var b: ArtFigure.Build = ArtCast.build("detective")
@@ -169,7 +169,7 @@ func test_the_detective_sprints() -> void:
 	assert_float(p.far_bend).is_greater(1.0)
 
 
-func test_a_planted_foot_slides_back_at_sprinting_speed() -> void:
+func test_a_planted_foot_slides_back_at_running_speed() -> void:
 	# The scene picks run frames by distance (run_stride / 8 a frame), so a foot
 	# on the floor has to slide back by exactly that much each frame.
 	var b: ArtFigure.Build = ArtCast.build("detective")
@@ -182,12 +182,11 @@ func test_a_planted_foot_slides_back_at_sprinting_speed() -> void:
 		assert_float(z.y).is_equal(b.ankle_y)
 
 
-func test_sprinting_in_the_scene_matches_the_run_cycle() -> void:
-	# About 1.5 cycles a second, so the legs keep up with the ground, and well
-	# over twice walking pace.
-	var cycles: float = Detective.SPRINT_SPEED / ArtCast.build("detective").run_stride
-	assert_float(cycles).is_between(1.2, 1.8)
-	assert_float(Detective.SPRINT_SPEED).is_greater(Detective.SPEED * 2.0)
+func test_his_pace_in_the_scene_matches_the_run_cycle() -> void:
+	# About 1.4 cycles a second (a jog's cadence), so the legs keep up with
+	# the ground.
+	var cycles: float = Detective.SPEED / ArtCast.build("detective").run_stride
+	assert_float(cycles).is_between(1.2, 1.6)
 
 
 func _row_has_pixels(img: Image, y: int) -> bool:

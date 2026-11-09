@@ -54,7 +54,7 @@ static func anims(id: String) -> Dictionary[String, int]:
 		"tech":
 			return {"idle": 4, "walk": 8, "work": 4}
 		"detective":
-			# He sprints on his reinforced legs (starting cyberware).
+			# His everyday pace is the run; the walk is for slow moments.
 			return {"idle": 4, "walk": 8, "run": 8}
 	return {"idle": 4, "walk": 8}
 

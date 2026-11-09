@@ -4,7 +4,7 @@ extends Node
 ## is drawn at 640 x 360 in a PixelView: the market floor and Vale's stall as
 ## drawn rooms (MarketScene, StallScene), every other room as a stand-in
 ## (StandInScene) until it's drawn. The detective (on the 8-head cast) walks,
-## sprints, jumps and fights in it; the room's spots (DrownedMarket, placed by
+## dashes, jumps and fights in it; the room's spots (DrownedMarket, placed by
 ## RoomLayout) open dialogue in the talk box; Tab opens the cork case board; X
 ## holds up what's in his pockets; T switches the thermal optic. His inner
 ## voice types over his head, and readings bring their white in like fog.

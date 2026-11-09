@@ -74,7 +74,7 @@ func _layout(native: Vector2i, zoom: int, offset: Vector2) -> void:
 
 func _process(delta: float) -> void:
 	super._process(delta)
-	_keys.text = "640x360 at x%d  |  voice: %s  |  fog: %s\nA/D move   Shift sprint   W/Space jump   F stun pistol   E use   Tab board   T thermal   X examine   V voice   G fog   N next thought   H hide" % [_view.zoom, VOICE_NAMES[_voice.mode], FOG_NAMES[fog]]
+	_keys.text = "640x360 at x%d  |  voice: %s  |  fog: %s\nA/D move   Shift dash   W/Space jump   F stun pistol   E use   Tab board   T thermal   X examine   V voice   G fog   N next thought   H hide" % [_view.zoom, VOICE_NAMES[_voice.mode], FOG_NAMES[fog]]
 
 
 func _sandbox_key(key: InputEventKey) -> bool:
@@ -137,6 +137,16 @@ func _hold(x: float, face: int, anim: String = "", frame: int = 0) -> void:
 	detective.set_physics_process(true)
 
 
+## Stops him partway through a dash, his afterimages trailing behind.
+func _mid_dash() -> void:
+	detective._start_dash(float(detective.facing))
+	for i: int in range(6):
+		await get_tree().physics_frame
+	detective.set_physics_process(false)
+	await get_tree().process_frame
+	detective.set_physics_process(true)
+
+
 func _take_shots(dir: String) -> void:
 	DirAccess.make_dir_recursive_absolute(dir)
 	_keys.visible = false
@@ -155,8 +165,9 @@ func _take_shots(dir: String) -> void:
 		["fog-fixer-stepped", InnerVoice.Mode.NONE, 1100.0, -1, 0, RoomScene.Fog.STEPPED],
 		["fog-fixer-volumetric", InnerVoice.Mode.NONE, 1100.0, -1, 0, RoomScene.Fog.VOLUMETRIC],
 		["detective-walk", InnerVoice.Mode.NONE, 300.0, 1, 0, RoomScene.Fog.STEPPED, "walk", 1],
-		["detective-sprint", InnerVoice.Mode.NONE, 300.0, 1, 0, RoomScene.Fog.STEPPED, "run", 3],
-		["detective-sprint-left", InnerVoice.Mode.NONE, 640.0, -1, 0, RoomScene.Fog.STEPPED, "run", 0],
+		["detective-run", InnerVoice.Mode.NONE, 300.0, 1, 0, RoomScene.Fog.STEPPED, "run", 3],
+		["detective-run-left", InnerVoice.Mode.NONE, 640.0, -1, 0, RoomScene.Fog.STEPPED, "run", 0],
+		["detective-dash", InnerVoice.Mode.NONE, 260.0, 1, 0, RoomScene.Fog.STEPPED],
 		["npcs-osk", InnerVoice.Mode.NONE, 440.0, 1, 0, RoomScene.Fog.STEPPED],
 		["npcs-fixer", InnerVoice.Mode.NONE, 830.0, 1, 0, RoomScene.Fog.STEPPED],
 		["npcs-tech", InnerVoice.Mode.NONE, 1120.0, 1, 0, RoomScene.Fog.STEPPED],
@@ -172,6 +183,8 @@ func _take_shots(dir: String) -> void:
 		fog = shot[5]
 		_voice.typed = 9999.0
 		await _hold(shot[2], shot[3], shot[6] if shot.size() > 6 else "", shot[7] if shot.size() > 7 else 0)
+		if shot[0] == "detective-dash":
+			await _mid_dash()
 		await _save(dir, shot[0])
 		_view.native_image().save_png(dir.path_join("%s-native.png" % shot[0]))
 	if "examine".begins_with(only) or only.begins_with("examine"):

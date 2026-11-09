@@ -75,8 +75,9 @@ class Build:
 	var hand_len: float = 6.0
 	## Distance the body moves in one walk cycle, so planted feet don't slide.
 	var stride: float = 54.0
-	## The same for one sprint cycle (run_pose): two long strides.
-	var run_stride: float = 128.0
+	## The same for one run cycle (run_pose): two strides of a brisk jog, his
+	## everyday pace.
+	var run_stride: float = 92.0
 	## Half-depths of the torso in profile (front is +x): chest, waist, the
 	## front of the pelvis, and the seat behind.
 	var chest_front: float = 8.0
@@ -164,7 +165,7 @@ class Build:
 		forearm = unit * 1.2
 		hand_len = unit * 0.5
 		stride = 54.0 * s
-		run_stride = 128.0 * s
+		run_stride = 92.0 * s
 		hem_y = top_y + unit * 6.3
 		leg_w = [5.0 * s, 3.6 * s, 3.4 * s, 2.1 * s]
 		calf = 2.6 * s
@@ -273,7 +274,7 @@ static func walk_pose(b: Build, frame: int) -> Pose:
 	return p
 
 
-## A sprint, 8 frames a cycle like the walk: each foot is down for three frames
+## A run (the detective's brisk everyday pace), 8 frames a cycle like the walk: each foot is down for three frames
 ## (strike, under the hip, push off) and sliding back by run_stride / 8 a
 ## frame, so the scene can pick frames by distance; frames 3 and 7 are in the
 ## air. The body leans in, drops as each foot takes the weight and rises off
@@ -284,7 +285,7 @@ static func run_pose(b: Build, frame: int) -> Pose:
 	p.frame = frame
 	p.walking = true
 	p.bob = roundi([1.5, 2.5, 1.5, 0.0, 1.5, 2.5, 1.5, 0.0][f] * K)
-	p.lean = roundi(4.0 * K)
+	p.lean = roundi(3.0 * K)
 	var far: Array = _run_foot(b, f)
 	var near: Array = _run_foot(b, f + 4)
 	p.far_foot = far[0]
