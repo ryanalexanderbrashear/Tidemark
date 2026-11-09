@@ -35,7 +35,7 @@ const NAMES: Dictionary[String, String] = {
 
 ## Frames per second for each animation when played back (the scene plays the
 ## detective's walk by distance instead).
-const FPS: Dictionary[String, float] = {"idle": 2.0, "walk": 10.0, "run": 12.0, "work": 2.0, "passenger": 1.4}
+const FPS: Dictionary[String, float] = {"idle": 2.0, "walk": 10.0, "run": 12.0, "dash": 12.0, "slide": 8.0, "work": 2.0, "passenger": 1.4}
 
 ## The common head key. Each character adds its own letters.
 const HEAD_KEY: Dictionary[String, Color] = {
@@ -55,7 +55,8 @@ static func anims(id: String) -> Dictionary[String, int]:
 			return {"idle": 4, "walk": 8, "work": 4}
 		"detective":
 			# His everyday pace is the run; the walk is for slow moments.
-			return {"idle": 4, "walk": 8, "run": 8}
+			# The dash and slide are his reinforced legs (starting cyberware).
+			return {"idle": 4, "walk": 8, "run": 8, "dash": 2, "slide": 2}
 	return {"idle": 4, "walk": 8}
 
 
@@ -90,6 +91,10 @@ static func pose(id: String, anim: String, f: int) -> Figure.Pose:
 		p = Figure.walk_pose(b, f)
 	elif anim == "run":
 		p = Figure.run_pose(b, f)
+	elif anim == "dash":
+		p = Figure.dash_pose(b, f)
+	elif anim == "slide":
+		p = Figure.slide_pose(b, f)
 	match id:
 		"osk":
 			# The umbrella stays up in the near hand; the case hangs from the far one.
@@ -219,7 +224,9 @@ const DET_HEAD_KEY: Dictionary[String, Color] = {
 ## storm coat to the knee, short hair and stubble, the steel ocular plate with
 ## its cyan iris, the reading port behind the ear, steel braces down the shins.
 static func _detective(b: Figure.Build) -> void:
-	b.proportion(Vector2i(50, 100), 1.0, 22.0)
+	# Wide enough for his dash and slide, which reach far out each side; the
+	# extra is even on both sides, so he stands where he always did.
+	b.proportion(Vector2i(90, 100), 1.0, 42.0)
 	b.hem_y = b.top_y + 12.0 * 6.0
 	b.coat = DET_COAT
 	b.coat_lit = DET_COAT_LIT

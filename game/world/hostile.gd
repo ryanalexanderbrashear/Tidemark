@@ -99,7 +99,8 @@ func _physics_process(delta: float) -> void:
 			_fire_in = DRONE_FIRE_EVERY
 			var aim: Vector2 = (d.position + Vector2(0, -36) - position).normalized()
 			get_parent().add_child(Bolt.make(position, aim * DRONE_SHOT_SPEED, false))
-		if absf(dx) < 12.0 and absf(d.position.y - 36.0 - position.y) < 20.0:
+		# Chest high: a slide goes under it.
+		if absf(dx) < 12.0 and absf(d.position.y - 36.0 - position.y) < 20.0 and d.hit_box().grow(12.0).has_point(position):
 			d.hurt()
 		queue_redraw()
 

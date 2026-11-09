@@ -169,6 +169,23 @@ func test_the_detective_runs() -> void:
 	assert_float(p.far_bend).is_greater(1.0)
 
 
+func test_the_detective_dashes_and_slides_low() -> void:
+	# Leaning hard into the dash; sitting low in the slide, the near leg out
+	# in front along the floor and the body leaning back.
+	var b: ArtFigure.Build = ArtCast.build("detective")
+	for f: int in range(2):
+		var d: ArtFigure.Pose = ArtFigure.dash_pose(b, f)
+		assert_int(d.lean).is_greater(ArtFigure.run_pose(b, 0).lean)
+		var s: ArtFigure.Pose = ArtFigure.slide_pose(b, f)
+		assert_float(b.hip_y + s.drop).is_greater(b.ankle_y - b.thigh)
+		assert_float(s.near_foot.x - b.cx).is_greater(b.thigh)
+		assert_int(s.lean).is_less(0)
+	# The slide is under a chest-high shot (40 px up) in the drawing too.
+	var img: Image = ArtCast.frame("detective", "slide", 1)
+	var top: int = img.get_used_rect().position.y
+	assert_float(float(img.get_height() - 2 - top)).is_less(Detective.SLIDE_HEIGHT + 10.0)
+
+
 func test_a_planted_foot_slides_back_at_running_speed() -> void:
 	# The scene picks run frames by distance (run_stride / 8 a frame), so a foot
 	# on the floor has to slide back by exactly that much each frame.
