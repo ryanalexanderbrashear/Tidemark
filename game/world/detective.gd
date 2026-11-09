@@ -9,7 +9,9 @@ extends CharacterBody2D
 ## ground or once in the air that bolts and blows pass through. The slide
 ## (down + dash, on the ground) goes further and lower: no protection, but
 ## his body drops under shots at chest height. The jump clears a little over
-## his own height, the grey box's jump at the game's scale. His jump, fall and
+## his own height, the grey box's jump at the game's scale. Jumping out of a
+## dash or slide on the ground (or just after one) carries its speed into the
+## jump, easing back to his pace in the air; turning back drops it at once. His jump, fall and
 ## aim are placeholder poses (frames of the run, and a pistol held out) until
 ## they're drawn.
 
@@ -32,6 +34,12 @@ const SLIDE_END_SPEED: float = 140.0
 const SLIDE_SECONDS: float = 0.38
 ## His body's height while sliding, for hits: under a chest-high shot.
 const SLIDE_HEIGHT: float = 34.0
+## Jumping out of a dash or slide keeps up to CARRY_MAX of its speed, which
+## eases back to his pace by CARRY_DRAG px/s each second in the air.
+const CARRY_MAX: float = 220.0
+const CARRY_DRAG: float = 160.0
+## Seconds after a dash or slide on the ground ends that a jump still carries.
+const CARRY_GRACE: float = 0.1
 ## Seconds into a dash or slide when its second frame takes over.
 const DASH_FRAME_SECONDS: float = 0.06
 const SLIDE_FRAME_SECONDS: float = 0.1
@@ -62,6 +70,14 @@ var _air_dashed: bool = false
 var _trail: float = 0.0
 ## Seconds left of the slide under way (0 when not sliding).
 var sliding: float = 0.0
+## Speed carried from a dash or slide into the jump under way (0 when none).
+var carry: float = 0.0
+var _grace: float = 0.0
+var _grace_speed: float = 0.0
+var _dash_grounded: bool = false
+## One-shot presses queued by code (tests, the art test), read like a
+## just-pressed action on his next physics step.
+var _queued: Array[String] = []
 ## Set by whoever runs him: input is ignored while true.
 var frozen: bool = false
 var sprite: CastSprite
@@ -102,8 +118,11 @@ func _physics_process(delta: float) -> void:
 	var dir: float = 0.0 if frozen else Input.get_axis("move_left", "move_right")
 	if is_on_floor():
 		_air_dashed = false
+		if velocity.y >= 0.0:
+			carry = 0.0
 	_dash_ready -= delta
-	if not frozen and dashing <= 0.0 and sliding <= 0.0 and Input.is_action_just_pressed("dash"):
+	_grace = maxf(0.0, _grace - delta)
+	if not frozen and dashing <= 0.0 and sliding <= 0.0 and _just("dash"):
 		if is_on_floor() and Input.is_action_pressed("move_down"):
 			_start_slide(dir)
 		else:
@@ -113,8 +132,15 @@ func _physics_process(delta: float) -> void:
 	elif sliding > 0.0:
 		_slide_step(delta)
 	else:
-		velocity.x = dir * SPEED
-		if dir != 0.0:
+		if carry > 0.0 and dir * _dash_dir >= 0.0:
+			velocity.x = _dash_dir * carry
+			carry = move_toward(carry, SPEED, CARRY_DRAG * delta)
+			if carry <= SPEED:
+				carry = 0.0
+		else:
+			carry = 0.0
+			velocity.x = dir * SPEED
+		if dir != 0.0 and carry <= 0.0:
 			facing = signf(dir)
 			_walk_dist += absf(velocity.x) * delta
 		else:
@@ -124,8 +150,11 @@ func _physics_process(delta: float) -> void:
 			# Let go of jump early for a short hop.
 			if not Input.is_action_pressed("jump") and velocity.y < -SHORT_HOP:
 				velocity.y += GRAVITY * delta
-			if Input.is_action_just_pressed("jump") and is_on_floor():
-				velocity.y = -JUMP_SPEED
+			if _just("jump") and is_on_floor():
+				if _grace > 0.0:
+					_launch(_grace_speed)
+				else:
+					velocity.y = -JUMP_SPEED
 	move_and_slide()
 
 	_invulnerable = maxf(0.0, _invulnerable - delta)
@@ -136,7 +165,17 @@ func _physics_process(delta: float) -> void:
 		_aim = AIM_SECONDS
 		var bolt: Bolt = Bolt.make(position + Vector2(facing * 14.0, -40.0), Vector2(facing * SHOT_SPEED, 0.0), true)
 		get_parent().add_child(bolt)
+	_queued.clear()
 	_pose()
+
+
+## Presses `action` once, for his next physics step.
+func press(action: String) -> void:
+	_queued.append(action)
+
+
+func _just(action: String) -> bool:
+	return Input.is_action_just_pressed(action) or _queued.has(action)
 
 
 ## Starts a dash the way he's pushing, or the way he faces if he isn't. Once
@@ -144,7 +183,8 @@ func _physics_process(delta: float) -> void:
 func _start_dash(dir: float) -> void:
 	if _dash_ready > 0.0 or (_air_dashed and not is_on_floor()):
 		return
-	if not is_on_floor():
+	_dash_grounded = is_on_floor()
+	if not _dash_grounded:
 		_air_dashed = true
 	_dash_dir = signf(dir) if dir != 0.0 else facing
 	facing = _dash_dir
@@ -154,10 +194,18 @@ func _start_dash(dir: float) -> void:
 	_aim = 0.0
 
 
-## One frame of a dash: straight along, no gravity, leaving afterimages.
+## One frame of a dash: straight along, no gravity, leaving afterimages. On
+## the ground, jump breaks out of it into a jump that carries its speed.
 func _dash_step(delta: float) -> void:
 	velocity = Vector2(_dash_dir * DASH_SPEED, 0.0)
+	if _dash_grounded and not frozen and _just("jump"):
+		dashing = 0.0
+		_launch(DASH_SPEED)
+		return
 	dashing = maxf(0.0, dashing - delta)
+	if dashing <= 0.0 and _dash_grounded:
+		_grace = CARRY_GRACE
+		_grace_speed = DASH_SPEED
 	_walk_dist = 0.0
 	_trail -= delta
 	if _trail <= 0.0 and get_parent() != null:
@@ -186,9 +234,20 @@ func _slide_step(delta: float) -> void:
 	_walk_dist = 0.0
 	if not is_on_floor() and velocity.y > 1.0:
 		sliding = 0.0
-	elif not frozen and Input.is_action_just_pressed("jump"):
+	elif not frozen and _just("jump"):
 		sliding = 0.0
-		velocity.y = -JUMP_SPEED
+		_launch(absf(velocity.x))
+	elif sliding <= 0.0:
+		_grace = CARRY_GRACE
+		_grace_speed = SLIDE_END_SPEED
+
+
+## Jumps, carrying `speed` along the way he was dashing or sliding.
+func _launch(speed: float) -> void:
+	velocity.y = -JUMP_SPEED
+	carry = minf(speed, CARRY_MAX)
+	velocity.x = _dash_dir * carry
+	_grace = 0.0
 
 
 ## A fading copy of his sprite where he stands: the reinforced legs' blur.
