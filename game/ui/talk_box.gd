@@ -1,7 +1,6 @@
-class_name ArtTalkBox
+class_name TalkBox
 extends Control
-## The art test's dialogue box: the case's own Talks (DrownedMarket), shown in
-## the scene's style instead of the prototype's plain panel. A box low on the
+## The dialogue box: the case's own Talks (DrownedMarket). A box low on the
 ## screen in the caption's navy and amber, the speaker's name over the line, the
 ## line typed out, and the choices under it.
 ##

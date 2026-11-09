@@ -2,18 +2,20 @@ class_name CaseScreens
 extends RefCounted
 ## The opening brief and the closing summary.
 
+const THOUGHT: Color = Color("c9b6ff")
+
 static func intro(on_start: Callable) -> Control:
 	var parts: Array[Control] = UiTheme.modal(620)
 	var box: VBoxContainer = parts[1] as VBoxContainer
-	box.add_child(UiTheme.label("CASE 01  ·  GREY-BOX PROTOTYPE", 12, UiTheme.DIM))
+	box.add_child(UiTheme.label("CASE 01  ·  PROTOTYPE", 12, UiTheme.DIM))
 	box.add_child(UiTheme.label("The Drowned Market", 30, UiTheme.NEON))
 	box.add_child(UiTheme.label("Ines Vale, a memory broker, is dead inside her own sealed stall. There's a blank chip in her hand, wiped clean and etched with a string of characters. The night runs on a timeline of events, and some of them only happen because of what you choose."))
 	box.add_child(UiTheme.label("Find clues, then commit theories on the case board. A theory needs at least two clues that back it up and nothing that doesn't belong. Facts open doors. Wrong theories are allowed, and acting on one has consequences."))
 	box.add_child(UiTheme.label("Some things can be read through your neural port. A surface reading is safe. A deep reading shows more, and what you see stays with you, from case to case. Pills hold the symptoms back, for a price."))
-	box.add_child(UiTheme.label("Move: A/D or arrows.  Jump: W, Space or Up.  Use: E.  Stun pistol: F.  Thermal optic: T (once you have it).  Case board: Tab or C.  Take a pill: Q.", 13, UiTheme.WARN))
+	box.add_child(UiTheme.label("Move: A/D or arrows (hold Shift to sprint).  Jump: W, Space or Up.  Use: E.  Examine what you carry: X.  Stun pistol: F.  Thermal optic: T (once you have it).  Case board: Tab or C.  Take a pill: Q.", 13, UiTheme.WARN))
 	if Mind.bleed > 0 or Mind.doses_taken > 0:
 		box.add_child(UiTheme.label("Carried over: bleed-through %d/%d, %d pill(s) left%s." % [Mind.bleed, Mind.tuning.bleed_max, Mind.pills,
-			(", passengers: " + ", ".join(PackedStringArray(Mind.passengers))) if not Mind.passengers.is_empty() else ""], 13, Hud.THOUGHT))
+			(", passengers: " + ", ".join(PackedStringArray(Mind.passengers))) if not Mind.passengers.is_empty() else ""], 13, THOUGHT))
 	var b: Button = Button.new()
 	b.text = "Start at the precinct"
 	b.pressed.connect(on_start)
@@ -59,7 +61,7 @@ static func summary(s: CaseSummary, on_again: Callable, on_fresh: Callable) -> C
 	status.add_child(UiTheme.label("Bleed-through: %d/%d%s (%s)\nPassengers: %s\nPills: %d taken, %d left" % [
 		s.bleed, s.bleed_max, held, s.tier,
 		", ".join(PackedStringArray(s.passengers)) if not s.passengers.is_empty() else "none",
-		s.doses_taken, s.pills_left], 13, Hud.THOUGHT))
+		s.doses_taken, s.pills_left], 13, THOUGHT))
 	var after: PackedStringArray = PackedStringArray()
 	for line: String in s.insights:
 		after.append("•  " + line)
@@ -68,7 +70,7 @@ static func summary(s: CaseSummary, on_again: Callable, on_fresh: Callable) -> C
 			", ".join(PackedStringArray(s.leftovers)), "That clue came" if s.leftovers.size() == 1 else "Those clues came"])
 	if not after.is_empty():
 		board.add_child(UiTheme.label("WHAT THE READINGS LEFT YOU", 12, UiTheme.DIM))
-		board.add_child(UiTheme.label("\n".join(after), 13, Hud.THOUGHT))
+		board.add_child(UiTheme.label("\n".join(after), 13, THOUGHT))
 	var buttons: HBoxContainer = HBoxContainer.new()
 	buttons.add_theme_constant_override("separation", 10)
 	box.add_child(buttons)

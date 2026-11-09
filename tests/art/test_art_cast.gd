@@ -185,9 +185,9 @@ func test_a_planted_foot_slides_back_at_sprinting_speed() -> void:
 func test_sprinting_in_the_scene_matches_the_run_cycle() -> void:
 	# About 1.5 cycles a second, so the legs keep up with the ground, and well
 	# over twice walking pace.
-	var cycles: float = ArtTest.SPRINT_SPEED / ArtCast.build("detective").run_stride
+	var cycles: float = Detective.SPRINT_SPEED / ArtCast.build("detective").run_stride
 	assert_float(cycles).is_between(1.2, 1.8)
-	assert_float(ArtTest.SPRINT_SPEED).is_greater(ArtTest.SPEED * 2.0)
+	assert_float(Detective.SPRINT_SPEED).is_greater(Detective.SPEED * 2.0)
 
 
 func _row_has_pixels(img: Image, y: int) -> bool:

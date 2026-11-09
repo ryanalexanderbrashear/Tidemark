@@ -37,10 +37,20 @@ const VALE_POINTS: Array[Array] = [
 
 var rooms: Dictionary[String, RoomDef] = {}
 ## When true, the body gives the chip but not its etching: he pockets it, and
-## the "chip" clue comes from turning it over (the art test's examine view).
-## The grey box has no examine view, so there the body names the etching.
-## Either way the coroner terminal is a second route to it.
+## the "chip" clue comes from turning it over (the examine view, X), which is
+## how the game plays it. Without an examine view (case tests that play
+## without a scene), the body names the etching. Either way the coroner
+## terminal is a second route to it.
 var etching_by_examining: bool = false
+
+## The examine tutorial: what the inner voice says once he has the chip
+## and hasn't turned it over yet (after the body; again on coming back to the
+## market floor).
+const CHIP_HINT: String = "Something's scratched into that chip. Take it out and turn it over. (X)"
+const CHIP_REMINDER: String = "That chip in my pocket. I still haven't looked at what's scratched on it. (X)"
+## Narration the first time he steps onto the market floor, in the caption
+## box. Placeholder, not canon.
+const MARKET_OPENING: String = "The Drowned Market. Ines Vale's stall is taped off, the shutter's sealed, and the badge reader by it is waiting for me."
 var spots: Array[Spot] = []
 
 
@@ -118,6 +128,11 @@ func _build_rooms() -> void:
 	drop.spawns = [Vector2(500, 200), Vector2(700, 160), Vector2(820, 240)]
 	drop.spawn_kind = "drone"
 	_add(drop)
+
+
+## Whether he's carrying the chip without having found its etching.
+static func chip_unexamined() -> bool:
+	return Case.is_set("has_chip") and not Case.has_clue("chip")
 
 
 func _add(r: RoomDef) -> void:

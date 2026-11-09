@@ -2,8 +2,9 @@ class_name Notices
 extends Control
 ## The few words the game puts over the picture: toasts from the case (a new
 ## clue, a door that won't open) one after another near the top, the prompt
-## over whatever the detective can use, and the status line in the top right
-## corner (the case clock and the like).
+## over whatever the detective can use, the status line in the top right
+## corner (the case clock and the like) and a quieter line in the top left
+## (where he is, the keys).
 
 const P = preload("res://game/art/art_palette.gd")
 const TEXT: Color = Color("d4dce6")
@@ -16,6 +17,7 @@ var _toast_time: float = 0.0
 var _toast: Label
 var _prompt: Label
 var _status: Label
+var _corner: Label
 
 
 func _init() -> void:
@@ -25,6 +27,8 @@ func _init() -> void:
 	_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_status.visible = true
 	add_child(_status)
+	_corner = outlined(Color(P.RAIN, 0.85))
+	add_child(_corner)
 	_prompt = outlined(TEXT)
 	add_child(_prompt)
 	_toast = outlined(P.AMBER)
@@ -56,7 +60,7 @@ func clear_toasts() -> void:
 
 func _restyle(view: PixelView) -> void:
 	var font_px: int = view.font_px()
-	for l: Label in [_prompt, _toast, _status]:
+	for l: Label in [_prompt, _toast, _status, _corner]:
 		l.add_theme_font_size_override("font_size", roundi(font_px * 0.85))
 		l.add_theme_constant_override("outline_size", maxi(2, font_px / 5))
 
@@ -103,3 +107,14 @@ func status(view: PixelView, text: String) -> void:
 	_status.text = text
 	_status.reset_size()
 	_status.position = view.offset + Vector2(view.shown.x - _status.size.x - 14.0, 8.0)
+
+
+func status_color(c: Color) -> void:
+	_status.add_theme_color_override("font_color", c)
+
+
+## The quiet line in the top left ("" hides it).
+func corner(view: PixelView, text: String) -> void:
+	_corner.visible = text != ""
+	_corner.text = text
+	_corner.position = view.offset + Vector2(14.0, 8.0)

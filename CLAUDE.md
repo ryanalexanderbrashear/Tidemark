@@ -1,6 +1,6 @@
 # Tidemark
 
-A cyberpunk detective game in Godot 4: a 2D metroidvania about a detective chasing a serial killer through Halcyon Reach, a flooded city, by one developer (Alex). The game was called Undertow while in development, and the repo and some docs may still use that name. Investigation is the main pillar; platforming and combat are lighter, and every fight needs a story reason. This repo currently holds a grey-box prototype of one case, the Drowned Market, to test the core loop. Treat it as a prototype: clear and tested, but expect rooms built in code to move into hand-built scenes later.
+A cyberpunk detective game in Godot 4: a 2D metroidvania about a detective chasing a serial killer through Halcyon Reach, a flooded city, by one developer (Alex). The game was called Undertow while in development, and the repo and some docs may still use that name. Investigation is the main pillar; platforming and combat are lighter, and every fight needs a story reason. This repo currently holds a prototype of one case, the Drowned Market, to test the core loop, in the game's look: the market floor and Vale's stall drawn, the other rooms pixel stand-ins on the grey-box layout. Treat it as a prototype: clear and tested, but expect rooms built in code to move into hand-built scenes later.
 
 ## Design
 
@@ -31,7 +31,9 @@ The design lives outside this repo, in Claude Docs and Alex's Google Drive desig
 
 - `Case` (autoload, `game/case/case_state.gd`) owns all case state. Gameplay and UI change the case only through it, so tests can play the case without a scene.
 - `Mind` (autoload, `game/mind/mind_state.gd`) owns the detective's symptoms, passengers and pills. It carries across cases, so `Case.reset()` doesn't clear it; tests call `Mind.reset()`. It never moves the case clock or closes a gate.
-- Case content (rooms, spots, dialogue) lives in `game/case/drowned_market.gd`. Each spot's action returns a `Talk` or null.
+- Case content (rooms, spots, dialogue) lives in `game/case/drowned_market.gd`, laid out in grey-box world units. Each spot's action returns a `Talk` or null.
+- The main scene (`World`, `game/world/world.gd`) draws at 640x360 in a `PixelView`. `RoomLayout` places the case's rooms in native pixels: drawn rooms (market, stall) where the art puts each spot, every other room a stand-in at 2/3 of its grey-box layout. Each room draws through a `RoomScene` subclass in `game/view/` (`MarketScene`, `StallScene`, `StandInScene`); drawing a new room means a new `RoomScene` plus its entry in `RoomLayout.PLACES`.
+- The art test (`ArtTest`) extends `World` and is the sandbox: build a mechanic in the shared code so the game and the sandbox both get it, and keep only try-out toggles in `ArtTest`.
 - Scripts run with `-s` can't name the `Case` autoload at compile time. Load such code at runtime (see `editor/ci/check_scripts.gd`).
 - Schemas in `game/data/` are `@tool` scripts.
 - Characters are drawn in code on one realistic 8-head body (`ArtFigure`, after SLYNYRD's anatomy chart; 72 px tall, 9 px a head at full height; builds are written at the chart's 96 px scale and shrunk by `fit()`), cast in `game/art/art_cast.gd`. `editor/art/export_sprites.gd` writes them out as layered Aseprite files, PNG sheets and Godot SpriteFrames for hand editing.
