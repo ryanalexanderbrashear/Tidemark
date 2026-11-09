@@ -75,6 +75,8 @@ class Build:
 	var hand_len: float = 6.0
 	## Distance the body moves in one walk cycle, so planted feet don't slide.
 	var stride: float = 54.0
+	## The same for one sprint cycle (run_pose): two long strides.
+	var run_stride: float = 128.0
 	## Half-depths of the torso in profile (front is +x): chest, waist, the
 	## front of the pelvis, and the seat behind.
 	var chest_front: float = 8.0
@@ -162,6 +164,7 @@ class Build:
 		forearm = unit * 1.2
 		hand_len = unit * 0.5
 		stride = 54.0 * s
+		run_stride = 128.0 * s
 		hem_y = top_y + unit * 6.3
 		leg_w = [5.0 * s, 3.6 * s, 3.4 * s, 2.1 * s]
 		calf = 2.6 * s
@@ -181,7 +184,7 @@ class Build:
 		hip_y = up.call(hip_y)
 		ankle_y = up.call(ankle_y)
 		hem_y = up.call(hem_y)
-		for f: String in ["thigh", "shin", "upper_arm", "forearm", "hand_len", "stride", "chest_front", "chest_back",
+		for f: String in ["thigh", "shin", "upper_arm", "forearm", "hand_len", "stride", "run_stride", "chest_front", "chest_back",
 				"waist_front", "waist_back", "groin", "seat", "calf", "heel"]:
 			set(f, float(get(f)) * K)
 		var lw: Array[float] = []
@@ -268,6 +271,51 @@ static func walk_pose(b: Build, frame: int) -> Pose:
 	p.near_bend = maxf(arm, 0.0) * 0.45 + 0.12
 	p.pocket = false
 	return p
+
+
+## A sprint, 8 frames a cycle like the walk: each foot is down for three frames
+## (strike, under the hip, push off) and sliding back by run_stride / 8 a
+## frame, so the scene can pick frames by distance; frames 3 and 7 are in the
+## air. The body leans in, drops as each foot takes the weight and rises off
+## the ground in between; the arms pump bent at the elbow, opposite the legs.
+static func run_pose(b: Build, frame: int) -> Pose:
+	var f: int = posmod(frame, 8)
+	var p: Pose = Pose.new()
+	p.frame = frame
+	p.walking = true
+	p.bob = roundi([1.5, 2.5, 1.5, 0.0, 1.5, 2.5, 1.5, 0.0][f] * K)
+	p.lean = roundi(4.0 * K)
+	var far: Array = _run_foot(b, f)
+	var near: Array = _run_foot(b, f + 4)
+	p.far_foot = far[0]
+	p.far_heel = far[1]
+	p.near_foot = near[0]
+	p.near_heel = near[1]
+	# Each arm swings with the opposite leg: the near arm is furthest forward
+	# as the far foot reaches out to strike (between frames 7 and 0). Forward,
+	# the elbow closes and the fist comes up to the chest; back, it opens.
+	var arm: float = cos(TAU * (float(f) + 0.5) / 8.0)
+	p.far_swing = -arm * 0.55
+	p.far_bend = 1.65 - arm * 0.2
+	p.near_swing = arm * 0.55
+	p.near_bend = 1.65 + arm * 0.2
+	p.pocket = false
+	return p
+
+
+## [ankle, heel lift] at run frame `f`. Down for frames 0 to 2, sliding back
+## from strike to push off; then the heel kicks up behind, the knee drives
+## through and the foot reaches out for the next strike.
+static func _run_foot(b: Build, f: int) -> Array:
+	var i: int = posmod(f, 8)
+	var step: float = b.run_stride / 8.0
+	if i <= 2:
+		var heel: float = [0.0, 0.0, 3.0][i] * K
+		return [Vector2(b.cx + step * float(1 - i), b.ankle_y), heel]
+	# [x, height off the floor] in steps, heel lift in reference pixels.
+	var swing: Array = [[-1.05, 0.6, 5.0], [-0.9, 1.2, 5.0], [0.3, 1.1, 1.0], [1.1, 0.75, 0.0], [1.15, 0.25, -1.0]]
+	var s: Array = swing[i - 3]
+	return [Vector2(b.cx + float(s[0]) * step, b.ankle_y - float(s[1]) * step), float(s[2]) * K]
 
 
 ## [ankle, heel lift] at walk frame `f`: planted and sliding back for half the
