@@ -6,12 +6,18 @@ extends RefCounted
 ##
 ## The body follows SLYNYRD's 8-head side-view chart (Pixelblog 49), which
 ## Alex picked as the anatomy reference (2026-11-08): at full height a person
-## is 96 px from sole to crown, so one head is 12 px. Shoulders sit 1.3 heads
+## is 72 px from sole to crown, so one head is 9 px (96 px read too tall in the
+## scene, 2026-11-09). Shoulders sit 1.3 heads
 ## down, the elbow at the navel (3 heads), the crotch at 4 heads (half height),
 ## the wrist level with it, the knee at 6 heads, and the foot is a head long.
 ## The head sits over the front half of the torso, on a visible neck; the chest
 ## is deep, the back curves in at the waist and out at the seat, and the calf
 ## swells behind the shin.
+##
+## Builds are written at the chart's original scale (96 px, 12 px a head),
+## which leaves room for detail in the numbers, then fit() shrinks them to
+## FULL_HEIGHT. Drawing offsets scale by K the same way. Head maps are drawn
+## at the final size.
 ##
 ## Each character is a Build (stature, depths, clothes, head, props) on this
 ## one body, so everyone shares the same anatomy and light. Clothes are drawn
@@ -34,8 +40,11 @@ const RIM: Color = Color("a6dde6")
 const WARM: Color = Color("e0a768")
 
 ## Height of a full-grown figure (stature 1.0) from sole to crown, and of a head.
-const FULL_HEIGHT: float = 96.0
-const HEAD: float = 12.0
+const FULL_HEIGHT: float = 72.0
+const HEAD: float = FULL_HEIGHT / 8.0
+## The scale Builds are written at, and how much fit() shrinks them.
+const REF_HEIGHT: float = 96.0
+const K: float = FULL_HEIGHT / REF_HEIGHT
 
 ## The crash-test dummy's colours, as on the reference chart.
 const DUMMY_HEAD: Color = Color("cfc35a")
@@ -57,6 +66,8 @@ class Build:
 	var belt_y: float = 42.0
 	var hip_y: float = 49.0
 	var ankle_y: float = 94.0
+	## Where the soles stand: the canvas's third row from the bottom.
+	var sole_y: float = 98.0
 	var thigh: float = 25.0
 	var shin: float = 20.5
 	var upper_arm: float = 18.0
@@ -106,17 +117,18 @@ class Build:
 	var hand_lit: Color = Color("c49373")
 
 	## The head in profile facing right, one character per pixel, keyed by
-	## `head_key`. 12 rows from crown to chin and about 11 deep, a block rather
-	## than a ball, as on SLYNYRD's chart: a flat crown, the back of the skull
-	## straight down to the ear, the face a straight plane at column 10 with the
-	## nose one pixel past it, and the jaw cutting back from the chin to the neck.
+	## `head_key`, at the final size: 9 rows from crown to chin and about 8
+	## deep, a block rather than a ball, as on SLYNYRD's chart: a flat crown,
+	## the back of the skull straight down to the ear, the face a straight plane
+	## at column 7 with the nose one pixel past it, and the jaw cutting back from
+	## the chin to the neck.
 	var head: Array[String] = []
 	var head_key: Dictionary[String, Color] = {}
 	## Keys that glow (eyes, visors, lamps): drawn after the light, so they stay bright.
 	var glow_keys: String = ""
 	var head_at: Vector2i = Vector2i(16, 2)
 	## The neck under the head: offset from head_at and size.
-	var neck: Rect2i = Rect2i(3, 10, 6, 7)
+	var neck: Rect2i = Rect2i(2, 7, 4, 5)
 
 	## Hooks for props, each called as hook(img, build, pose, joints):
 	## behind everything, in front of the body, and after the light.
@@ -126,14 +138,17 @@ class Build:
 	## Called on the finished frame, for effects like a passenger coming apart.
 	var finish: Callable = Callable()
 
-	## Sets the body from a stature (1.0 = 96 px, a tall adult) on a canvas of
-	## `canvas`, soles on its third row from the bottom, centred on `centre`.
+	## Sets the body from a stature (1.0 = a tall adult) on a canvas of
+	## `canvas`, soles on its third row from the bottom, centred on `centre`,
+	## all at the reference scale (96 px). Call fit() once the character's own
+	## numbers are set.
 	func proportion(canvas: Vector2i, s: float, centre: float) -> void:
 		size = canvas
 		stature = s
 		cx = centre
 		var sole: float = float(canvas.y) - 2.0
-		var unit: float = FULL_HEIGHT * s / 8.0
+		var unit: float = REF_HEIGHT * s / 8.0
+		sole_y = sole
 		top_y = sole - unit * 8.0
 		shoulder_y = top_y + unit * 1.35
 		belt_y = top_y + unit * 3.0
@@ -150,7 +165,34 @@ class Build:
 		hem_y = top_y + unit * 6.3
 		leg_w = [5.0 * s, 3.6 * s, 3.4 * s, 2.1 * s]
 		calf = 2.6 * s
-		head_at = Vector2i(roundi(centre) - 6, roundi(top_y))
+
+	## Shrinks a Build written at the reference scale to FULL_HEIGHT: lengths
+	## by K, heights measured up from the soles, which stay on the canvas's
+	## third row from the bottom.
+	func fit() -> void:
+		var old_sole: float = sole_y
+		size = Vector2i(ceili(float(size.x) * K) + 2, ceili((old_sole) * K) + 2)
+		sole_y = float(size.y) - 2.0
+		var up: Callable = func(y: float) -> float: return sole_y - (old_sole - y) * K
+		cx = cx * K + 1.0
+		top_y = up.call(top_y)
+		shoulder_y = up.call(shoulder_y)
+		belt_y = up.call(belt_y)
+		hip_y = up.call(hip_y)
+		ankle_y = up.call(ankle_y)
+		hem_y = up.call(hem_y)
+		for f: String in ["thigh", "shin", "upper_arm", "forearm", "hand_len", "stride", "chest_front", "chest_back",
+				"waist_front", "waist_back", "groin", "seat", "calf", "heel"]:
+			set(f, float(get(f)) * K)
+		var lw: Array[float] = []
+		for w: float in leg_w:
+			lw.append(w * K)
+		leg_w = lw
+		var aw: Array[float] = []
+		for w: float in arm_w:
+			aw.append(w * K)
+		arm_w = aw
+		head_at = Vector2i(roundi(cx) - 4, roundi(top_y))
 
 
 ## One frame's pose. Positions are in canvas pixels.
@@ -198,8 +240,8 @@ static func idle_pose(b: Build, frame: int) -> Pose:
 	var p: Pose = Pose.new()
 	p.frame = frame
 	p.breath = [0, 0, 1, 1][posmod(frame, 4)]
-	p.far_foot = Vector2(b.cx - 3.0, b.ankle_y)
-	p.near_foot = Vector2(b.cx + 2.0, b.ankle_y)
+	p.far_foot = Vector2(b.cx - 3.0 * K, b.ankle_y)
+	p.near_foot = Vector2(b.cx + 2.0 * K, b.ankle_y)
 	p.far_arm = false
 	p.near_swing = -0.04
 	p.near_bend = 0.35
@@ -235,11 +277,11 @@ static func _foot(b: Build, f: int) -> Array:
 	var reach: float = b.stride * 0.25
 	var k: float = b.stride / 48.0
 	if i <= 4:
-		var heel: float = 3.0 if i == 4 else 0.0
+		var heel: float = 3.0 * K if i == 4 else 0.0
 		return [Vector2(b.cx + lerpf(reach, -reach, float(i) / 4.0), b.ankle_y), heel]
 	var swing: Array = [[-7.0, 4.0, 3.0], [0.0, 7.0, 0.0], [8.0, 3.0, -1.0]]
 	var s: Array = swing[i - 5]
-	return [Vector2(b.cx + float(s[0]) * k, b.ankle_y - float(s[1]) * k), float(s[2])]
+	return [Vector2(b.cx + float(s[0]) * k, b.ankle_y - float(s[1]) * k), float(s[2]) * K]
 
 
 # ---------- drawing ----------
@@ -262,11 +304,11 @@ static func draw(b: Build, p: Pose, layers: Variant = null) -> Image:
 		_arm(img, b, j["far_shoulder"], j["far_elbow"], j["far_hand"], far_c, far_c, false, false)
 	snap = _claim(img, snap, owner, 1)
 	var bend: bool = p.walking or p.drop > 0.0
-	j["far_knee"] = _leg(img, b, j["hip"] + Vector2(-1.5, 0), p.far_foot, p.far_heel, DUMMY_FAR if b.dummy else b.pants_far, bend, p.far_knee, p.far_toe_back)
-	j["near_knee"] = _leg(img, b, j["hip"] + Vector2(1.5, 0), p.near_foot, p.near_heel, DUMMY_LEG if b.dummy else b.pants, bend, p.near_knee, false)
+	j["far_knee"] = _leg(img, b, j["hip"] + Vector2(-1.5 * K, 0), p.far_foot, p.far_heel, DUMMY_FAR if b.dummy else b.pants_far, bend, p.far_knee, p.far_toe_back)
+	j["near_knee"] = _leg(img, b, j["hip"] + Vector2(1.5 * K, 0), p.near_foot, p.near_heel, DUMMY_LEG if b.dummy else b.pants, bend, p.near_knee, false)
 	snap = _claim(img, snap, owner, 2)
 	if b.dummy:
-		Px.poly(img, _outline(b, p, j, 0.0, b.hip_y + 7.0 + float(p.bob) + p.drop, false), DUMMY_TORSO)
+		Px.poly(img, _outline(b, p, j, 0.0, b.hip_y + 7.0 * K + float(p.bob) + p.drop, false), DUMMY_TORSO)
 	else:
 		_torso(img, b, p, j)
 	snap = _claim(img, snap, owner, 3)
@@ -302,8 +344,8 @@ static func _joints(b: Build, p: Pose) -> Dictionary[String, Vector2]:
 	j["hip"] = Vector2(b.cx, b.hip_y + float(p.bob) + p.drop)
 	j["top"] = Vector2(b.cx + float(p.lean), b.shoulder_y + up)
 	j["head"] = Vector2(b.head_at) + Vector2(float(p.lean), up)
-	j["near_shoulder"] = Vector2(b.cx + float(p.lean), b.shoulder_y + 2.5 + up)
-	j["far_shoulder"] = Vector2(b.cx - 2.0 + float(p.lean), b.shoulder_y + 3.0 + up)
+	j["near_shoulder"] = Vector2(b.cx + float(p.lean), b.shoulder_y + 2.5 * K + up)
+	j["far_shoulder"] = Vector2(b.cx - 2.0 * K + float(p.lean), b.shoulder_y + 3.0 * K + up)
 	for side: String in ["far", "near"]:
 		var sh: Vector2 = j[side + "_shoulder"]
 		var pin: Vector2 = p.far_hand if side == "far" else p.near_hand
@@ -349,11 +391,11 @@ static func _leg(img: Image, b: Build, hip: Vector2, ankle: Vector2, heel: float
 		# (A shin flat on the floor has its calf pressed against it.)
 		var calf: Vector2 = knee + shin * 0.32 + back * (w[2] * 0.55)
 		Px.ellipse(img, calf.x, calf.y, b.calf + e, shin.length() * 0.24, c)
-	var thigh: Vector2 = hip.lerp(knee, 0.4) - back * 0.8
+	var thigh: Vector2 = hip.lerp(knee, 0.4) - back * 0.8 * K
 	Px.ellipse(img, thigh.x, thigh.y, w[0] * 0.95 + e, (knee - hip).length() * 0.3, c)
 	if toe_back:
 		# Up on the toes behind, sole facing back.
-		Px.poly(img, PackedVector2Array([ankle + Vector2(-2, -2), ankle + Vector2(2, -2), ankle + Vector2(-4, 4), ankle + Vector2(-9, 4)]), DUMMY_FAR if b.dummy else b.boot)
+		Px.poly(img, PackedVector2Array([ankle + Vector2(-2, -2) * K, ankle + Vector2(2, -2) * K, ankle + Vector2(-4, 4) * K, ankle + Vector2(-9, 4) * K]), DUMMY_FAR if b.dummy else b.boot)
 		return knee
 	_boot(img, b, ankle, heel)
 	return knee
@@ -371,23 +413,23 @@ static func _limb(img: Image, a: Vector2, z: Vector2, wa: float, wz: float, c: C
 ## A foot a head long: heel just behind the ankle, toe well ahead of it.
 static func _boot(img: Image, b: Build, ankle: Vector2, lift: float) -> void:
 	var c: Color = DUMMY_LEG if b.dummy else b.boot
-	var k: float = b.stature
-	var sole_y: float = ankle.y + 4.0
+	var k: float = b.stature * K
+	var sole_y: float = ankle.y + 4.0 * K
 	var back: Vector2 = Vector2(ankle.x - 3.0 * k, sole_y - maxf(lift, 0.0))
 	var toe: Vector2 = Vector2(ankle.x + 8.5 * k, sole_y - maxf(-lift, 0.0))
 	if b.heel > 0.0 and not b.dummy:
 		# A heeled boot: the heel is a post under the back, the toe tips down to the floor.
 		var up: float = maxf(lift, 0.0)
 		Px.poly(img, PackedVector2Array([
-			Vector2(ankle.x - 2.2, ankle.y - 2.5), Vector2(ankle.x + 2.0, ankle.y - 2.5),
-			Vector2(ankle.x + 3.5, ankle.y + 0.5), toe + Vector2(-1.0, -1.5), toe, Vector2(ankle.x + 1.5, sole_y - b.heel - up),
-			Vector2(ankle.x - 0.5, sole_y - b.heel - up), Vector2(ankle.x - 0.5, sole_y - up),
-			Vector2(ankle.x - 2.0, sole_y - up), Vector2(ankle.x - 2.5, sole_y - b.heel - 1.0 - up)]), c)
+			ankle + Vector2(-2.2, -2.5) * K, ankle + Vector2(2.0, -2.5) * K,
+			ankle + Vector2(3.5, 0.5) * K, toe + Vector2(-1.0, -1.5) * K, toe, Vector2(ankle.x + 1.5 * K, sole_y - b.heel - up),
+			Vector2(ankle.x - 0.5 * K, sole_y - b.heel - up), Vector2(ankle.x - 0.5 * K, sole_y - up),
+			Vector2(ankle.x - 2.0 * K, sole_y - up), Vector2(ankle.x - 2.5 * K, sole_y - b.heel - K - up)]), c)
 		return
 	Px.poly(img, PackedVector2Array([
-		Vector2(ankle.x - 2.5, ankle.y - 1.5), Vector2(ankle.x + 2.5, ankle.y - 1.5),
-		Vector2(ankle.x + 4.5 * k, ankle.y + 1.0), toe + Vector2(0, -2.0), toe, back,
-		back + Vector2(-0.5, -2.5)]), c)
+		ankle + Vector2(-2.5, -1.5) * K, ankle + Vector2(2.5, -1.5) * K,
+		Vector2(ankle.x + 4.5 * k, ankle.y + K), toe + Vector2(0, -2.0) * K, toe, back,
+		back + Vector2(-0.5, -2.5) * K]), c)
 
 
 ## The torso's side outline, eased out by `ease` (clothes) and ending at
@@ -401,22 +443,22 @@ static func _outline(b: Build, p: Pose, j: Dictionary[String, Vector2], ease: fl
 	var hip: float = j["hip"].y
 	var e: float = ease
 	var front: Array[Vector2] = [
-		Vector2(cx + 2.5 + l, top - 1.5 - e * 0.5),
-		Vector2(cx + b.chest_front - 2.0 + l + e, top + 0.0),
-		Vector2(cx + b.chest_front + l + e, top + 4.5),
-		Vector2(cx + b.chest_front - 0.7 + l * 0.7 + e, top + 10.5),
+		Vector2(cx + 2.5 * K + l, top - 1.5 * K - e * 0.5),
+		Vector2(cx + b.chest_front - 2.0 * K + l + e, top + 0.0),
+		Vector2(cx + b.chest_front + l + e, top + 4.5 * K),
+		Vector2(cx + b.chest_front - 0.7 * K + l * 0.7 + e, top + 10.5 * K),
 		Vector2(cx + b.waist_front + l * 0.3 + e, belt),
-		Vector2(cx + b.waist_front + 0.4 + e, belt + 4.0),
-		Vector2(cx + b.groin + e, hip + 2.0),
+		Vector2(cx + b.waist_front + 0.4 * K + e, belt + 4.0 * K),
+		Vector2(cx + b.groin + e, hip + 2.0 * K),
 	]
 	var back: Array[Vector2] = [
-		Vector2(cx - b.seat + 1.0 - e, hip + 5.5),
-		Vector2(cx - b.seat - e, hip + 1.0),
-		Vector2(cx - b.waist_back + 0.3 - e, belt - 1.5),
-		Vector2(cx - b.chest_back + l * 0.6 - e, top + 9.0),
-		Vector2(cx - b.chest_back + l - e, top + 3.0),
-		Vector2(cx - b.chest_back + 2.0 + l - e * 0.5, top - 0.5 - e * 0.5),
-		Vector2(cx - 2.5 + l, top - 1.5 - e * 0.5),
+		Vector2(cx - b.seat + 1.0 * K - e, hip + 5.5 * K),
+		Vector2(cx - b.seat - e, hip + 1.0 * K),
+		Vector2(cx - b.waist_back + 0.3 * K - e, belt - 1.5 * K),
+		Vector2(cx - b.chest_back + l * 0.6 - e, top + 9.0 * K),
+		Vector2(cx - b.chest_back + l - e, top + 3.0 * K),
+		Vector2(cx - b.chest_back + 2.0 * K + l - e * 0.5, top - 0.5 * K - e * 0.5),
+		Vector2(cx - 2.5 * K + l, top - 1.5 * K - e * 0.5),
 	]
 	var pts: PackedVector2Array = PackedVector2Array()
 	for v: Vector2 in front:
@@ -427,16 +469,16 @@ static func _outline(b: Build, p: Pose, j: Dictionary[String, Vector2], ease: fl
 		var nk: Vector2 = j["near_knee"]
 		var lead: float = maxf(fk.x, nk.x)
 		var trail: float = minf(fk.x, nk.x)
-		var front_x: float = maxf(lead + 4.0, cx + b.groin + e + 1.5)
-		var back_x: float = minf(trail - 5.0, cx - b.seat - e - 0.5) - (2.0 if p.walking else 0.0)
+		var front_x: float = maxf(lead + 4.0 * K, cx + b.groin + e + 1.5 * K)
+		var back_x: float = minf(trail - 5.0 * K, cx - b.seat - e - 0.5) - (2.0 * K if p.walking else 0.0)
 		pts.append(Vector2(front_x, bottom))
-		pts.append(Vector2(front_x - 1.5, bottom + 1.0))
-		pts.append(Vector2(back_x + 1.5, bottom + 2.0))
+		pts.append(Vector2(front_x - 1.5 * K, bottom + 1.0))
+		pts.append(Vector2(back_x + 1.5 * K, bottom + 2.0 * K))
 		pts.append(Vector2(back_x, bottom + 1.0))
 	else:
-		var low: float = minf(bottom, hip + 7.0)
+		var low: float = minf(bottom, hip + 7.0 * K)
 		pts.append(Vector2(cx + b.groin + e - 0.5, low))
-		pts.append(Vector2(cx - b.seat + 1.0 - e, low))
+		pts.append(Vector2(cx - b.seat + 1.0 * K - e, low))
 	for v: Vector2 in back:
 		if v.y < bottom - 1.0:
 			pts.append(v)
@@ -449,58 +491,58 @@ static func _torso(img: Image, b: Build, p: Pose, j: Dictionary[String, Vector2]
 	var cx: float = b.cx
 	var belt: float = b.belt_y + float(p.bob) + p.drop
 	var hem: float = b.hem_y + float(p.bob) + p.drop
-	var long: bool = b.hem_y > b.hip_y + 9.0
+	var long: bool = b.hem_y > b.hip_y + 9.0 * K
 	var shape: PackedVector2Array = _outline(b, p, j, b.ease, hem, long)
 	Px.poly(img, shape, b.coat)
 	# Shadow down the back half, falling off toward the hem.
 	var shade: PackedVector2Array = PackedVector2Array()
 	for v: Vector2 in shape:
-		shade.append(Vector2(minf(v.x, cx - 2.0 + l * (1.0 if v.y < belt else 0.3)), v.y))
+		shade.append(Vector2(minf(v.x, cx - 2.0 * K + l * (1.0 if v.y < belt else 0.3)), v.y))
 	Px.poly(img, shade, b.coat_shade)
 	if b.open_front:
 		Px.poly(img, PackedVector2Array([
-			Vector2(cx + 2.5 + l, top), Vector2(cx + b.chest_front - 1.0 + l + b.ease, top + 3.0),
-			Vector2(cx + b.chest_front - 0.5 + l + b.ease, top + 10.0), Vector2(cx + b.waist_front + l * 0.3 + b.ease, belt),
-			Vector2(cx + b.waist_front - 1.5 + l * 0.3, belt), Vector2(cx + b.chest_front - 3.0 + l, top + 8.0)]), b.inner)
-		Px.line(img, Vector2i(roundi(cx + 3.0 + l), roundi(top + 1.0)), Vector2i(roundi(cx + b.waist_front - 1.5 + l * 0.3), roundi(belt - 1.0)), b.coat_lit)
+			Vector2(cx + 2.5 * K + l, top), Vector2(cx + b.chest_front - 1.0 * K + l + b.ease, top + 3.0 * K),
+			Vector2(cx + b.chest_front - 0.5 * K + l + b.ease, top + 10.0 * K), Vector2(cx + b.waist_front + l * 0.3 + b.ease, belt),
+			Vector2(cx + b.waist_front - 1.5 * K + l * 0.3, belt), Vector2(cx + b.chest_front - 3.0 * K + l, top + 8.0 * K)]), b.inner)
+		Px.line(img, Vector2i(roundi(cx + 3.0 * K + l), roundi(top + 1.0)), Vector2i(roundi(cx + b.waist_front - 1.5 * K + l * 0.3), roundi(belt - 1.0)), b.coat_lit)
 	if b.belt:
-		Px.rect(img, roundi(cx - b.waist_back - b.ease), roundi(belt), roundi(b.waist_back + b.waist_front + b.ease * 2.0), 2, b.coat_deep)
+		Px.rect(img, roundi(cx - b.waist_back - b.ease), roundi(belt), roundi(b.waist_back + b.waist_front + b.ease * 2.0), 1, b.coat_deep)
 	if long:
 		# The skirt parts over the leading knee; folds hang toward each knee.
 		var fk: Vector2 = j["far_knee"]
 		var nk: Vector2 = j["near_knee"]
 		var lead: float = maxf(fk.x, nk.x)
 		var trail: float = minf(fk.x, nk.x)
-		var front_x: float = maxf(lead + 4.0, cx + b.groin + b.ease + 1.5)
-		var split: Vector2i = Vector2i(roundi(cx + b.waist_front + b.ease - 0.5), roundi(belt + 4.0))
-		Px.line(img, split, Vector2i(roundi(front_x - 2.0), roundi(hem)), b.coat_lit)
-		Px.line(img, Vector2i(roundi(cx - 2.0), roundi(belt + 8.0)), Vector2i(roundi(trail), roundi(hem)), b.coat_deep)
-		Px.line(img, Vector2i(roundi(cx + 2.0), roundi(belt + 10.0)), Vector2i(roundi(lead - 1.0), roundi(hem)), b.coat_shade)
+		var front_x: float = maxf(lead + 4.0 * K, cx + b.groin + b.ease + 1.5 * K)
+		var split: Vector2i = Vector2i(roundi(cx + b.waist_front + b.ease - 0.5), roundi(belt + 4.0 * K))
+		Px.line(img, split, Vector2i(roundi(front_x - 2.0 * K), roundi(hem)), b.coat_lit)
+		Px.line(img, Vector2i(roundi(cx - 2.0 * K), roundi(belt + 8.0 * K)), Vector2i(roundi(trail), roundi(hem)), b.coat_deep)
+		Px.line(img, Vector2i(roundi(cx + 2.0 * K), roundi(belt + 10.0 * K)), Vector2i(roundi(lead - 1.0), roundi(hem)), b.coat_shade)
 	if b.collar:
 		Px.poly(img, PackedVector2Array([
-			Vector2(cx - 5.5 + l, top + 1.5), Vector2(cx - 4.5 + l, top - 4.0), Vector2(cx - 1.0 + l, top - 3.0),
-			Vector2(cx + 0.0 + l, top + 1.0)]), b.coat_shade)
+			Vector2(cx - 5.5 * K + l, top + 1.5 * K), Vector2(cx - 4.5 * K + l, top - 4.0 * K), Vector2(cx - 1.0 * K + l, top - 3.0 * K),
+			Vector2(cx + 0.0 + l, top + 1.0 * K)]), b.coat_shade)
 		Px.poly(img, PackedVector2Array([
-			Vector2(cx + 2.5 + l, top - 2.0), Vector2(cx + 4.5 + l, top - 1.0), Vector2(cx + 5.5 + l, top + 3.0), Vector2(cx + 3.0 + l, top + 2.0)]), b.coat_lit)
+			Vector2(cx + 2.5 * K + l, top - 2.0 * K), Vector2(cx + 4.5 * K + l, top - 1.0 * K), Vector2(cx + 5.5 * K + l, top + 3.0 * K), Vector2(cx + 3.0 * K + l, top + 2.0 * K)]), b.coat_lit)
 
 
 static func _arm(img: Image, b: Build, sh: Vector2, elbow: Vector2, hand: Vector2, c: Color, lit: Color, pocket: bool, near: bool) -> void:
 	var w: Array[float] = b.arm_w
 	if near and not b.dummy:
 		# A darker underside, so the sleeve has some roundness.
-		_limb(img, sh + Vector2(-1.2, 0), elbow + Vector2(-1.2, 0), w[0], w[1], b.coat_deep)
+		_limb(img, sh + Vector2(-1.2 * K, 0), elbow + Vector2(-1.2 * K, 0), w[0], w[1], b.coat_deep)
 	_limb(img, sh, elbow, w[0], w[1], c)
 	_limb(img, elbow, hand, w[1], w[2], c)
 	if near and not b.dummy:
-		Px.line(img, Vector2i(roundi(sh.x) + 2, roundi(sh.y) - 1), Vector2i(roundi(elbow.x) + 2, roundi(elbow.y)), lit)
+		Px.line(img, Vector2i(roundi(sh.x + 2.0 * K), roundi(sh.y) - 1), Vector2i(roundi(elbow.x + 2.0 * K), roundi(elbow.y)), lit)
 	if pocket:
-		Px.line(img, Vector2i(roundi(hand.x) - 1, roundi(hand.y) - 2), Vector2i(roundi(hand.x) + 3, roundi(hand.y) + 1), b.coat_deep)
+		Px.line(img, Vector2i(roundi(hand.x) - 1, roundi(hand.y) - 2), Vector2i(roundi(hand.x) + 2, roundi(hand.y)), b.coat_deep)
 		return
 	# The hand: a mitten of palm and fingers carrying on from the forearm.
 	var dir: Vector2 = (hand - elbow).normalized()
 	var tip: Vector2 = hand + dir * b.hand_len
 	var hc: Color = c if b.dummy else b.hand
-	_limb(img, hand, tip, 1.6 * b.stature, 1.2 * b.stature, hc)
+	_limb(img, hand, tip, 1.6 * K * b.stature, 1.2 * K * b.stature, hc)
 	if near and not b.dummy:
 		var knuckle: Vector2 = hand.lerp(tip, 0.45) + Vector2(-dir.y, dir.x).normalized() * (1.0 if dir.y > 0.0 else -1.0)
 		Px.dot(img, roundi(knuckle.x) + 1, roundi(knuckle.y), b.hand_lit)
@@ -510,7 +552,7 @@ static func _head(img: Image, b: Build, j: Dictionary[String, Vector2]) -> void:
 	var at: Vector2i = Vector2i(j["head"].round())
 	Px.rect(img, at.x + b.neck.position.x, at.y + b.neck.position.y, b.neck.size.x, b.neck.size.y, DUMMY_NECK if b.dummy else b.skin_shade.darkened(0.3))
 	if not b.dummy:
-		Px.dot(img, at.x + b.neck.end.x - 1, at.y + b.neck.position.y + 2, b.hand_lit)
+		Px.dot(img, at.x + b.neck.end.x - 1, at.y + b.neck.position.y + 1, b.hand_lit)
 	for y: int in range(b.head.size()):
 		var row: String = b.head[y]
 		for x: int in range(row.length()):
@@ -535,7 +577,7 @@ static func _head_glow(img: Image, b: Build, j: Dictionary[String, Vector2]) -> 
 ## facing up or ahead get the warm lamps, and everything darkens toward the feet.
 static func _light(img: Image, b: Build) -> void:
 	var src: Image = img.duplicate() as Image
-	var top: float = b.top_y + 8.0
+	var top: float = b.top_y + HEAD * 0.67
 	var h: float = float(img.get_height())
 	for y: int in range(img.get_height()):
 		var fall: float = lerpf(1.08, 0.62, clampf((float(y) - top) / (h - top), 0.0, 1.0))

@@ -20,10 +20,10 @@ const STALL_W: int = 120
 const BACK_DOOR_X: int = 972
 const CAM_POLE_X: int = 716
 const PUMP_X: int = 1214
-## Sized for the cast's 8-head body (96 px is about 1.8 m, so 1 m is about
-## 53 px): a doorway about 2.1 m, a counter about 1 m.
-const DOOR_H: int = 110
-const COUNTER_H: int = 52
+## Sized for the cast's 8-head body (72 px is about 1.8 m, so 1 m is 40 px):
+## a doorway about 2.1 m, a counter about 1 m.
+const DOOR_H: int = 84
+const COUNTER_H: int = 40
 ## The boarded stall front that hides the heat-sealed door to Cold Storage.
 const HEAT_STALL_X: int = 148
 const HEAT_STALL_W: int = 96
@@ -162,7 +162,7 @@ static func market() -> Image:
 	var rng: RandomNumberGenerator = _rng(5)
 	# Stalls along the back of the walkway.
 	var stalls: Array[Array] = [
-		[24, 110, 130, "DECKS"], [HEAT_STALL_X, HEAT_STALL_W, 122, ""], [252, 92, 140, "RECALL"],
+		[24, 110, 130, "DECKS"], [HEAT_STALL_X, HEAT_STALL_W, 112, ""], [252, 92, 140, "RECALL"],
 		[STALL_X, STALL_W, 128, ""], [STALL_X + STALL_W + 6, 104, 118, "BUY SELL"],
 		[590, 120, 150, ""], [722, 88, 120, ""], [826, 130, 136, "MEMORIES"],
 		[BACK_DOOR_X, 100, 128, ""], [1086, 120, 132, "OPEN"],
@@ -281,8 +281,8 @@ static func _back_door(img: Image, x: int, w: int, h: int) -> void:
 	for cx: int in range(x + 3, x + w - 2, 6):
 		Px.rect(img, cx, top + 2, 1, h - 2, Color("171c27"))
 	Px.rect(img, x - 4, top, w + 8, 3, Color("0c1018"))
-	var dx: int = x + w / 2 - 20
-	var dw: int = 40
+	var dx: int = x + w / 2 - 16
+	var dw: int = 32
 	var dtop: int = WALK_Y - DOOR_H
 	# Frame, door, rivets, a scuffed kick plate.
 	Px.rect(img, dx - 3, dtop - 3, dw + 6, DOOR_H + 3, Color("0a0d14"))
@@ -292,18 +292,18 @@ static func _back_door(img: Image, x: int, w: int, h: int) -> void:
 	for ry: int in [dtop + 4, dtop + DOOR_H / 2, dtop + DOOR_H - 6]:
 		Px.dot(img, dx + 3, ry, P.CONCRETE)
 		Px.dot(img, dx + dw - 4, ry, P.CONCRETE)
-	Px.rect(img, dx + 2, WALK_Y - 14, dw - 4, 12, Color("222934"))
-	for i: int in range(6):
-		Px.rect(img, dx + 4 + i * 5, WALK_Y - 12 + (i % 2), 3, 1, Color("303a48"))
+	Px.rect(img, dx + 2, WALK_Y - 11, dw - 4, 9, Color("222934"))
+	for i: int in range(5):
+		Px.rect(img, dx + 4 + i * 5, WALK_Y - 9 + (i % 2), 3, 1, Color("303a48"))
 	# The slot at eye height, shut, with light behind it; the handle at hip height.
-	Px.rect(img, dx + 8, dtop + 18, dw - 16, 4, Color("07090e"))
-	Px.rect(img, dx + 9, dtop + 21, dw - 18, 1, Color(P.MAGENTA_DIM, 0.9))
-	Px.rect(img, dx + dw - 7, WALK_Y - 56, 3, 8, Color("151a22"))
+	Px.rect(img, dx + 7, dtop + 13, dw - 14, 3, Color("07090e"))
+	Px.rect(img, dx + 8, dtop + 15, dw - 16, 1, Color(P.MAGENTA_DIM, 0.9))
+	Px.rect(img, dx + dw - 6, WALK_Y - 42, 2, 6, Color("151a22"))
 	# A strip of magenta over the frame and its spill.
 	Px.rect(img, dx - 2, dtop - 8, dw + 4, 2, P.MAGENTA)
 	Px.glow(img, dx + dw * 0.5, dtop - 6.0, dw * 0.9, 14, P.MAGENTA, 0.3)
 	Px.glow(img, dx + dw * 0.5, float(WALK_Y), dw * 0.8, 6, P.MAGENTA, 0.12)
-	Px.text(img, dx + dw / 2 - Px.text_width("PRIVATE") / 2, dtop + 36, "PRIVATE", Color(P.RAIN, 0.35))
+	Px.text(img, dx + dw / 2 - Px.text_width("PRIVATE") / 2, dtop + 28, "PRIVATE", Color(P.RAIN, 0.35))
 
 
 ## A stall front boarded over: plank on plank, nailed shut, a warning

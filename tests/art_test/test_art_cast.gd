@@ -109,15 +109,15 @@ func test_aseprite_file_holds_the_frames_layers_and_tags() -> void:
 
 
 func test_everyone_is_built_on_eight_heads() -> void:
-	# SLYNYRD's chart: a head is 12 px at full height, crotch at half height,
+	# SLYNYRD's chart: a head is 9 px at full height, crotch at half height,
 	# wrist level with the crotch, knee at six heads.
 	for id: String in ArtCast.IDS:
 		var b: ArtFigure.Build = ArtCast.build(id)
 		var unit: float = ArtFigure.FULL_HEIGHT * b.stature / 8.0
-		var sole: float = b.ankle_y + 4.0
+		var sole: float = b.sole_y
 		assert_float((sole - b.top_y) / unit).is_equal_approx(8.0, 0.01)
 		assert_float(b.hip_y - b.top_y).is_between(unit * 3.7, unit * 4.1)
-		var wrist: float = b.shoulder_y + 2.5 + b.upper_arm + b.forearm
+		var wrist: float = b.shoulder_y + 2.5 * ArtFigure.K + b.upper_arm + b.forearm
 		assert_float(wrist - b.top_y).is_between(unit * 3.9, unit * 4.4)
 		var knee: float = b.hip_y + b.thigh
 		assert_float(knee - b.top_y).is_between(unit * 5.8, unit * 6.4)
@@ -140,10 +140,12 @@ func test_doors_and_counters_fit_the_cast() -> void:
 	# about the hip, between the waist and the crotch.
 	for id: String in ArtCast.IDS:
 		var b: ArtFigure.Build = ArtCast.build(id)
-		var sole: float = b.ankle_y + 4.0
+		var sole: float = b.sole_y
 		assert_float(sole - b.top_y).is_less(MarketArt.DOOR_H - 4.0)
 		if b.stature >= 1.0:
 			assert_float(float(MarketArt.COUNTER_H)).is_between(sole - b.hip_y, sole - b.belt_y)
+		# And the canvas really is the soles' third row from the bottom.
+		assert_float(b.sole_y).is_equal(float(b.size.y) - 2.0)
 
 
 func _row_has_pixels(img: Image, y: int) -> bool:
