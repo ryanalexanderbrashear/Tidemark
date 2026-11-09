@@ -15,7 +15,7 @@ Open `project.godot` in Godot and press F5.
 | Key | Does |
 | --- | --- |
 | A / D or arrow keys | Move |
-| Shift | Hold to sprint (his reinforced legs) |
+| Shift | Dash (his reinforced legs): a short burst, once in the air, that bolts and blows pass through |
 | W, Space or Up | Jump (let go early for a short hop) |
 | E or Enter | Talk, check something, use a door |
 | X | Examine what you carry: turn the chip over to find its etching |
@@ -27,7 +27,7 @@ Open `project.godot` in Godot and press F5.
 | 1 to 9 | Pick a dialogue choice |
 | Esc | Close a message or the board |
 
-**How it looks and plays.** `World` (the main scene) draws each room in a `PixelView`: the market floor (`MarketScene`: fog, neon, rain, the water, Osk, the fixer and the tech) and Vale's stall (`StallScene`) as drawn, and every other room as a stand-in (`StandInScene`): a sky and far skyline in the room's colours, the floor on the same walkway, the grey-box ledges, doors and objects as lit shapes, panels with their codes, and people as flat silhouettes in their spot's colour. `RoomLayout` places everything in native pixels: drawn rooms where the art puts them, stand-ins at two thirds of the grey-box layout. The detective walks and sprints at the pace his walk and run cycles are drawn for, jumps a little over his own height, and fights with the stun pistol; his jump, fall and aim are placeholder poses until they're drawn. Thugs are red silhouettes and drones small pixel hulls, placeholders too. Dialogue types out in the talk box, Tab opens the cork case board, readings bring their white in from the edges, the thermal optic turns the room to heat, his inner voice types over his head, and the first time he steps onto the market floor a caption opens the scene. The world freezes while anything is up in front of it.
+**How it looks and plays.** `World` (the main scene) draws each room in a `PixelView`: the market floor (`MarketScene`: fog, neon, rain, the water, Osk, the fixer and the tech) and Vale's stall (`StallScene`) as drawn, and every other room as a stand-in (`StandInScene`): a sky and far skyline in the room's colours, the floor on the same walkway, the grey-box ledges, doors and objects as lit shapes, panels with their codes, and people as flat silhouettes in their spot's colour. `RoomLayout` places everything in native pixels: drawn rooms where the art puts them, stand-ins at two thirds of the grey-box layout. The detective moves at a brisk jog, the pace his run cycle is drawn for, dashes on his reinforced legs (a short burst that slips through bolts and blows, with afterimages as placeholder art), jumps a little over his own height, and fights with the stun pistol; his jump, fall and aim are placeholder poses until they're drawn. Thugs are red silhouettes and drones small pixel hulls, placeholders too. Dialogue types out in the talk box, Tab opens the cork case board, readings bring their white in from the edges, the thermal optic turns the room to heat, his inner voice types over his head, and the first time he steps onto the market floor a caption opens the scene. The world freezes while anything is up in front of it.
 
 ### The loop being tested
 
@@ -53,7 +53,7 @@ The case's rules live in `game/case/` and are covered by tests that play the cle
 
 | Key | Does |
 | --- | --- |
-| A / D, Shift, W or Space | Walk, sprint and jump, as in the game |
+| A / D, Shift, W or Space | Move, dash and jump, as in the game |
 | E or Enter | Talk to someone, check something, open a door (when a prompt shows) |
 | F | Stun pistol |
 | Tab | Case board |
