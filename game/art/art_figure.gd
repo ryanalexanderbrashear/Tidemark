@@ -31,7 +31,7 @@ extends RefCounted
 ## draw() can also hand back each part on its own layer (legs, body, head...),
 ## which is what the sprite exporter writes into Aseprite files.
 
-const P = preload("res://game/art_test/art_palette.gd")
+const P = preload("res://game/art/art_palette.gd")
 
 ## Layers, back to front. Every pixel belongs to the last part drawn over it.
 const PARTS: Array[String] = ["props back", "far arm", "legs", "body", "near arm", "head", "props", "lights"]

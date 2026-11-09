@@ -27,8 +27,8 @@ func _init() -> void:
 			out = arg.trim_prefix("--out=")
 		elif arg.begins_with("--only="):
 			only = arg.trim_prefix("--only=")
-	var cast: GDScript = load("res://game/art_test/art_cast.gd")
-	var figure: GDScript = load("res://game/art_test/art_figure.gd")
+	var cast: GDScript = load("res://game/art/art_cast.gd")
+	var figure: GDScript = load("res://game/art/art_figure.gd")
 	var ids: Array[String] = cast.IDS
 	for id: String in ids:
 		if only != "" and id != only:

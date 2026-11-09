@@ -16,9 +16,9 @@ func _init() -> void:
 		elif arg.begins_with("--scale="):
 			scale = arg.trim_prefix("--scale=").to_int()
 	DirAccess.make_dir_recursive_absolute(out)
-	var cast: GDScript = load("res://game/art_test/art_cast.gd")
+	var cast: GDScript = load("res://game/art/art_cast.gd")
 	var ids: Array[String] = cast.IDS
-	var px: GDScript = load("res://game/art_test/px.gd")
+	var px: GDScript = load("res://game/art/px.gd")
 
 	# The line-up: soles on one line, a little room between each.
 	var gap: int = 10
@@ -41,7 +41,7 @@ func _init() -> void:
 	_save(lineup, out.path_join("cast-lineup.png"), scale)
 
 	# The anatomy chart: head lines a head apart up from the soles.
-	var head: int = roundi(float(load("res://game/art_test/art_figure.gd").HEAD))
+	var head: int = roundi(float(load("res://game/art/art_figure.gd").HEAD))
 	var chart: Image = Image.create_empty(width * 2, height + 24, false, Image.FORMAT_RGBA8)
 	chart.fill(Color("111b2b"))
 	var sole: int = height + 2
