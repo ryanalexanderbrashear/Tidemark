@@ -17,6 +17,7 @@ Open `project.godot` in Godot and press F5.
 | A / D or arrow keys | Move |
 | Shift | Dash (his reinforced legs): a short burst, once in the air, that bolts and blows pass through |
 | S or Down + Shift | Slide: further and low along the floor, under chest-high shots |
+| Jump during or just after a dash or slide | Carries its speed into the jump, easing back to his pace in the air; turning back drops it |
 | W, Space or Up | Jump (let go early for a short hop) |
 | E or Enter | Talk, check something, use a door |
 | X | Examine what you carry: turn the chip over to find its etching |

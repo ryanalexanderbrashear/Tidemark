@@ -147,11 +147,12 @@ func test_a_slide_drops_his_body_under_a_chest_high_shot() -> void:
 func test_down_and_dash_slides_on_the_floor_but_dashes_in_the_air() -> void:
 	var det: Detective = _on_floor()
 	Input.action_press("move_down")
-	Input.action_press("dash")
+	det.press("dash")
 	det._physics_process(STEP)
 	assert_float(det.sliding).is_greater(0.0)
 	var air: Detective = _detective()
 	air.position = Vector2(-9000, -9000)
+	air.press("dash")
 	air._physics_process(STEP)
 	assert_float(air.sliding).is_equal(0.0)
 	assert_float(air.dashing).is_greater(0.0)
@@ -160,7 +161,7 @@ func test_down_and_dash_slides_on_the_floor_but_dashes_in_the_air() -> void:
 func test_jump_breaks_out_of_a_slide() -> void:
 	var det: Detective = _on_floor()
 	det._start_slide(1.0)
-	Input.action_press("jump")
+	det.press("jump")
 	det._physics_process(STEP)
 	assert_float(det.sliding).is_equal(0.0)
 	assert_float(det.velocity.y).is_less(0.0)
@@ -172,6 +173,77 @@ func test_a_slide_shares_the_dash_cooldown() -> void:
 	det.sliding = 0.0
 	det._start_dash(1.0)
 	assert_float(det.dashing).is_equal(0.0)
+
+
+func test_a_jump_out_of_a_slide_carries_its_speed() -> void:
+	var det: Detective = _on_floor()
+	det._start_slide(1.0)
+	det._physics_process(STEP)
+	det.press("jump")
+	det._physics_process(STEP)
+	assert_float(det.velocity.y).is_less(0.0)
+	assert_float(det.velocity.x).is_greater(Detective.SPEED * 1.5)
+	assert_float(det.carry).is_greater(Detective.SPEED)
+
+
+func test_a_jump_out_of_a_dash_carries_up_to_the_cap() -> void:
+	var det: Detective = _on_floor()
+	det._start_dash(1.0)
+	det.press("jump")
+	det._physics_process(STEP)
+	assert_float(det.dashing).is_equal(0.0)
+	assert_float(det.velocity.y).is_less(0.0)
+	assert_float(det.velocity.x).is_equal_approx(Detective.CARRY_MAX, 0.01)
+
+
+func test_carried_speed_eases_back_to_his_pace_in_the_air() -> void:
+	var det: Detective = _detective()
+	det.position = Vector2(-9000, -9000)
+	det._dash_dir = 1.0
+	det._launch(Detective.CARRY_MAX)
+	var last: float = det.carry
+	for i: int in range(10):
+		det._physics_process(STEP)
+		assert_float(det.carry).is_less(last)
+		last = det.carry
+	var t: float = 0.0
+	while det.carry > 0.0 and t < 3.0:
+		det._physics_process(STEP)
+		t += STEP
+	assert_float(det.carry).is_equal(0.0)
+	assert_float(t + 10.0 * STEP).is_equal_approx((Detective.CARRY_MAX - Detective.SPEED) / Detective.CARRY_DRAG, 0.05)
+
+
+func test_turning_back_drops_the_carried_speed() -> void:
+	var det: Detective = _detective()
+	det.position = Vector2(-9000, -9000)
+	det._dash_dir = 1.0
+	det._launch(Detective.CARRY_MAX)
+	Input.action_press("move_left")
+	det._physics_process(STEP)
+	assert_float(det.carry).is_equal(0.0)
+	assert_float(det.velocity.x).is_equal_approx(-Detective.SPEED, 0.01)
+
+
+func test_a_jump_just_after_a_dash_still_carries() -> void:
+	var det: Detective = _on_floor()
+	det._start_dash(1.0)
+	while det.dashing > 0.0:
+		det._physics_process(STEP)
+	det.press("jump")
+	det._physics_process(STEP)
+	assert_float(det.velocity.y).is_less(0.0)
+	assert_float(det.velocity.x).is_greater(Detective.SPEED)
+
+
+func test_a_plain_jump_carries_nothing() -> void:
+	var det: Detective = _on_floor()
+	Input.action_press("move_right")
+	det.press("jump")
+	det._physics_process(STEP)
+	assert_float(det.velocity.y).is_less(0.0)
+	assert_float(det.velocity.x).is_equal_approx(Detective.SPEED, 0.01)
+	assert_float(det.carry).is_equal(0.0)
 
 
 func test_a_jump_clears_a_little_over_his_own_height() -> void:
