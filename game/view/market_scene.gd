@@ -137,12 +137,12 @@ func update(cam: float, time: float, fog: int) -> void:
 	_update_fog(time, fog)
 
 	people["osk"].play_at("idle", time)
-	people["osk"].place(ArtMarketFloor.OSK_X, walk_y, cam)
+	people["osk"].place(RoomLayout.OSK_X, walk_y, cam)
 	people["fixer"].play_at("idle", time, 1)
-	people["fixer"].place(ArtMarketFloor.FIXER_X, walk_y, cam)
+	people["fixer"].place(RoomLayout.FIXER_X, walk_y, cam)
 	# The tech works the wrench a notch at a time.
 	people["tech"].play_at("work", time)
-	people["tech"].place(ArtMarketFloor.TECH_X, walk_y, cam)
+	people["tech"].place(RoomLayout.TECH_X, walk_y, cam)
 	# Her passenger, at the fog's edge: only while she's with him, never quite
 	# steady.
 	var vale: CastSprite = people["vale"]
@@ -150,7 +150,7 @@ func update(cam: float, time: float, fog: int) -> void:
 	vale.visible = vale_spot != null and vale_spot.is_visible()
 	vale.play_at("passenger", time)
 	vale.modulate.a = 0.72 if fmod(time * 1.3, 5.0) > 0.25 else 0.35
-	vale.place(ArtMarketFloor.VALE_X, walk_y, cam)
+	vale.place(RoomLayout.VALE_X, walk_y, cam)
 
 	water.position = Vector2(0, MarketArt.WATER_Y)
 	(water.material as ShaderMaterial).set_shader_parameter("line_y", float(MarketArt.WATER_Y))
@@ -159,7 +159,7 @@ func update(cam: float, time: float, fog: int) -> void:
 
 	var door: Spot = market.spot("heat_door") if market != null else null
 	seam.visible = play.visible and door != null and door.is_visible()
-	seam.position = Vector2(floorf(ArtMarketFloor.HEAT_DOOR_X - 22.0 - cam), MarketArt.WALK_Y - MarketArt.DOOR_H)
+	seam.position = Vector2(floorf(RoomLayout.HEAT_DOOR_X - 22.0 - cam), MarketArt.WALK_Y - MarketArt.DOOR_H)
 
 
 func _update_fog(time: float, fog: int) -> void:

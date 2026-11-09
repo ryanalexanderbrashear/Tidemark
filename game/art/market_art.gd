@@ -16,7 +16,7 @@ const WATER_Y: int = 300    # the waterline
 const STALL_X: int = 352    # Vale's stall, left edge
 const STALL_W: int = 120
 ## The fixer's back room door, the security camera pole and the failing pump
-## (spots in ArtMarketFloor stand in front of them).
+## (spots in RoomLayout stand in front of them).
 const BACK_DOOR_X: int = 972
 const CAM_POLE_X: int = 716
 const PUMP_X: int = 1214

@@ -2,7 +2,7 @@
 
 A cyberpunk detective game: a 2D metroidvania where a detective chases a serial killer through Halcyon Reach, a flooded city. Investigation comes first. Doors open on what you can do (abilities, a badge) and on what you've worked out (deductions on a case board). You can be wrong, and being wrong costs you, but it never locks you out.
 
-This repo holds a grey-box prototype of one case, **the Drowned Market**, built to test that core loop. The design for the case is in the Claude Doc "Sample case: the Drowned Market" (https://claude.ai/artifact/Uh6hoH5xQ3CpE1qABNQ89h).
+This repo holds a prototype of one case, **the Drowned Market**, built to test that core loop. It plays in the game's look: code-drawn pixel art at 640x360 with the cast on a realistic 8-head body. The market floor and Vale's stall are drawn; the other rooms are pixel stand-ins (flat shapes on the grey-box layout) until they're drawn. The design for the case is in the Claude Doc "Sample case: the Drowned Market" (https://claude.ai/artifact/Uh6hoH5xQ3CpE1qABNQ89h).
 
 ## What you need
 
@@ -17,7 +17,8 @@ Open `project.godot` in Godot and press F5.
 | A / D or arrow keys | Move |
 | Shift | Hold to sprint (his reinforced legs) |
 | W, Space or Up | Jump (let go early for a short hop) |
-| E or Enter | Talk, examine, use a door |
+| E or Enter | Talk, check something, use a door |
+| X | Examine what you carry: turn the chip over to find its etching |
 | F or J | Stun pistol |
 | T | Thermal optic, once the lab has calibrated it |
 | Q | Take a pill (the suppressant) |
@@ -25,6 +26,8 @@ Open `project.godot` in Godot and press F5.
 | Tab or C | Case board |
 | 1 to 9 | Pick a dialogue choice |
 | Esc | Close a message or the board |
+
+**How it looks and plays.** `World` (the main scene) draws each room in a `PixelView`: the market floor (`MarketScene`: fog, neon, rain, the water, Osk, the fixer and the tech) and Vale's stall (`StallScene`) as drawn, and every other room as a stand-in (`StandInScene`): a sky and far skyline in the room's colours, the floor on the same walkway, the grey-box ledges, doors and objects as lit shapes, panels with their codes, and people as flat silhouettes in their spot's colour. `RoomLayout` places everything in native pixels: drawn rooms where the art puts them, stand-ins at two thirds of the grey-box layout. The detective walks and sprints at the pace his walk and run cycles are drawn for, jumps a little over his own height, and fights with the stun pistol; his jump, fall and aim are placeholder poses until they're drawn. Thugs are red silhouettes and drones small pixel hulls, placeholders too. Dialogue types out in the talk box, Tab opens the cork case board, readings bring their white in from the edges, the thermal optic turns the room to heat, his inner voice types over his head, and the first time he steps onto the market floor a caption opens the scene. The world freezes while anything is up in front of it.
 
 ### The loop being tested
 
@@ -46,21 +49,22 @@ The case's rules live in `game/case/` and are covered by tests that play the cle
 
 ## The art test
 
-`scenes/art_test.tscn` is the Drowned Market style test (milestone M3): one stretch of the market floor in pixel art at the game's resolution (640x360), with rain, reflections in the water, Vale's taped-off stall and the market's people on the 8-head cast. It settled the Look and Feel doc's questions on resolution, character size and how the detective's inner voice is shown, and it's now the sandbox for trying new mechanics. It's built from the game's shared pieces, so what's tried here is what the game gets: `PixelView` (the native viewports, whole-number scaling, thermal, reading and fade effects), `MarketScene` and `StallScene` (the drawn rooms), `CastSprite`, `InnerVoice`, `Notices`, and the talk box, board, examine view and sound. It still compares the fog, water and neon motif two ways: stepped fog is pixel art like the rest (flat bands, dithered seams, stepped halos around each light); volumetric fog is a shader drawn at the window's own resolution over a softened background, with glows around the signs and light shafts under the arcology, while the market, people and water stay crisp pixel art in front. Open the scene and press F6. All of its art is drawn in code from `ArtPalette` (`game/art/`), so it's a test of scale, light and palette, not final art.
+`scenes/art_test.tscn` is the Drowned Market style test (milestone M3), now the sandbox for trying mechanics before they go in the game. It settled the Look and Feel doc's questions on resolution (640x360), character size and how the detective's inner voice is shown. It's the game itself (`ArtTest` extends `World`), started on the market floor at the top of the case, with the thermal optic already calibrated (a placeholder, so the optic can be tried without the trip to the lab), plus what's only for trying things out: the fog shown two ways to compare (stepped fog is pixel art like the rest; volumetric fog is a shader drawn at the window's own resolution over a softened background, with glows around the signs and light shafts under the arcology, while the market, people and water stay crisp pixel art in front), the inner voice as thought text, a caption box or silence, a few idle thoughts, and test items to examine. Open the scene and press F6. All of the art is drawn in code from `ArtPalette` (`game/art/`), so it's a test of scale, light and palette, not final art.
 
 | Key | Does |
 | --- | --- |
-| A / D | Walk (hold Shift to sprint: the 8-head detective has an 8-frame run, picked by distance like the walk) |
+| A / D, Shift, W or Space | Walk, sprint and jump, as in the game |
 | E or Enter | Talk to someone, check something, open a door (when a prompt shows) |
+| F | Stun pistol |
 | Tab | Case board |
 | T | Thermal optic on or off |
-| V | Inner voice: thought text by the detective, a caption box, or silence |
-| F | Fog: stepped pixel fog, volumetric fog behind the pixel art, or none |
-| N | Next thought (the opening thoughts play once, then the voice goes quiet) |
 | X | Examine the items in the detective's pockets (below) |
+| V | Inner voice: thought text by the detective, a caption box, or silence |
+| G | Fog: stepped pixel fog, volumetric fog behind the pixel art, or none |
+| N | Next thought (the opening thoughts play once, then the voice goes quiet) |
 | H | Hide the key list |
 
-**Playing the slice.** The scene is also a playable slice of the case, the gameplay loop in small (`ArtMarketFloor`). It opens on a caption, then the detective walks onto the market floor at the top of the case. The people and objects are the case's own spots from `DrownedMarket`, on two drawn rooms: the market floor (Vale's stall door, Osk, the security cams, the fixer, the back room, the maintenance tech at the failing pump, and a boarded stall) and Vale's stall itself (`StallArt`: her ledger, her body, a scorched sample), reached through the badge-taped door with a fade. Walk up to one and E brings up its dialogue in a box in the scene's style (`ArtTalkBox`); clues land in `Case` exactly as in the grey box. Reading her body brings the reading's white in from the edges like fog, part way for a surface reading and nearly all the way for a deep one, and a deep reading leaves her with him as a passenger, standing at the fog's edge west of her stall. T switches the thermal optic: the fog falls away, the cold goes to dark blues, people show their heat (her passenger shows none, and the body only a little), and the boarded stall turns out to be a heat-sealed door. Tab opens the case board in the same style (`ArtBoard`). From what's drawn you can work out who Vale was really selling to (her ledger plus Osk), which gets the fixer to open the back room, and that the etching is a catalog number (show the fixer the chip, ask the tech). The chip is also the examine tutorial: her body gives him the chip but not the etching, and the inner voice leads him to take it out and turn it over (X); until he does, the fixer has nothing to look at. The grey box, which has no examine view, still names the etching at the body, and the coroner terminal is a second route in both. The case clock sits top right. Two placeholders, not canon: the opening caption, and the detective starting with the thermal optic already calibrated, since the precinct lab isn't drawn. Doors to rooms the art test hasn't drawn (Cold Storage) open through the case, and the scene says the room isn't built yet.
+**The market floor and the stall.** The people and objects are the case's own spots from `DrownedMarket`, on the two drawn rooms: the market floor (Vale's stall door, Osk, the security cams, the fixer, the back room, the maintenance tech at the failing pump, and a boarded stall) and Vale's stall itself (`StallArt`: her ledger, her body, a scorched sample), reached through the badge-taped door with a fade. Reading her body brings the reading's white in from the edges like fog, part way for a surface reading and nearly all the way for a deep one, and a deep reading leaves her with him as a passenger, standing at the fog's edge west of her stall. The thermal optic turns the fog away and the cold to dark blues; people show their heat (her passenger shows none, and the body only a little), and the boarded stall turns out to be a heat-sealed door. The chip is the examine tutorial: her body gives him the chip but not the etching, and the inner voice leads him to take it out and turn it over (X); until he does, the fixer has nothing to look at. The coroner terminal is a second route to the etching. The opening caption is a placeholder, not canon.
 
 **Placeholder sound.** `ArtSound` makes every sound in code (seeded noise and tones, no files): rain, water against the stilts, the hum of Vale's failing lamp (louder as you near it, gone when it stutters off), and one-shots for picking items up, finding a detail, a catch opening, paper, the board and dialogue. While a dialogue box, the board or a close-up is up, the rain and water muffle behind a low-pass filter (`ArtAmbience`), as the Look and Feel doc asks for during investigation.
 
@@ -70,7 +74,7 @@ The case's rules live in `game/case/` and are covered by tests that play the cle
 godot --headless --path . -s res://editor/art/city_concept.gd -- --out=/tmp/city --scale=3
 ```
 
-**Examining items.** X holds up what's in the detective's pockets: the wiped memory chip once he's taken it from Vale's hand, the storage case's ID tag once he's found it, and a test tin. Each item is a small 3D box with pixel-art faces, rendered at the game's resolution and snapped to the art palette with an ink outline, so it reads as pixel art but turns freely. The chip's CS-14-07 etching is on its back: turn it over and hold it there for a moment to find it. Finding it adds the clue "The calling card" to the case; in the playable slice that's the only way to see the etching before the coroner has her. The pocket tin (a test item, not from the case) has a catch hidden on its right edge: find it, open the tin, and take out the slip inside, which then goes in the pockets like anything else.
+**Examining items.** X holds up what's in the detective's pockets: the wiped memory chip once he's taken it from Vale's hand and the storage case's ID tag once he's found it (in the game and the art test), and a test tin (art test only). Each item is a small 3D box with pixel-art faces, rendered at the game's resolution and snapped to the art palette with an ink outline, so it reads as pixel art but turns freely. The chip's CS-14-07 etching is on its back: turn it over and hold it there for a moment to find it. Finding it adds the clue "The calling card" to the case; in the playable slice that's the only way to see the etching before the coroner has her. The pocket tin (a test item, not from the case) has a catch hidden on its right edge: find it, open the tin, and take out the slip inside, which then goes in the pockets like anything else.
 
 | Key (while examining) | Does |
 | --- | --- |
@@ -89,7 +93,7 @@ To save the set of comparison screenshots (needs a display, so not headless):
 godot --path . --resolution 1920x1080 res://scenes/art_test.tscn -- --shots=/tmp/art-test
 ```
 
-Add `--only=<prefix>` to save only some of them, for example `--only=examine` for the examine shots or `--only=scene` for the playable slice (caption, stall, readings, thermal, the passenger, talking, the board).
+Add `--only=<prefix>` to save only some of them, for example `--only=examine` for the examine shots, `--only=scene` for the market floor and stall (caption, stall, readings, thermal, the passenger, talking, the board) or `--only=rooms` for the stand-in rooms.
 
 ## Run the checks
 
@@ -110,14 +114,13 @@ game/
   data/      resource schemas: Clue, Theory, StoryBeat, Reading, MindTuning
   mind/      the detective's mind across cases (the Mind autoload): bleed-through, passengers, pills
   case/      the running case (the Case autoload), the board's check, dialogue (Talk), the Drowned Market's rooms and spots
-  world/     the main scene's room builder, the detective, hostiles, bolts, grey-box drawing
+  world/     the main scene (World), where everything stands (RoomLayout), the detective, hostiles, bolts
   art/       code-drawn pixel art: palette, drawing kit, the 8-head cast, the market and stall, fog, rain, shaders
-  view/      the pixel view (640x360 viewports, thermal, reading, fade), drawn rooms, cast sprites
-  ui/        HUD, dialogue box, case board, intro and summary screens; the styled talk box and board,
-             the inner voice and on-screen notices
+  view/      the pixel view (640x360 viewports, thermal, reading, fade), drawn and stand-in rooms, cast sprites
+  ui/        talk box, case board, inner voice, on-screen notices, intro and summary screens, bleed-through overlay
   examine/   holding evidence up close and turning it over
   sound/     placeholder sound made in code, and the ambience that muffles while you're busy
-  art_test/  the style test and sandbox (the playable slice's layout, city concept art)
+  art_test/  the style test and sandbox (ArtTest, on the game's World), city concept art
 data/        clues/, theories/, beats/ and readings/ as .tres, one per id; mind/tuning.tres
 scenes/      main.tscn, art_test.tscn
 tests/       gdUnit4 tests

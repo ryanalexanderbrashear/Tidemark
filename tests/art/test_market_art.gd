@@ -66,7 +66,7 @@ func test_wisps_wrap_so_fog_can_drift_forever() -> void:
 
 func test_the_stall_is_one_screen() -> void:
 	assert_vector(Vector2(StallArt.room().get_size())).is_equal(Vector2(StallArt.SIZE))
-	assert_int(StallArt.SIZE.x).is_equal(ArtMarketFloor.ROOM_WIDTHS["stall"])
+	assert_int(StallArt.SIZE.x).is_equal(RoomLayout.ROOM_WIDTHS["stall"])
 
 
 func test_blood_in_the_stall_is_only_around_her_head() -> void:

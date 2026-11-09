@@ -1,8 +1,10 @@
 class_name Bolt
 extends Node2D
-## A stun bolt. The detective's hit hostiles; hostiles' hit the detective.
+## A stun bolt, in native pixels. The detective's hit hostiles; hostiles' hit
+## the detective.
 
 const LIFETIME: float = 1.2
+const P = preload("res://game/art/art_palette.gd")
 
 var velocity: Vector2
 var friendly: bool
@@ -23,14 +25,14 @@ func _physics_process(delta: float) -> void:
 	if friendly:
 		for node: Node in get_tree().get_nodes_in_group("hostiles"):
 			var h: Hostile = node as Hostile
-			if h != null and h.hit_box().has_point(global_position):
+			if h != null and h.hit_box().has_point(position):
 				h.hit()
 				queue_free()
 				return
 	else:
 		for node: Node in get_tree().get_nodes_in_group("detective"):
 			var d: Detective = node as Detective
-			if d != null and Rect2(d.global_position + Vector2(-12, -46), Vector2(24, 46)).has_point(global_position):
+			if d != null and d.hit_box().has_point(position):
 				d.hurt()
 				queue_free()
 				return
@@ -41,6 +43,8 @@ func _physics_process(delta: float) -> void:
 
 func _draw() -> void:
 	if friendly:
-		draw_rect(Rect2(-8, -2, 16, 4), Color("3ee6d0"))
+		draw_rect(Rect2(-5, -1, 10, 2), P.CYAN)
+		draw_rect(Rect2(-2, -1, 4, 2), Color.WHITE)
 	else:
-		draw_circle(Vector2.ZERO, 5.0, Color("ff4fa0"))
+		draw_rect(Rect2(-2, -2, 4, 4), P.MAGENTA)
+		draw_rect(Rect2(-1, -1, 2, 2), Color("ffc2dc"))

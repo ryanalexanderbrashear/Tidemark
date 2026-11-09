@@ -12,7 +12,7 @@ const P = preload("res://game/art/art_palette.gd")
 
 const SIZE: Vector2i = Vector2i(640, 360)
 const WALK_Y: int = MarketArt.WALK_Y
-## Where things stand (centre x, native pixels). ArtMarketFloor puts the
+## Where things stand (centre x, native pixels). RoomLayout puts the
 ## case's stall spots here.
 const EXIT_X: float = 34.0
 const LEDGER_X: float = 206.0
