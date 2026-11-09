@@ -35,7 +35,7 @@ const NAMES: Dictionary[String, String] = {
 
 ## Frames per second for each animation when played back (the scene plays the
 ## detective's walk by distance instead).
-const FPS: Dictionary[String, float] = {"idle": 2.0, "walk": 10.0, "work": 2.0, "passenger": 1.4}
+const FPS: Dictionary[String, float] = {"idle": 2.0, "walk": 10.0, "run": 12.0, "work": 2.0, "passenger": 1.4}
 
 ## The common head key. Each character adds its own letters.
 const HEAD_KEY: Dictionary[String, Color] = {
@@ -53,6 +53,9 @@ static func anims(id: String) -> Dictionary[String, int]:
 			return {"passenger": 4}
 		"tech":
 			return {"idle": 4, "walk": 8, "work": 4}
+		"detective":
+			# He sprints on his reinforced legs (starting cyberware).
+			return {"idle": 4, "walk": 8, "run": 8}
 	return {"idle": 4, "walk": 8}
 
 
@@ -82,7 +85,11 @@ static func frames(id: String, anim: String) -> Array[Image]:
 
 static func pose(id: String, anim: String, f: int) -> Figure.Pose:
 	var b: Figure.Build = build(id)
-	var p: Figure.Pose = Figure.walk_pose(b, f) if anim == "walk" else Figure.idle_pose(b, f)
+	var p: Figure.Pose = Figure.idle_pose(b, f)
+	if anim == "walk":
+		p = Figure.walk_pose(b, f)
+	elif anim == "run":
+		p = Figure.run_pose(b, f)
 	match id:
 		"osk":
 			# The umbrella stays up in the near hand; the case hangs from the far one.

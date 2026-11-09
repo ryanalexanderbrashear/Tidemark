@@ -33,7 +33,7 @@ extends Node
 ## sound (ArtAmbience) plays under it all, muffled while the detective is
 ## talking, at the board or holding something up.
 ##
-## Keys: A/D move, E use, Tab case board, T thermal optic, X examine items,
+## Keys: A/D move (hold Shift to sprint), E use, Tab case board, T thermal optic, X examine items,
 ## R switches resolution, V switches the inner voice, F switches the fog, C
 ## switches the detective, N shows the next thought, H hides the key list.
 ## Screenshots: run with `-- --shots=<dir>` and it saves a fixed set and quits.
@@ -56,6 +56,9 @@ const VOICE_NAMES: Array[String] = ["thought text by the detective", "caption bo
 const FOG_NAMES: Array[String] = ["stepped pixel fog", "volumetric fog behind pixel art", "no fog"]
 ## Walking pace: about 1.5 walk cycles a second with ArtDetective's stride.
 const SPEED: float = 54.0
+## Sprinting (hold Shift): about 1.5 run cycles a second with the 8-head
+## detective's run_stride, a little under three times walking pace.
+const SPRINT_SPEED: float = 144.0
 const OSK_X: float = ArtMarketFloor.OSK_X
 const FIXER_X: float = ArtMarketFloor.FIXER_X
 const TECH_X: float = ArtMarketFloor.TECH_X
@@ -147,6 +150,7 @@ var _det_idle: Array[ImageTexture] = []
 var _tall_walk: Array[ImageTexture] = []
 var _tall_idle: Array[ImageTexture] = []
 var _final_walk: Array[ImageTexture] = []
+var _final_run: Array[ImageTexture] = []
 var _final_idle: Array[ImageTexture] = []
 var _osk_frames: Array[ImageTexture] = []
 var _fixer_frames: Array[ImageTexture] = []
@@ -179,8 +183,12 @@ var _time: float = 0.0
 var _walk_time: float = 0.0
 ## Distance walked, so ArtDetective's walk frames keep the planted foot still.
 var _walk_dist: float = 0.0
+## Sprinting this frame (moving with Shift held).
+var sprinting: bool = false
 ## Screenshots only: shows this walk frame instead of standing (-1: off).
 var _shot_walk: int = -1
+## Screenshots only: shows the sprint instead of the walk.
+var _shot_sprint: bool = false
 var _scale: int = 1
 var _shooting: bool = false
 var _offset: Vector2 = Vector2.ZERO
@@ -268,6 +276,8 @@ func _build() -> void:
 		_tall_idle.append(ImageTexture.create_from_image(ArtDetectiveTall.idle(f)))
 	for img: Image in ArtCast.frames("detective", "walk"):
 		_final_walk.append(ImageTexture.create_from_image(img))
+	for img: Image in ArtCast.frames("detective", "run"):
+		_final_run.append(ImageTexture.create_from_image(img))
 	for img: Image in ArtCast.frames("detective", "idle"):
 		_final_idle.append(ImageTexture.create_from_image(img))
 	for id: String in CAST_ANIMS:
@@ -518,11 +528,17 @@ func _process(delta: float) -> void:
 	# The detective stands still while he has something in his hands, is
 	# talking, or is at the board.
 	var dir: float = 0.0 if busy() else Input.get_axis("move_left", "move_right")
+	var was_sprinting: bool = sprinting
+	sprinting = (dir != 0.0 and Input.is_action_pressed("sprint")) or _shot_sprint
+	if sprinting != was_sprinting:
+		# Start the new cycle from its first frame.
+		_walk_dist = 0.0
 	if dir != 0.0:
+		var speed: float = SPRINT_SPEED if sprinting else SPEED
 		facing = 1 if dir > 0.0 else -1
-		detective_x = clampf(detective_x + dir * SPEED * delta, 20.0, float(_room_w() - 20))
+		detective_x = clampf(detective_x + dir * speed * delta, 20.0, float(_room_w() - 20))
 		_walk_time += delta
-		_walk_dist += SPEED * delta
+		_walk_dist += absf(dir) * speed * delta
 	else:
 		_walk_time = 0.0
 		_walk_dist = 0.0
@@ -796,6 +812,10 @@ func _update_world(walking: bool) -> void:
 			walks = _final_walk
 			idles = _final_idle
 			stride = ArtCast.build("detective").stride
+			if sprinting:
+				# The older looks have no run cycle: they just walk faster.
+				walks = _final_run
+				stride = ArtCast.build("detective").run_stride
 		var walk_frame: int = int(_walk_dist / (stride / float(walks.size()))) % walks.size()
 		if _shot_walk >= 0:
 			walk_frame = _shot_walk
@@ -1000,7 +1020,7 @@ func _update_voice() -> void:
 		_caption.size = Vector2(width, h)
 		_caption.position = _offset + Vector2(_screen.size.x * 0.04, _screen.size.y - h - _screen.size.y * 0.05)
 	var res: Vector2i = _view.size
-	_keys.text = "%dx%d at x%d  |  voice: %s  |  fog: %s  |  detective: %s\nA/D move   E use   Tab case board   T thermal optic   X examine items   R resolution   V voice   F fog   C detective   N next thought   H hide" % [res.x, res.y, _scale, VOICE_NAMES[voice], FOG_NAMES[fog], LOOK_NAMES[look]]
+	_keys.text = "%dx%d at x%d  |  voice: %s  |  fog: %s  |  detective: %s\nA/D move   Shift sprint   E use   Tab case board   T thermal optic   X examine items   R resolution   V voice   F fog   C detective   N next thought   H hide" % [res.x, res.y, _scale, VOICE_NAMES[voice], FOG_NAMES[fog], LOOK_NAMES[look]]
 
 
 # ---------- screenshots ----------
@@ -1018,7 +1038,7 @@ func _take_shots(dir: String) -> void:
 	_shooting = true
 	_narration = ""
 	var plan: Array[Array] = [
-		# name, resolution, voice, detective x, facing, line, fog[, walk frame, look]
+		# name, resolution, voice, detective x, facing, line, fog[, walk frame, look, sprinting]
 		["640-thought", 0, Voice.THOUGHT, 300.0, 1, 2, Fog.STEPPED],
 		["640-caption", 0, Voice.CAPTION, 300.0, 1, 0, Fog.STEPPED],
 		["640-silent", 0, Voice.NONE, 760.0, 1, 0, Fog.STEPPED],
@@ -1039,6 +1059,8 @@ func _take_shots(dir: String) -> void:
 		["detective-tall-idle", 0, Voice.NONE, 300.0, 1, 0, Fog.STEPPED, -1, Look.TALL],
 		["detective-tall-walk", 0, Voice.NONE, 300.0, 1, 0, Fog.STEPPED, 1, Look.TALL],
 		["detective-tall-volumetric", 0, Voice.NONE, 300.0, 1, 0, Fog.VOLUMETRIC, 6, Look.TALL],
+		["detective-sprint", 0, Voice.NONE, 300.0, 1, 0, Fog.STEPPED, 3, Look.FINAL, true],
+		["detective-sprint-left", 0, Voice.NONE, 640.0, -1, 0, Fog.STEPPED, 0, Look.FINAL, true],
 		["npcs-osk", 0, Voice.NONE, 440.0, 1, 0, Fog.STEPPED, -1, Look.FINAL],
 		["npcs-fixer", 0, Voice.NONE, 830.0, 1, 0, Fog.STEPPED, -1, Look.FINAL],
 		["npcs-tech", 0, Voice.NONE, 1120.0, 1, 0, Fog.STEPPED, -1, Look.FINAL],
@@ -1056,6 +1078,7 @@ func _take_shots(dir: String) -> void:
 		fog = shot[6]
 		_shot_walk = shot[7] if shot.size() > 7 else -1
 		look = shot[8] if shot.size() > 8 else Look.FINAL
+		_shot_sprint = shot[9] if shot.size() > 9 else false
 		_typed = 9999.0
 		_time = 1.0
 		_rain.warm(2.0)
@@ -1090,6 +1113,7 @@ func _take_scene_shots(dir: String, only: String) -> void:
 	fog = Fog.STEPPED
 	look = Look.FINAL
 	_shot_walk = -1
+	_shot_sprint = false
 	var plan: Array[Array] = [
 		# name, room, detective x, facing, what happens
 		["scene-caption", "market", ArtMarketFloor.START_X, 1, "caption"],
@@ -1181,6 +1205,7 @@ func _take_examine_shots(dir: String, only: String) -> void:
 	fog = Fog.STEPPED
 	look = Look.FINAL
 	_shot_walk = -1
+	_shot_sprint = false
 	_examine.still = true
 	var plan: Array[Array] = [
 		# name, item, turn (euler), zoom, palette snap

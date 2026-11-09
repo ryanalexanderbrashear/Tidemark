@@ -15,6 +15,7 @@ Open `project.godot` in Godot and press F5.
 | Key | Does |
 | --- | --- |
 | A / D or arrow keys | Move |
+| Shift | Hold to sprint (his reinforced legs) |
 | W, Space or Up | Jump (let go early for a short hop) |
 | E or Enter | Talk, examine, use a door |
 | F or J | Stun pistol |
@@ -55,7 +56,7 @@ godot --headless --path . -s res://editor/art/detective_sheet.gd -- --out=/tmp/d
 
 | Key | Does |
 | --- | --- |
-| A / D | Walk |
+| A / D | Walk (hold Shift to sprint: the 8-head detective has an 8-frame run, picked by distance like the walk) |
 | E or Enter | Talk to someone, check something, open a door (when a prompt shows) |
 | Tab | Case board |
 | T | Thermal optic on or off |
