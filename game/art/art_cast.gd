@@ -15,8 +15,8 @@ extends RefCounted
 ## frames() draws them; the exporter (editor/art/export_sprites.gd) writes them
 ## out as PNG sheets, Aseprite files and Godot SpriteFrames.
 
-const P = preload("res://game/art_test/art_palette.gd")
-const Figure = preload("res://game/art_test/art_figure.gd")
+const P = preload("res://game/art/art_palette.gd")
+const Figure = preload("res://game/art/art_figure.gd")
 
 ## Everyone drawn on the rig, in line-up order.
 const IDS: Array[String] = ["detective", "osk", "fixer", "tech", "vale", "leith", "cass", "velvet", "pell"]
@@ -194,24 +194,44 @@ static func _key(extra: Dictionary[String, Color]) -> Dictionary[String, Color]:
 	return k
 
 
+## The detective's colours, kept from the tall rim-lit draft he was first
+## drawn as.
+const DET_COAT: Color = Color("1c2230")
+const DET_COAT_LIT: Color = Color("2b3446")
+const DET_COAT_SHADE: Color = Color("121722")
+const DET_COAT_DEEP: Color = Color("0a0e15")
+const DET_SWEATER: Color = Color("24232a")
+const DET_PANTS: Color = Color("141924")
+const DET_PANTS_FAR: Color = Color("0c1018")
+const DET_BOOT: Color = Color("080a0f")
+const DET_BRACE: Color = Color("3a4655")
+const DET_BRACE_LIT: Color = Color("8a97a6")
+const DET_SKIN: Color = Color("6e5650")
+const DET_SKIN_SHADE: Color = Color("47383a")
+const DET_HAIR: Color = Color("0d1017")
+const DET_HEAD_KEY: Dictionary[String, Color] = {
+	"h": DET_HAIR, "s": DET_SKIN, "S": DET_SKIN_SHADE, "e": Color("2e2427"), "z": Color("3a2f32"),
+	"b": Color("1c1619"), "m": Color("56626f"), "c": P.CYAN, "p": DET_BRACE,
+	"w": Color("c49373"), "r": Color("5e8c98"),
+}
+
 ## The detective, the "rain-worn tracer" Alex picked (2026-11-06): an open
 ## storm coat to the knee, short hair and stubble, the steel ocular plate with
 ## its cyan iris, the reading port behind the ear, steel braces down the shins.
-## Moved onto the 8-head body; ArtDetectiveTall is the earlier draft.
 static func _detective(b: Figure.Build) -> void:
 	b.proportion(Vector2i(50, 100), 1.0, 22.0)
 	b.hem_y = b.top_y + 12.0 * 6.0
-	b.coat = ArtDetectiveTall.COAT
-	b.coat_lit = ArtDetectiveTall.COAT_LIT
-	b.coat_shade = ArtDetectiveTall.COAT_SHADE
-	b.coat_deep = ArtDetectiveTall.COAT_DEEP
-	b.inner = ArtDetectiveTall.SWEATER
-	b.pants = ArtDetectiveTall.PANTS
-	b.pants_far = ArtDetectiveTall.PANTS_FAR
-	b.boot = ArtDetectiveTall.BOOT
-	b.skin = ArtDetectiveTall.SKIN
-	b.skin_shade = ArtDetectiveTall.SKIN_SHADE
-	b.hand = ArtDetectiveTall.SKIN_SHADE
+	b.coat = DET_COAT
+	b.coat_lit = DET_COAT_LIT
+	b.coat_shade = DET_COAT_SHADE
+	b.coat_deep = DET_COAT_DEEP
+	b.inner = DET_SWEATER
+	b.pants = DET_PANTS
+	b.pants_far = DET_PANTS_FAR
+	b.boot = DET_BOOT
+	b.skin = DET_SKIN
+	b.skin_shade = DET_SKIN_SHADE
+	b.hand = DET_SKIN_SHADE
 	b.hand_lit = Color("c49373")
 	b.head = [
 		".rrrrrw..",
@@ -224,7 +244,7 @@ static func _detective(b: Figure.Build) -> void:
 		".rSSSSSw.",
 		"...SSSS..",
 	]
-	b.head_key = ArtDetectiveTall.HEAD_KEY.duplicate()
+	b.head_key = DET_HEAD_KEY.duplicate()
 	b.glow_keys = "c"
 	b.neck = Rect2i(1, 6, 4, 5)
 	b.props_front = func(img: Image, bb: Figure.Build, p: Figure.Pose, j: Dictionary[String, Vector2]) -> void:
@@ -234,13 +254,13 @@ static func _detective(b: Figure.Build) -> void:
 			var ankle: Vector2 = p.far_foot if side == "far" else p.near_foot
 			var shin: Vector2 = ankle - knee
 			var n: int = maxi(roundi(shin.length()), 1)
-			var c: Color = ArtDetectiveTall.BRACE if side == "near" else ArtDetectiveTall.BRACE.darkened(0.4)
+			var c: Color = DET_BRACE if side == "near" else DET_BRACE.darkened(0.4)
 			for i: int in range(2, n - 2):
 				var at: Vector2 = knee + shin * (float(i) / float(n)) + Vector2(bb.leg_w[2] - 0.6, 0)
 				Px.dot(img, roundi(at.x), roundi(at.y), c)
 			if side == "near":
-				Px.rect(img, roundi(knee.x) + 1, roundi(knee.y) - 1, 2, 3, ArtDetectiveTall.BRACE)
-				Px.dot(img, roundi(knee.x) + 2, roundi(knee.y) - 1, ArtDetectiveTall.BRACE_LIT)
+				Px.rect(img, roundi(knee.x) + 1, roundi(knee.y) - 1, 2, 3, DET_BRACE)
+				Px.dot(img, roundi(knee.x) + 2, roundi(knee.y) - 1, DET_BRACE_LIT)
 
 
 ## Osk, the rival broker: short and broad, bald, goggles pushed up on his

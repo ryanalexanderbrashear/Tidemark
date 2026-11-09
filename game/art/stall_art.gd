@@ -8,7 +8,7 @@ extends RefCounted
 ##
 ## The only blood in the room is hers, around her head.
 
-const P = preload("res://game/art_test/art_palette.gd")
+const P = preload("res://game/art/art_palette.gd")
 
 const SIZE: Vector2i = Vector2i(640, 360)
 const WALK_Y: int = MarketArt.WALK_Y

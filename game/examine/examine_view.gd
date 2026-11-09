@@ -23,8 +23,8 @@ signal detail_found(item: ExamineItem)
 signal item_opened(item: ExamineItem)
 signal item_taken(item: ExamineItem)
 
-const P = preload("res://game/art_test/art_palette.gd")
-const SNAP_SHADER = preload("res://game/art_test/examine.gdshader")
+const P = preload("res://game/art/art_palette.gd")
+const SNAP_SHADER = preload("res://game/examine/examine.gdshader")
 const FOV: float = 30.0
 ## Items come up at 1.5 texels a game pixel: held near the eyes.
 const ZOOM_START: float = 1.5

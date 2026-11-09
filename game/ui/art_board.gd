@@ -15,7 +15,7 @@ signal closed
 ## A theory was committed and held.
 signal committed(theory_id: String)
 
-const P = preload("res://game/art_test/art_palette.gd")
+const P = preload("res://game/art/art_palette.gd")
 const PAPER: Color = Color("a9a596")
 const PAPER_PICKED: Color = Color("c4bfae")
 const CARD_INK: Color = Color("0b0f17")

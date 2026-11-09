@@ -17,7 +17,7 @@ const FACES: Dictionary[String, Vector3] = {
 	"top": Vector3.UP, "bottom": Vector3.DOWN,
 }
 
-const P = preload("res://game/art_test/art_palette.gd")
+const P = preload("res://game/art/art_palette.gd")
 
 var id: String = ""
 var title: String = ""

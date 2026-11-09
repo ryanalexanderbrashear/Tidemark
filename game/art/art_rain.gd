@@ -3,7 +3,7 @@ extends Node2D
 ## Rain over the style test, drawn in screen space at native resolution: two
 ## depths of streaks, and splashes where drops hit the walkway and the water.
 
-const P = preload("res://game/art_test/art_palette.gd")
+const P = preload("res://game/art/art_palette.gd")
 
 var view_size: Vector2i = Vector2i(640, 360)
 ## Screen rows where drops land: the walkway, then the water.

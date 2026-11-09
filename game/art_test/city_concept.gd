@@ -5,7 +5,7 @@ extends Node
 ## Not a playable room: a picture to judge the city's silhouette and light by.
 ## Open scenes/city_concept.tscn and press F6. Esc quits.
 
-const P = preload("res://game/art_test/art_palette.gd")
+const P = preload("res://game/art/art_palette.gd")
 
 ## Cars crossing: start x, row, speed in native px a second, color.
 const CARS: Array[Array] = [[-20.0, 70.0, 18.0, CityArt.CROWN_LIGHT], [660.0, 104.0, -12.0, P.CYAN], [-40.0, 52.0, 9.0, P.MAGENTA]]

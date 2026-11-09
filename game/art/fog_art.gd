@@ -10,7 +10,7 @@ extends RefCounted
 ## tints the fog around it in stepped rings, so a sign reads three times: its
 ## shape, its glow in the fog, and its reflection in the water below.
 
-const P = preload("res://game/art_test/art_palette.gd")
+const P = preload("res://game/art/art_palette.gd")
 
 ## Fog's own color, between storm blue and wet concrete.
 const FOG_TINT: Color = Color("33435a")

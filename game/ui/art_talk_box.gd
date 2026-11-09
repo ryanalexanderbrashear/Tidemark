@@ -10,7 +10,7 @@ extends Control
 
 signal closed
 
-const P = preload("res://game/art_test/art_palette.gd")
+const P = preload("res://game/art/art_palette.gd")
 ## Characters a second as a line types out.
 const TYPE_SPEED: float = 70.0
 const TEXT: Color = Color("d4dce6")

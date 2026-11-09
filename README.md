@@ -46,13 +46,7 @@ The case's rules live in `game/case/` and are covered by tests that play the cle
 
 ## The art test
 
-`scenes/art_test.tscn` is the Drowned Market style test (milestone M3): one stretch of the market floor in pixel art, with rain, reflections in the water, Vale's taped-off stall and three people (the detective, Osk, the fixer). It's there to settle the Look and Feel doc's open questions on game resolution, character size and how the detective's inner voice is shown. It also tries the fog, water and neon motif: big neon signs on towers behind the market, swallowed by fog, drawn two ways to compare. Stepped fog is pixel art like the rest (flat bands, dithered seams, stepped halos around each light). Volumetric fog is a shader drawn at the window's own resolution over a softened background, with glows around the signs and light shafts under the arcology, while the market, people and water stay crisp pixel art in front. Open the scene and press F6. All of its art is drawn in code from `ArtPalette` (`game/art_test/`), so it's a test of scale, light and palette, not final art.
-
-The detective is a closer-to-final pass (`ArtDetective`, the "rain-worn tracer" look): about 64 px tall, an open storm coat to the knee, no hat, short hair and stubble, a steel plate round his eye with a cyan iris, the reading port behind his ear and steel braces down his shins. He has a 4-frame idle (hands in pockets, breathing) and an 8-frame walk picked by distance walked, so his planted foot doesn't slide. C cycles to a style draft and to the first sketch. The draft (`ArtDetectiveTall`) is the same detective pushed toward Replaced's look: about 86 px and 6.5 heads tall, no ink outline, a near-silhouette shaped by a hard cool rim from the neon behind and warm lamp light on his top edges and profile. The scene starts on the draft, and Osk and the fixer are drawn 1.5x their first sketch to stand at its scale. To save his frames as a sprite sheet (add `--tall` for the draft):
-
-```bash
-godot --headless --path . -s res://editor/art/detective_sheet.gd -- --out=/tmp/detective-sheet.png --scale=6
-```
+`scenes/art_test.tscn` is the Drowned Market style test (milestone M3): one stretch of the market floor in pixel art at the game's resolution (640x360), with rain, reflections in the water, Vale's taped-off stall and the market's people on the 8-head cast. It settled the Look and Feel doc's questions on resolution, character size and how the detective's inner voice is shown, and it's now the sandbox for trying new mechanics. It's built from the game's shared pieces, so what's tried here is what the game gets: `PixelView` (the native viewports, whole-number scaling, thermal, reading and fade effects), `MarketScene` and `StallScene` (the drawn rooms), `CastSprite`, `InnerVoice`, `Notices`, and the talk box, board, examine view and sound. It still compares the fog, water and neon motif two ways: stepped fog is pixel art like the rest (flat bands, dithered seams, stepped halos around each light); volumetric fog is a shader drawn at the window's own resolution over a softened background, with glows around the signs and light shafts under the arcology, while the market, people and water stay crisp pixel art in front. Open the scene and press F6. All of its art is drawn in code from `ArtPalette` (`game/art/`), so it's a test of scale, light and palette, not final art.
 
 | Key | Does |
 | --- | --- |
@@ -60,10 +54,8 @@ godot --headless --path . -s res://editor/art/detective_sheet.gd -- --out=/tmp/d
 | E or Enter | Talk to someone, check something, open a door (when a prompt shows) |
 | Tab | Case board |
 | T | Thermal optic on or off |
-| R | Switch between 640x360 and 480x270 |
 | V | Inner voice: thought text by the detective, a caption box, or silence |
 | F | Fog: stepped pixel fog, volumetric fog behind the pixel art, or none |
-| C | Detective: closer to final, the tall rim-lit draft, or the first sketch |
 | N | Next thought (the opening thoughts play once, then the voice goes quiet) |
 | X | Examine the items in the detective's pockets (below) |
 | H | Hide the key list |
@@ -119,10 +111,13 @@ game/
   mind/      the detective's mind across cases (the Mind autoload): bleed-through, passengers, pills
   case/      the running case (the Case autoload), the board's check, dialogue (Talk), the Drowned Market's rooms and spots
   world/     the main scene's room builder, the detective, hostiles, bolts, grey-box drawing
-  ui/        HUD, dialogue box, case board, intro and summary screens
-  art_test/  the Drowned Market style test: palette, drawing kit, layers, sprites, rain, water, examining,
-             and the playable slice (its rooms and spots, Vale's stall, dialogue box, board,
-             thermal optic, reading effect, placeholder sound)
+  art/       code-drawn pixel art: palette, drawing kit, the 8-head cast, the market and stall, fog, rain, shaders
+  view/      the pixel view (640x360 viewports, thermal, reading, fade), drawn rooms, cast sprites
+  ui/        HUD, dialogue box, case board, intro and summary screens; the styled talk box and board,
+             the inner voice and on-screen notices
+  examine/   holding evidence up close and turning it over
+  sound/     placeholder sound made in code, and the ambience that muffles while you're busy
+  art_test/  the style test and sandbox (the playable slice's layout, city concept art)
 data/        clues/, theories/, beats/ and readings/ as .tres, one per id; mind/tuning.tres
 scenes/      main.tscn, art_test.tscn
 tests/       gdUnit4 tests

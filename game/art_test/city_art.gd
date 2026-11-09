@@ -14,7 +14,7 @@ extends RefCounted
 ## Drawn far to near, with fog between the depths. Everything is seeded, so the
 ## same code always draws the same city. Signs are placeholder words, not canon.
 
-const P = preload("res://game/art_test/art_palette.gd")
+const P = preload("res://game/art/art_palette.gd")
 
 const VIEW: Vector2i = Vector2i(640, 360)
 ## Where open water meets the far distance.

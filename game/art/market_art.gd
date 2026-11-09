@@ -7,7 +7,7 @@ extends RefCounted
 ## The room is 1280 x 360 native pixels: two screens at 640 x 360. Everything is
 ## seeded, so the same code always draws the same market.
 
-const P = preload("res://game/art_test/art_palette.gd")
+const P = preload("res://game/art/art_palette.gd")
 
 const ROOM: Vector2i = Vector2i(1280, 360)
 const VIEW: Vector2i = Vector2i(640, 360)
