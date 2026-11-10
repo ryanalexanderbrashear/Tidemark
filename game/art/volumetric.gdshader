@@ -9,7 +9,13 @@ shader_type canvas_item;
 
 uniform sampler2D back_soft : filter_linear;
 uniform bool volumetric = false;
-uniform vec2 view_size = vec2(640.0, 360.0);
+// The part of the back viewport on screen (its UV), the viewport's size, and
+// where the base frame (where lights and water_y are measured) sits in it,
+// as in present.gdshader.
+uniform vec4 region = vec4(0.0, 0.0, 1.0, 1.0);
+uniform vec2 tex_size = vec2(960.0, 540.0);
+uniform vec2 margin = vec2(160.0, 120.0);
+uniform float scale = 3.0;
 uniform float water_y = 300.0;
 uniform vec4 fog_color : source_color = vec4(0.2, 0.263, 0.353, 1.0);
 uniform float fog_amount = 0.65;
@@ -42,21 +48,29 @@ float fbm(vec2 p) {
 	return v;
 }
 
+vec2 sharp_uv(vec2 uv) {
+	vec2 t = uv * tex_size;
+	vec2 cell = floor(t);
+	vec2 f = clamp((fract(t) - 0.5) * scale + 0.5, 0.0, 1.0);
+	return (cell + f) / tex_size;
+}
+
 void fragment() {
+	vec2 uv = region.xy + UV * region.zw;
 	if (!volumetric) {
-		COLOR = texture(TEXTURE, UV);
+		COLOR = texture(TEXTURE, sharp_uv(uv));
 	} else {
-		vec2 px = UV * view_size;
-		vec2 texel = soften / view_size;
-		vec3 base = texture(back_soft, UV).rgb * 0.25;
-		base += texture(back_soft, UV + vec2(texel.x, 0.0)).rgb * 0.125;
-		base += texture(back_soft, UV - vec2(texel.x, 0.0)).rgb * 0.125;
-		base += texture(back_soft, UV + vec2(0.0, texel.y)).rgb * 0.125;
-		base += texture(back_soft, UV - vec2(0.0, texel.y)).rgb * 0.125;
-		base += texture(back_soft, UV + texel).rgb * 0.0625;
-		base += texture(back_soft, UV - texel).rgb * 0.0625;
-		base += texture(back_soft, UV + vec2(texel.x, -texel.y)).rgb * 0.0625;
-		base += texture(back_soft, UV + vec2(-texel.x, texel.y)).rgb * 0.0625;
+		vec2 px = uv * tex_size - margin;
+		vec2 texel = soften / tex_size;
+		vec3 base = texture(back_soft, uv).rgb * 0.25;
+		base += texture(back_soft, uv + vec2(texel.x, 0.0)).rgb * 0.125;
+		base += texture(back_soft, uv - vec2(texel.x, 0.0)).rgb * 0.125;
+		base += texture(back_soft, uv + vec2(0.0, texel.y)).rgb * 0.125;
+		base += texture(back_soft, uv - vec2(0.0, texel.y)).rgb * 0.125;
+		base += texture(back_soft, uv + texel).rgb * 0.0625;
+		base += texture(back_soft, uv - texel).rgb * 0.0625;
+		base += texture(back_soft, uv + vec2(texel.x, -texel.y)).rgb * 0.0625;
+		base += texture(back_soft, uv + vec2(-texel.x, texel.y)).rgb * 0.0625;
 
 		// Fog thickens toward the water and drifts.
 		float h = clamp((px.y - 50.0) / (water_y - 50.0), 0.0, 1.0);

@@ -33,6 +33,7 @@ func _init(room_def: RoomDef, room_layout: RoomLayout) -> void:
 	width = maxi(PixelView.NATIVE.x, layout.width(id))
 	outdoors = def.water
 	lamp_on = false
+	fight_zoom = true
 
 
 func _draw() -> void:
@@ -55,17 +56,20 @@ func _draw() -> void:
 		var mat: ShaderMaterial = ShaderMaterial.new()
 		mat.shader = WATER_SHADER
 		mat.set_shader_parameter("back_tex", view.back.get_texture())
-		mat.set_shader_parameter("view_size", Vector2(PixelView.NATIVE))
-		mat.set_shader_parameter("line_y", float(WATER_Y))
+		# The water shader reads the play viewport's own pixels, base frame at
+		# PixelView.MARGIN; the water reaches the viewport's edges.
+		mat.set_shader_parameter("view_size", Vector2(PixelView.MAX_VIEW))
+		mat.set_shader_parameter("line_y", float(WATER_Y + PixelView.MARGIN.y))
 		_water.material = mat
-		_water.size = Vector2(PixelView.NATIVE.x, PixelView.NATIVE.y - WATER_Y)
-		_water.position = Vector2(0, WATER_Y)
+		_water.size = Vector2(PixelView.MAX_VIEW.x, PixelView.MAX_VIEW.y - PixelView.MARGIN.y - WATER_Y)
+		_water.position = Vector2(-PixelView.MARGIN.x, WATER_Y)
 		over.add_child(_water)
 
 
 func update(cam: float, time: float, _fog: int) -> void:
 	view.set_volumetric(false)
-	_skyline.position = Vector2(-floorf(cam * SKYLINE_PARALLAX), 0)
+	_sky.position = -Vector2(PixelView.MARGIN)
+	_skyline.position = Vector2(-PixelView.MARGIN.x - floorf(cam * SKYLINE_PARALLAX), 0)
 	_room.position = Vector2(-cam, 0)
 	_props.position = Vector2(-cam, 0)
 	_props.time = time
@@ -85,8 +89,14 @@ func _rng() -> RandomNumberGenerator:
 	return r
 
 
+## How far below the base frame a zoomed-out view reaches (native px).
+static func below() -> int:
+	return PixelView.MAX_VIEW.y - PixelView.MARGIN.y - PixelView.NATIVE.y
+
+
+## The sky behind the whole of a zoomed-out view (drawn from -MARGIN).
 func _sky_image() -> Image:
-	var img: Image = Px.blank(PixelView.NATIVE.x, PixelView.NATIVE.y)
+	var img: Image = Px.blank(PixelView.MAX_VIEW.x, PixelView.MAX_VIEW.y)
 	Px.vgrad(img, 0, 0, img.get_width(), img.get_height(), def.sky_top.darkened(0.3), def.sky_bottom, 6)
 	return img
 
@@ -94,8 +104,9 @@ func _sky_image() -> Image:
 ## Far towers in the room's own fog colour, so it reads as somewhere in the
 ## city without saying where.
 func _skyline_image() -> Image:
-	var w: int = PixelView.NATIVE.x + ceili(float(width - PixelView.NATIVE.x) * SKYLINE_PARALLAX) + 2
-	var img: Image = Px.blank(w, PixelView.NATIVE.y)
+	var w: int = PixelView.MAX_VIEW.x + ceili(float(width - PixelView.NATIVE.x) * SKYLINE_PARALLAX) + 2
+	var h: int = PixelView.NATIVE.y + below()
+	var img: Image = Px.blank(w, h)
 	var rng: RandomNumberGenerator = _rng()
 	var far: Color = def.sky_bottom.lerp(P.FOG, 0.18)
 	var near: Color = def.sky_top.lerp(P.INK, 0.4)
@@ -103,7 +114,7 @@ func _skyline_image() -> Image:
 	while x < w:
 		var tw: int = rng.randi_range(20, 54)
 		var top: int = rng.randi_range(90, 220)
-		Px.rect(img, x, top, tw, PixelView.NATIVE.y - top, far)
+		Px.rect(img, x, top, tw, h - top, far)
 		for wy: int in range(top + 6, int(RoomLayout.WALK_Y) - 20, 9):
 			for wx: int in range(x + 4, x + tw - 4, 7):
 				if rng.randf() < 0.18:
@@ -113,14 +124,15 @@ func _skyline_image() -> Image:
 	while x < w:
 		var tw: int = rng.randi_range(30, 80)
 		var top: int = rng.randi_range(170, 250)
-		Px.rect(img, x, top, tw, PixelView.NATIVE.y - top, near)
+		Px.rect(img, x, top, tw, h - top, near)
 		x += tw + rng.randi_range(0, 30)
 	return img
 
 
 ## The floor, the ledges and the room's back wall in its floor colour.
 func _room_image() -> Image:
-	var img: Image = Px.blank(width, PixelView.NATIVE.y)
+	var bottom: int = PixelView.NATIVE.y + below()
+	var img: Image = Px.blank(width, bottom)
 	var walk: int = int(RoomLayout.WALK_Y)
 	var ground: Color = def.floor_color
 	if def.water:
@@ -130,9 +142,9 @@ func _room_image() -> Image:
 		for px: int in range(12, width, 48):
 			Px.rect(img, px, walk + 6, 3, WATER_Y - walk - 6 + 20, ground.darkened(0.4))
 	else:
-		Px.rect(img, 0, walk, width, PixelView.NATIVE.y - walk, ground)
+		Px.rect(img, 0, walk, width, bottom - walk, ground)
 		Px.rect(img, 0, walk, width, 1, ground.lightened(0.35))
-		for py: int in range(walk + 6, PixelView.NATIVE.y, 9):
+		for py: int in range(walk + 6, bottom, 9):
 			Px.rect(img, 0, py, width, 1, ground.darkened(0.25))
 	for l: Rect2 in layout.ledges(id):
 		var r: Rect2i = Rect2i(l)

@@ -105,11 +105,83 @@ func test_the_arena_is_wider_than_two_screens() -> void:
 
 
 func test_the_camera_looks_ahead_of_him_only_in_a_fight() -> void:
-	test.detective.facing = 1.0
+	test.lead_side = 1.0
 	assert_float(test.fight_lead()).is_equal(0.0)
 	test.spawn("thug")
 	assert_float(test.fight_lead()).is_equal(World.FIGHT_LEAD)
-	test.detective.facing = -1.0
+	test.lead_side = -1.0
 	assert_float(test.fight_lead()).is_equal(-World.FIGHT_LEAD)
 	test.clear()
 	assert_float(test.fight_lead()).is_equal(0.0)
+
+
+func test_the_look_ahead_swings_only_once_he_keeps_walking_the_other_way() -> void:
+	test.spawn("thug")
+	test.lead_side = 1.0
+	# Turning on the spot (to shoot) leaves it where it is.
+	test.detective.facing = -1.0
+	test.detective.velocity = Vector2.ZERO
+	test.update_lead(1.0)
+	assert_float(test.lead_side).is_equal(1.0)
+	# A short step back doesn't swing it either.
+	test.detective.velocity = Vector2(-Detective.SPEED, 0.0)
+	test.update_lead(World.LEAD_TURN_SECONDS * 0.5)
+	test.detective.velocity = Vector2.ZERO
+	test.update_lead(0.1)
+	test.detective.velocity = Vector2(-Detective.SPEED, 0.0)
+	test.update_lead(World.LEAD_TURN_SECONDS * 0.5)
+	assert_float(test.lead_side).is_equal(1.0)
+	# Walking that way for long enough does.
+	test.update_lead(World.LEAD_TURN_SECONDS)
+	assert_float(test.lead_side).is_equal(-1.0)
+
+
+func test_the_look_ahead_eases_without_jumps_or_overshoot() -> void:
+	test.spawn("thug")
+	test.lead_side = 1.0
+	test.cam_lead = World.FIGHT_LEAD
+	test.lead_side = -1.0
+	test.detective.velocity = Vector2.ZERO
+	var last: float = test.cam_lead
+	var biggest: float = 0.0
+	for i: int in 180:
+		test.update_lead(1.0 / 60.0)
+		biggest = maxf(biggest, last - test.cam_lead)
+		assert_float(test.cam_lead).is_less_equal(last)
+		assert_float(test.cam_lead).is_greater_equal(-World.FIGHT_LEAD)
+		last = test.cam_lead
+	# Never faster than the cap, and settled within three seconds.
+	assert_float(biggest).is_less_equal(World.LEAD_MAX_SPEED / 60.0 + 0.01)
+	assert_float(test.cam_lead).is_equal_approx(-World.FIGHT_LEAD, 0.5)
+
+
+func test_a_fight_zooms_out_as_far_as_the_arena_allows() -> void:
+	assert_float(test.fight_view_width()).is_equal(float(PixelView.NATIVE.x))
+	test.spawn("thug")
+	# The arena is wider than the most a view shows, so it's the most.
+	assert_float(test.fight_view_width()).is_equal(float(PixelView.MAX_VIEW.x))
+	test.clear()
+	assert_float(test.fight_view_width()).is_equal(float(PixelView.NATIVE.x))
+
+
+func test_the_zoom_eases_out_and_settles() -> void:
+	test.spawn("thug")
+	var last: float = test._view.view_size.x
+	for i: int in 240:
+		test.update_zoom(1.0 / 60.0)
+		assert_float(test._view.view_size.x).is_greater_equal(last)
+		assert_float(test._view.view_size.x - last).is_less_equal(World.ZOOM_MAX_SPEED / 60.0 + 0.01)
+		last = test._view.view_size.x
+	assert_float(test._view.view_size.x).is_equal_approx(float(PixelView.MAX_VIEW.x), 0.5)
+	# Stays 16:9 all the way.
+	assert_float(test._view.view_size.y).is_equal_approx(test._view.view_size.x * 9.0 / 16.0, 0.01)
+	test.clear()
+	for i: int in 240:
+		test.update_zoom(1.0 / 60.0)
+	assert_float(test._view.view_size.x).is_equal_approx(float(PixelView.NATIVE.x), 0.5)
+
+
+func test_a_room_that_is_drawn_never_zooms() -> void:
+	assert_bool(MarketScene.new().fight_zoom).is_false()
+	assert_bool(StallScene.new().fight_zoom).is_false()
+	assert_bool(test._scene().fight_zoom).is_true()
