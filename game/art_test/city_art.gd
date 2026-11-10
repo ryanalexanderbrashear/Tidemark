@@ -8,7 +8,9 @@ extends RefCounted
 ## (neon, shanties, docks), joined by causeways and bridges; the tops of the
 ## tallest rise above the fog line as the Crown, each a broad terrace walled
 ## all round with a garden and buildings inside; the old city lies drowned below,
-## and the stilts carry the tidemarks of every rise. Kept apart from Midgar on
+## and each arcology's legs stand in its hull, a caisson of watertight decks
+## where the poor live, some above the water and some under it, scarred with
+## the tidemarks of every rise. Kept apart from Midgar on
 ## purpose: no continuous deck, no numbered sectors, no single central tower.
 ##
 ## Drawn far to near, with fog between the depths. Everything is seeded, so the
@@ -509,6 +511,7 @@ static func _arcology(img: Image, i: int) -> void:
 	var dark_side: Color = body.darkened(0.25)
 	var deck: int = deck_y(i)
 	_stilts(img, i, body, dark_side)
+	_hull(img, i, body, rng)
 	var x0: int = cx - w / 2
 	if shape == "near":
 		_near_tower(img, i, body, lit_side, dark_side, rng)
@@ -886,6 +889,114 @@ static func _stilts(img: Image, i: int, body: Color, dark_side: Color) -> void:
 			Px.rect(img, lx, y, leg_w + widen, 1, dark_side)
 			Px.dot(img, lx + leg_w + widen - 1, y, lit)
 		_tidemarks(img, xs[l] + (-roundi(flare * 1.5) if l == 0 else (roundi(flare * 1.5) if l == legs - 1 else 0)) - flare / 2, leg_w + flare, foot, d)
+
+
+## How tall the hull is above the water: the lower part of the legs stands in it.
+static func hull_height(i: int) -> int:
+	return roundi(float(stilt_height(i)) * 0.62)
+
+
+## How wide the hull is: a little wider than the deck it carries.
+static func hull_width(i: int) -> int:
+	return deck_width(i) + maxi(2, int(lerpf(2.0, 14.0, depth_of(i))))
+
+
+## The hull: where its legs meet the sea, each arcology stands in a caisson of
+## watertight decks, sealed from each other by bulkheads and floodgates and kept
+## dry by the Sump's pumps. The poor live in its old lower decks: a row or two
+## of small warm windows just above the water (the Freeboard's kind of
+## tenement), the bottom deck dark and half under, written off at the last rise,
+## its gate open to the sea. Tidemarks run across the whole face; a sluice gate
+## and an outfall pipe sit at the waterline, and the decks already under show
+## as dim shapes in the water.
+static func _hull(img: Image, i: int, body: Color, rng: RandomNumberGenerator) -> void:
+	var a: Array = ARCOLOGIES[i]
+	var cx: int = a[0]
+	var foot: int = a[1]
+	var d: float = depth_of(i)
+	var hw: int = hull_width(i)
+	var hh: int = hull_height(i)
+	var x0: int = cx - hw / 2
+	var top: int = foot - hh
+	var unit: float = lerpf(0.4, 2.0, d)
+	var plate: Color = body.darkened(0.15)
+	var seam: Color = body.darkened(0.4)
+	var lit: Color = body.lightened(0.1)
+	# The face: plates of the caisson, its top edge catching a little light.
+	Px.rect(img, x0, top, hw, hh + 2, plate)
+	Px.rect(img, x0, top, hw, 1, lit)
+	Px.dot(img, x0, top, seam)
+	Px.dot(img, x0 + hw - 1, top, seam)
+	# Bulkhead seams: the decks run across, the frames go down.
+	var deck_h: int = maxi(2, roundi(5.0 * unit))
+	var decks: int = maxi(1, hh / deck_h)
+	for k: int in range(1, decks + 1):
+		var y: int = top + k * deck_h
+		if y < foot:
+			Px.rect(img, x0, y, hw, 1, seam)
+	var frame: int = maxi(4, roundi(14.0 * unit))
+	for x: int in range(x0 + frame, x0 + hw - 1, frame):
+		Px.rect(img, x, top + 1, 1, hh, Color(seam, 0.6))
+	# The lived-in decks: the upper ones lit warm through small windows. The
+	# lowest one, right at the water, is the deck written off at the last rise.
+	var win: int = maxi(1, roundi(unit))
+	for k: int in range(decks):
+		var wy: int = top + k * deck_h + maxi(1, deck_h / 2 - win / 2)
+		if wy + win > foot - 1:
+			continue
+		var bottom_deck: bool = wy + deck_h >= foot - 1
+		var step: int = maxi(2, roundi(4.0 * unit))
+		for wx: int in range(x0 + 2, x0 + hw - 2 - win, step):
+			if bottom_deck:
+				# Dark windows, the stain of the water that stood in them.
+				Px.rect(img, wx, wy, win, win, Color("04070d"))
+			elif rng.randf() < 0.7:
+				var c: Color = [P.AMBER, P.AMBER, P.AMBER_DIM, Color("6fb3c0"), P.MAGENTA_DIM][rng.randi_range(0, 4)]
+				Px.rect(img, wx, wy, win, win, Color(c, lerpf(0.7, 1.0, d)))
+			else:
+				Px.rect(img, wx, wy, win, win, seam)
+	# A warm haze off the lived-in decks, low over the water.
+	Px.glow(img, cx, top + hh * 0.4, hw * 0.5, 4.0 + 8.0 * d, P.AMBER, 0.08 + 0.07 * d)
+	# The tidemarks of each rise, pale lines across the whole hull, the oldest
+	# lowest. Below the lowest the plates are wet black.
+	var scale: float = lerpf(0.5, 3.0, d)
+	Px.rect(img, x0, foot - roundi(1.0 * scale), hw, roundi(1.0 * scale) + 2, Color("05080f"))
+	var marks: Array[float] = [3.0, 6.5, 10.5]
+	for m: int in range(marks.size()):
+		var y: int = foot - roundi(marks[m] * scale)
+		if y <= top:
+			continue
+		var c: Color = Color(P.RAIN, lerpf(0.5, 0.25, float(m) / 2.0) * lerpf(0.6, 1.0, d))
+		Px.rect(img, x0, y, hw, 1, c)
+		if scale >= 2.0:
+			Px.screen(img, x0, y + 1, hw, 2, Color(P.RAIN, 0.15), 0.5)
+	if d < 0.3:
+		return
+	# A sluice gate at the waterline: a barred gate in a heavier frame.
+	var gw: int = maxi(4, roundi(9.0 * unit))
+	var gh: int = maxi(3, roundi(7.0 * unit))
+	var gx: int = x0 + hw / 4 - gw / 2
+	var gy: int = foot - gh + roundi(unit)
+	Px.rect(img, gx - 1, gy - 1, gw + 2, gh + 1, seam)
+	Px.rect(img, gx, gy, gw, gh, Color("04070d"))
+	for bx: int in range(gx + 1, gx + gw, maxi(2, roundi(2.0 * unit))):
+		Px.rect(img, bx, gy, 1, gh, Color(P.RUST, 0.9))
+	Px.rect(img, gx - 1, gy - 1, gw + 2, 1, lit)
+	# An outfall pipe: the pumps throwing the sea back out, a pale spill under it.
+	var px: int = x0 + hw * 3 / 4
+	var pr: int = maxi(1, roundi(2.0 * unit))
+	var py: int = foot - roundi(6.0 * scale)
+	if py > top + pr:
+		Px.rect(img, px - pr, py - pr, pr * 2 + 1, pr * 2 + 1, seam)
+		Px.rect(img, px - pr + 1, py - pr + 1, maxi(1, pr * 2 - 1), maxi(1, pr * 2 - 1), Color("04070d"))
+		for y: int in range(py + pr, foot + 1):
+			if (y + px) % 2 == 0:
+				Px.dot(img, px, y, Color(P.RAIN, 0.45))
+	# The decks already under: dim window rows below the surface.
+	for k: int in range(1, 3):
+		var uy: int = foot + k * deck_h - 1
+		for wx: int in range(x0 + 3, x0 + hw - 3, maxi(3, roundi(5.0 * unit))):
+			Px.dot(img, wx, uy, Color(P.STEEL, 0.35 / float(k)))
 
 
 ## The tidemarks: pale lines left on a stilt by each rise of the water, oldest

@@ -114,3 +114,23 @@ func test_one_arcology_is_sinking_and_left_out_of_the_crown() -> void:
 			sunk.append(i)
 	assert_int(sunk.size()).is_equal(1)
 	assert_bool(sunk[0] in CityArt.crown()).is_false()
+
+
+# Each standing arcology's legs meet the sea in its hull, and people live in
+# it: lit windows on the hull face, above the water.
+func test_each_arcology_stands_in_a_lived_in_hull() -> void:
+	for i: int in range(CityArt.ARCOLOGIES.size()):
+		if CityArt.ARCOLOGIES[i][4] == "sunk":
+			continue
+		var img: Image = Px.blank(CityArt.VIEW.x, CityArt.VIEW.y)
+		CityArt._arcology(img, i)
+		var foot: int = CityArt.ARCOLOGIES[i][1]
+		var hw: int = CityArt.hull_width(i)
+		var x0: int = int(CityArt.ARCOLOGIES[i][0]) - hw / 2
+		var lit: int = 0
+		for y: int in range(foot - CityArt.hull_height(i), foot):
+			for x: int in range(maxi(0, x0), mini(CityArt.VIEW.x, x0 + hw)):
+				var c: Color = img.get_pixel(x, y)
+				if c.a > 0.5 and c.r > 0.45 and c.r > c.b:
+					lit += 1
+		assert_int(lit).override_failure_message("arcology %d has no lit hull windows" % i).is_greater(2)
