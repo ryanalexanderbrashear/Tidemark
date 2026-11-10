@@ -23,6 +23,12 @@ const FADE_TIME: float = 0.3
 const LEGACY_SIZE: Vector2 = Vector2(960, 540)
 ## How far the white comes in when a looper's hold flashes its loop into him.
 const GRAB_WHITE: float = 0.7
+## In a fight the camera looks this far ahead of him (native px): he stands a
+## third of the way across the screen and sees 430 px in front.
+const FIGHT_LEAD: float = 110.0
+## How fast the camera's look-ahead moves when he turns or a fight starts or
+## ends (native px a second): a turn takes under a second to swing across.
+const LEAD_SPEED: float = 260.0
 
 var market: DrownedMarket
 var layout: RoomLayout
@@ -53,6 +59,9 @@ var _next_x: float = 0.0
 var _fade_t: float = 0.0
 var _time: float = 0.0
 var _limit_warned: bool = false
+## How far ahead of him the camera looks now (native px, signed): eases to
+## fight_lead() so he sees what's coming in a fight.
+var cam_lead: float = 0.0
 var _seen_market: bool = false
 
 
@@ -203,6 +212,7 @@ func arrive(id: String, x: float) -> void:
 	_view.set_fade(0.0)
 	_load_room(id, 0.0)
 	detective.position = Vector2(x, RoomLayout.WALK_Y)
+	cam_lead = fight_lead()
 
 
 func _load_room(id: String, world_x: float) -> void:
@@ -277,6 +287,13 @@ func _check_edges() -> void:
 
 # ---------- each frame ----------
 
+## Where the camera wants to look: FIGHT_LEAD ahead of the way he faces while
+## the room has hostiles, so a fight shows more in front of him than behind
+## (he stands a third of the way across); centred on him otherwise.
+func fight_lead() -> float:
+	return detective.facing * FIGHT_LEAD if Case.hostiles_left(room) else 0.0
+
+
 ## True while something is up in front of the room.
 func busy() -> bool:
 	return _screen != null or _examine.is_open() or _talk.visible or _board.is_open() or _next_room != ""
@@ -289,7 +306,8 @@ func _process(delta: float) -> void:
 		return
 	if not get_tree().paused:
 		_check_edges()
-	var cam: float = _scene().cam_x(detective.position.x)
+	cam_lead = move_toward(cam_lead, fight_lead(), LEAD_SPEED * delta)
+	var cam: float = _scene().cam_x(detective.position.x, roundf(cam_lead))
 	_actors.position = Vector2(-cam, 0)
 	_scene().update(cam, _time, fog)
 	_update_heat()

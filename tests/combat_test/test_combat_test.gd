@@ -98,3 +98,18 @@ func test_slow_motion_slows_the_engine_and_comes_back() -> void:
 	assert_float(Engine.time_scale).is_equal(CombatTest.SLOW_MOTION)
 	test.set_slow_motion(false)
 	assert_float(Engine.time_scale).is_equal(1.0)
+
+
+func test_the_arena_is_wider_than_two_screens() -> void:
+	assert_int(test._scene().width).is_greater(PixelView.NATIVE.x * 2)
+
+
+func test_the_camera_looks_ahead_of_him_only_in_a_fight() -> void:
+	test.detective.facing = 1.0
+	assert_float(test.fight_lead()).is_equal(0.0)
+	test.spawn("thug")
+	assert_float(test.fight_lead()).is_equal(World.FIGHT_LEAD)
+	test.detective.facing = -1.0
+	assert_float(test.fight_lead()).is_equal(-World.FIGHT_LEAD)
+	test.clear()
+	assert_float(test.fight_lead()).is_equal(0.0)

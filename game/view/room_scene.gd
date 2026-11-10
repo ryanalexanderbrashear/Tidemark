@@ -52,10 +52,10 @@ func set_shown(on: bool) -> void:
 		h.visible = on
 
 
-## Where the camera sits for the detective at `x`: centred on him, held
-## inside the room, on whole pixels.
-func cam_x(x: float) -> float:
-	return floorf(clampf(x - PixelView.NATIVE.x * 0.5, 0.0, float(maxi(0, width - PixelView.NATIVE.x))))
+## Where the camera sits for the detective at `x`: centred on him (or `lead`
+## px in front of him), held inside the room, on whole pixels.
+func cam_x(x: float, lead: float = 0.0) -> float:
+	return floorf(clampf(x + lead - PixelView.NATIVE.x * 0.5, 0.0, float(maxi(0, width - PixelView.NATIVE.x))))
 
 
 ## Moves the room for the camera and the clock. `fog` is a Fog. Overridden.
