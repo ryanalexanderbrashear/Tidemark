@@ -10,6 +10,9 @@ func test_the_camera_follows_the_detective_but_stays_in_the_room() -> void:
 	assert_float(market.cam_x(5000.0)).is_equal(float(MarketArt.ROOM.x - PixelView.NATIVE.x))
 	# A one-screen room never scrolls.
 	assert_float(StallScene.new().cam_x(500.0)).is_equal(0.0)
+	# Looking ahead moves the camera by the lead, still held inside the room.
+	assert_float(market.cam_x(640.0, 110.0)).is_equal(430.0)
+	assert_float(market.cam_x(0.0, -110.0)).is_equal(0.0)
 
 
 func test_a_cast_sprite_stands_with_its_feet_where_it_is_placed() -> void:

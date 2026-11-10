@@ -22,15 +22,18 @@ extends World
 ## start with full health (the game would wake him in the precinct), and
 ## whoever he was fighting stays, as in the game.
 ##
-## The arena is a stand-in room (placeholder, not canon): open floor, a step of
-## low ledges to jump and dash between, and a far ledge that takes a running
-## jump out of a dash to reach.
+## The arena is a stand-in room (placeholder, not canon), two and a half
+## screens wide so a fight has room to move: open floor, a step of low ledges
+## to jump and dash between, a far ledge that takes a running jump out of a
+## dash to reach, and another step near the far end. In a fight the camera
+## looks ahead of him (World.FIGHT_LEAD), and new hostiles appear at the edge
+## of what he can see in front.
 
 const ARENA: String = "arena"
 ## Where he starts, and where he comes back to when downed (native x).
 const START_X: float = 120.0
 ## How far in front of him a new hostile appears (native px).
-const SPAWN_AHEAD: float = 240.0
+const SPAWN_AHEAD: float = 330.0
 ## A drone's height above the floor when it appears (native px).
 const DRONE_HEIGHT: float = 140.0
 const SLOW_MOTION: float = 0.25
@@ -52,8 +55,8 @@ var _boxes: Boxes
 
 ## The arena: a stand-in room in grey-box units, like the case's rooms.
 static func arena() -> RoomDef:
-	var r: RoomDef = RoomDef.make(ARENA, "Combat test ground", 1440, Color("0c1018"), Color("1a2230"), Color("1c2430"))
-	r.ledge(300, 420, 140).ledge(500, 370, 160).ledge(1020, 400, 200)
+	var r: RoomDef = RoomDef.make(ARENA, "Combat test ground", 2400, Color("0c1018"), Color("1a2230"), Color("1c2430"))
+	r.ledge(300, 420, 140).ledge(500, 370, 160).ledge(1020, 400, 200).ledge(1700, 420, 160).ledge(1900, 360, 180)
 	return r
 
 
