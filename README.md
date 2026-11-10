@@ -49,6 +49,10 @@ All the numbers are in `data/mind/tuning.tres`, and each reading's cost is `deep
 
 The case's rules live in `game/case/` and are covered by tests that play the clean path, the wrong-suspect path, a no-badge-from-the-start path and the timeline (`tests/case/`). The detective's mind lives in `game/mind/` (the `Mind` autoload), and `tests/mind/` covers readings, symptoms and pills, including a run with maxed symptoms, no pills and every leftover on the board.
 
+## The combat test ground
+
+`scenes/combat_test.tscn` is the sandbox for fights, as the art test is for the look. It's the game itself (`CombatTest` extends `World`) set in one stand-in arena that isn't part of the case: open floor, a step of low ledges, and a far ledge that takes a jump out of a dash to reach. The detective, thugs, drones and bolts are the game's own, so tuning a fight here tunes the case's fights too. Keys: 1 spawns a thug, 2 a drone, 3 a wave (a thug from each side and a drone), C clears the room, R refills his health, B shows hit boxes (his body turns cyan while a dash lets hits through; the amber box is how close a thug has to get), I makes him unhurtable, M runs the world at quarter speed. The status line shows his health, the dash cooldown, what hit him last, and how many hits his dashes slipped. Getting downed puts him back at the start with full health, and whoever he was fighting stays. Open the scene and press F6.
+
 ## The art test
 
 `scenes/art_test.tscn` is the Drowned Market style test (milestone M3), now the sandbox for trying mechanics before they go in the game. It settled the Look and Feel doc's questions on resolution (640x360), character size and how the detective's inner voice is shown. It's the game itself (`ArtTest` extends `World`), started on the market floor at the top of the case, with the thermal optic already calibrated (a placeholder, so the optic can be tried without the trip to the lab), plus what's only for trying things out: the fog shown two ways to compare (stepped fog is pixel art like the rest; volumetric fog is a shader drawn at the window's own resolution over a softened background, with glows around the signs and light shafts under the arcology, while the market, people and water stay crisp pixel art in front), the inner voice as thought text, a caption box or silence, a few idle thoughts, and test items to examine. Open the scene and press F6. All of the art is drawn in code from `ArtPalette` (`game/art/`), so it's a test of scale, light and palette, not final art.
@@ -123,8 +127,9 @@ game/
   examine/   holding evidence up close and turning it over
   sound/     placeholder sound made in code, and the ambience that muffles while you're busy
   art_test/  the style test and sandbox (ArtTest, on the game's World), city concept art
+  combat_test/  the combat test ground (CombatTest, on the game's World)
 data/        clues/, theories/, beats/ and readings/ as .tres, one per id; mind/tuning.tres
-scenes/      main.tscn, art_test.tscn
+scenes/      main.tscn, art_test.tscn, combat_test.tscn
 tests/       gdUnit4 tests
 editor/ci/   CI-only scripts
 ```

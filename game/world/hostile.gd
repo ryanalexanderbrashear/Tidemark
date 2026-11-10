@@ -83,7 +83,7 @@ func _physics_process(delta: float) -> void:
 			_walked += THUG_SPEED * delta
 			_facing = signf(dx)
 		if absf(dx) < 14.0 and absf(d.position.y - position.y) < 28.0:
-			d.hurt()
+			d.hurt("thug")
 		if moving:
 			_sprite.step_at("walk", _walked, ArtCast.build("fixer").stride)
 		else:
@@ -101,7 +101,7 @@ func _physics_process(delta: float) -> void:
 			get_parent().add_child(Bolt.make(position, aim * DRONE_SHOT_SPEED, false))
 		# Chest high: a slide goes under it.
 		if absf(dx) < 12.0 and absf(d.position.y - 36.0 - position.y) < 20.0 and d.hit_box().grow(12.0).has_point(position):
-			d.hurt()
+			d.hurt("drone")
 		queue_redraw()
 
 

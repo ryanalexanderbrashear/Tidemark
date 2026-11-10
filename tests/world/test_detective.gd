@@ -254,3 +254,19 @@ func test_a_jump_clears_a_little_over_his_own_height() -> void:
 
 func test_a_thug_is_slower_than_his_pace() -> void:
 	assert_float(Hostile.THUG_SPEED).is_less(Detective.SPEED)
+
+
+func test_a_hit_names_what_it_was() -> void:
+	var det: Detective = _detective()
+	var monitor: Object = monitor_signals(det)
+	det.hurt("bolt")
+	await assert_signal(monitor).is_emitted("hurt_by", ["bolt"])
+
+
+func test_a_hit_passing_through_a_dash_says_so() -> void:
+	var det: Detective = _detective()
+	det._start_dash(1.0)
+	var monitor: Object = monitor_signals(det)
+	det.hurt("thug")
+	await assert_signal(monitor).is_emitted("slipped", ["thug"])
+	assert_int(det.hp).is_equal(Detective.MAX_HP)

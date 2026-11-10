@@ -33,7 +33,7 @@ func _physics_process(delta: float) -> void:
 		for node: Node in get_tree().get_nodes_in_group("detective"):
 			var d: Detective = node as Detective
 			if d != null and d.hit_box().has_point(position):
-				d.hurt()
+				d.hurt("bolt")
 				queue_free()
 				return
 	if _life <= 0.0:

@@ -16,6 +16,11 @@ extends CharacterBody2D
 ## they're drawn.
 
 signal downed
+## A hit landed on him: what it was ("thug", "drone", "bolt", or "" when
+## unnamed).
+signal hurt_by(what: String)
+## A hit reached him mid-dash and passed through.
+signal slipped(what: String)
 
 ## His everyday pace: a brisk jog, about 1.4 run cycles a second with his run
 ## stride, so a screen (640 px) takes under 7 seconds.
@@ -292,15 +297,26 @@ func hit_box() -> Rect2:
 	return Rect2(position + Vector2(-size.x / 2.0, -size.y), size)
 
 
-func hurt() -> void:
+## Takes a hit from `what` (see hurt_by), unless he's dashing or still
+## recovering from the last one.
+func hurt(what: String = "") -> void:
+	if _invulnerable > 0.0:
+		return
 	# A dash slips through bolts and blows.
-	if _invulnerable > 0.0 or dashing > 0.0:
+	if dashing > 0.0:
+		slipped.emit(what)
 		return
 	hp -= 1
 	_invulnerable = INVULNERABLE_SECONDS
+	hurt_by.emit(what)
 	if hp <= 0:
 		hp = MAX_HP
 		downed.emit()
+
+
+## Seconds until he can dash again (0 when ready).
+func dash_wait() -> float:
+	return maxf(0.0, _dash_ready)
 
 
 func heal() -> void:
