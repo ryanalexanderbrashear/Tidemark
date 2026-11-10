@@ -88,3 +88,8 @@ jobs:
         run: |
           "$GODOT_BIN" --headless --path . --quit-after 60 res://scenes/art_test.tscn 2>&1 | tee art_boot.log
           if grep -E "SCRIPT ERROR|ERROR:" art_boot.log; then exit 1; fi
+
+      - name: Boot the combat test scene
+        run: |
+          "$GODOT_BIN" --headless --path . --quit-after 60 res://scenes/combat_test.tscn 2>&1 | tee combat_boot.log
+          if grep -E "SCRIPT ERROR|ERROR:" combat_boot.log; then exit 1; fi

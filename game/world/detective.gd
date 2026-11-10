@@ -16,6 +16,13 @@ extends CharacterBody2D
 ## they're drawn.
 
 signal downed
+## A hit landed on him: what it was ("thug", "drone", "bolt", or "" when
+## unnamed).
+signal hurt_by(what: String)
+## A hit reached him mid-dash and passed through.
+signal slipped(what: String)
+## Something took hold of him (a looper's grip): he's held for a moment.
+signal grabbed(by: String)
 
 ## His everyday pace: a brisk jog, about 1.4 run cycles a second with his run
 ## stride, so a screen (640 px) takes under 7 seconds.
@@ -48,6 +55,9 @@ const GRAVITY: float = 1200.0
 ## Letting go of jump while still rising cuts the jump short.
 const SHORT_HOP: float = 130.0
 const MAX_HP: int = 5
+## Each press of a move, jump or dash key while he's held takes this much off
+## the hold (seconds): struggling frees him sooner.
+const STRUGGLE: float = 0.15
 const INVULNERABLE_SECONDS: float = 1.0
 const SHOT_COOLDOWN: float = 0.32
 const SHOT_SPEED: float = 480.0
@@ -80,6 +90,9 @@ var _dash_grounded: bool = false
 var _queued: Array[String] = []
 ## Set by whoever runs him: input is ignored while true.
 var frozen: bool = false
+## Seconds left of a hold on him (0 when free): he can't move or shoot, only
+## struggle.
+var held: float = 0.0
 var sprite: CastSprite
 var _gun: Polygon2D
 var _invulnerable: float = 0.0
@@ -115,6 +128,9 @@ func _ready() -> void:
 
 func _physics_process(delta: float) -> void:
 	_clock += delta
+	if held > 0.0:
+		_held_step(delta)
+		return
 	var dir: float = 0.0 if frozen else Input.get_axis("move_left", "move_right")
 	if is_on_floor():
 		_air_dashed = false
@@ -167,6 +183,39 @@ func _physics_process(delta: float) -> void:
 		get_parent().add_child(bolt)
 	_queued.clear()
 	_pose()
+
+
+## Held: no moving or shooting, gravity still pulls, the timers run on, and
+## each struggle shortens the hold.
+func _held_step(delta: float) -> void:
+	held -= delta
+	if not frozen:
+		for action: String in ["move_left", "move_right", "jump", "dash"]:
+			if _just(action):
+				held -= STRUGGLE
+	held = maxf(0.0, held)
+	velocity.x = 0.0
+	velocity.y += GRAVITY * delta
+	move_and_slide()
+	_invulnerable = maxf(0.0, _invulnerable - delta)
+	_dash_ready -= delta
+	_cooldown -= delta
+	_aim = 0.0
+	_queued.clear()
+	_pose()
+
+
+## Takes hold of him for `seconds`, unless he's dashing, still recovering from
+## a hit, or already held. True when it took.
+func grab(seconds: float, by: String) -> bool:
+	if dashing > 0.0 or _invulnerable > 0.0 or held > 0.0:
+		return false
+	held = seconds
+	sliding = 0.0
+	carry = 0.0
+	velocity.x = 0.0
+	grabbed.emit(by)
+	return true
 
 
 ## Presses `action` once, for his next physics step.
@@ -292,17 +341,29 @@ func hit_box() -> Rect2:
 	return Rect2(position + Vector2(-size.x / 2.0, -size.y), size)
 
 
-func hurt() -> void:
+## Takes a hit from `what` (see hurt_by), unless he's dashing or still
+## recovering from the last one.
+func hurt(what: String = "") -> void:
+	if _invulnerable > 0.0:
+		return
 	# A dash slips through bolts and blows.
-	if _invulnerable > 0.0 or dashing > 0.0:
+	if dashing > 0.0:
+		slipped.emit(what)
 		return
 	hp -= 1
 	_invulnerable = INVULNERABLE_SECONDS
+	hurt_by.emit(what)
 	if hp <= 0:
 		hp = MAX_HP
 		downed.emit()
 
 
+## Seconds until he can dash again (0 when ready).
+func dash_wait() -> float:
+	return maxf(0.0, _dash_ready)
+
+
 func heal() -> void:
 	hp = MAX_HP
 	_invulnerable = 0.0
+	held = 0.0

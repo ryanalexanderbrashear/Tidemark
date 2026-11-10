@@ -49,6 +49,12 @@ All the numbers are in `data/mind/tuning.tres`, and each reading's cost is `deep
 
 The case's rules live in `game/case/` and are covered by tests that play the clean path, the wrong-suspect path, a no-badge-from-the-start path and the timeline (`tests/case/`). The detective's mind lives in `game/mind/` (the `Mind` autoload), and `tests/mind/` covers readings, symptoms and pills, including a run with maxed symptoms, no pills and every leftover on the board.
 
+## The combat test ground
+
+`scenes/combat_test.tscn` is the sandbox for fights, as the art test is for the look. It's the game itself (`CombatTest` extends `World`) set in one stand-in arena that isn't part of the case: open floor, a step of low ledges, and a far ledge that takes a jump out of a dash to reach. The detective, thugs, drones and bolts are the game's own, so tuning a fight here tunes the case's fights too. Keys: 1 spawns a thug, 2 a drone, 3 a wave (a thug from each side and a drone), C clears the room, R refills his health, B shows hit boxes (his body turns cyan while a dash lets hits through; the amber box is how close a thug has to get), I makes him unhurtable, M runs the world at quarter speed. The status line shows his health, the dash cooldown, what hit him last, and how many hits his dashes slipped. Getting downed puts him back at the start with full health, and whoever he was fighting stays.
+
+It also holds the loopers (`Looper`, from the Combat section of Gameplay and Production), which the case doesn't use until case 2: 4 spawns a brawler (closes in, winds up, then charges; a dash slips the charge), 5 an alarm (runs from him and screams, waking the loopers around it; never hits), 6 a grabber (shuffles in and holds on: he can't move until the hold runs out, struggling frees him sooner, and the hold flashes someone else's memory into him without costing health or leaving a symptom), 7 a crowd of four asleep in their loops. Loopers sway until he comes close, one is shot, or an alarm screams. The stun pistol drops one in three shots; it stays down, and E pulls its rig, so for a moment they're themselves and say one line of their own. Their looks, lines and numbers are placeholders. Open the scene and press F6.
+
 ## The art test
 
 `scenes/art_test.tscn` is the Drowned Market style test (milestone M3), now the sandbox for trying mechanics before they go in the game. It settled the Look and Feel doc's questions on resolution (640x360), character size and how the detective's inner voice is shown. It's the game itself (`ArtTest` extends `World`), started on the market floor at the top of the case, with the thermal optic already calibrated (a placeholder, so the optic can be tried without the trip to the lab), plus what's only for trying things out: the fog shown two ways to compare (stepped fog is pixel art like the rest; volumetric fog is a shader drawn at the window's own resolution over a softened background, with glows around the signs and light shafts under the arcology, while the market, people and water stay crisp pixel art in front), the inner voice as thought text, a caption box or silence, a few idle thoughts, and test items to examine. Open the scene and press F6. All of the art is drawn in code from `ArtPalette` (`game/art/`), so it's a test of scale, light and palette, not final art.
@@ -116,15 +122,16 @@ game/
   data/      resource schemas: Clue, Theory, StoryBeat, Reading, MindTuning
   mind/      the detective's mind across cases (the Mind autoload): bleed-through, passengers, pills
   case/      the running case (the Case autoload), the board's check, dialogue (Talk), the Drowned Market's rooms and spots
-  world/     the main scene (World), where everything stands (RoomLayout), the detective, hostiles, bolts
+  world/     the main scene (World), where everything stands (RoomLayout), the detective, hostiles, loopers, bolts
   art/       code-drawn pixel art: palette, drawing kit, the 8-head cast, the market and stall, fog, rain, shaders
   view/      the pixel view (640x360 viewports, thermal, reading, fade), drawn and stand-in rooms, cast sprites
   ui/        talk box, case board, inner voice, on-screen notices, intro and summary screens, bleed-through overlay
   examine/   holding evidence up close and turning it over
   sound/     placeholder sound made in code, and the ambience that muffles while you're busy
   art_test/  the style test and sandbox (ArtTest, on the game's World), city concept art
+  combat_test/  the combat test ground (CombatTest, on the game's World)
 data/        clues/, theories/, beats/ and readings/ as .tres, one per id; mind/tuning.tres
-scenes/      main.tscn, art_test.tscn
+scenes/      main.tscn, art_test.tscn, combat_test.tscn
 tests/       gdUnit4 tests
 editor/ci/   CI-only scripts
 ```
