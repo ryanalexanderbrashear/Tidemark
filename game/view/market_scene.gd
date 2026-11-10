@@ -74,13 +74,16 @@ func _draw() -> void:
 	var mat: ShaderMaterial = ShaderMaterial.new()
 	mat.shader = WATER_SHADER
 	mat.set_shader_parameter("back_tex", view.back.get_texture())
-	mat.set_shader_parameter("view_size", Vector2(PixelView.NATIVE))
+	# The water shader reads the play viewport's own pixels, base frame at
+	# PixelView.MARGIN.
+	mat.set_shader_parameter("view_size", Vector2(PixelView.MAX_VIEW))
 	water.material = mat
 	water.size = Vector2(PixelView.NATIVE)
 	over.add_child(water)
 	layers["front"] = sprite(MarketArt.front(), over)
 
 	_rain_layer = CanvasLayer.new()
+	_rain_layer.offset = Vector2(PixelView.MARGIN)
 	view.play.add_child(_rain_layer)
 	rain = ArtRain.new()
 	rain.view_size = PixelView.NATIVE
@@ -153,7 +156,7 @@ func update(cam: float, time: float, fog: int) -> void:
 	vale.place(RoomLayout.VALE_X, walk_y, cam)
 
 	water.position = Vector2(0, MarketArt.WATER_Y)
-	(water.material as ShaderMaterial).set_shader_parameter("line_y", float(MarketArt.WATER_Y))
+	(water.material as ShaderMaterial).set_shader_parameter("line_y", float(MarketArt.WATER_Y + PixelView.MARGIN.y))
 	rain.walk_y = MarketArt.WALK_Y
 	rain.water_y = MarketArt.WATER_Y
 

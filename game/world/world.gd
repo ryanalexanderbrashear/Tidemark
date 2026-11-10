@@ -35,6 +35,11 @@ const LEAD_TURN_SECONDS: float = 0.35
 ## never faster than LEAD_MAX_SPEED (native px a second).
 const LEAD_SMOOTH_SECONDS: float = 0.45
 const LEAD_MAX_SPEED: float = 170.0
+## How the view zooms out when a fight starts and back in when it ends:
+## settling in about this many seconds, the width changing at most
+## ZOOM_MAX_SPEED native px a second.
+const ZOOM_SMOOTH_SECONDS: float = 0.6
+const ZOOM_MAX_SPEED: float = 400.0
 
 var market: DrownedMarket
 var layout: RoomLayout
@@ -67,11 +72,16 @@ var _time: float = 0.0
 var _limit_warned: bool = false
 ## How far ahead of him the camera looks now (native px, signed): eases to
 ## fight_lead() so he sees what's coming in a fight.
-var cam_lead: float = 0.0
+var cam_lead: float:
+	get:
+		return _lead.value
+	set(v):
+		_lead.settle(v)
 ## The side the camera looks to in a fight (1 right, -1 left): the way he
 ## last kept walking, which can differ from the way he faces.
 var lead_side: float = 1.0
-var _lead_speed: float = 0.0
+var _lead: Spring = Spring.new(0.0, LEAD_SMOOTH_SECONDS, LEAD_MAX_SPEED)
+var _zoom: Spring = Spring.new(float(PixelView.NATIVE.x), ZOOM_SMOOTH_SECONDS, ZOOM_MAX_SPEED)
 var _turning: float = 0.0
 var _seen_market: bool = false
 
@@ -223,10 +233,6 @@ func arrive(id: String, x: float) -> void:
 	_view.set_fade(0.0)
 	_load_room(id, 0.0)
 	detective.position = Vector2(x, RoomLayout.WALK_Y)
-	lead_side = detective.facing
-	_turning = 0.0
-	_lead_speed = 0.0
-	cam_lead = fight_lead()
 
 
 func _load_room(id: String, world_x: float) -> void:
@@ -251,6 +257,12 @@ func _load_room(id: String, world_x: float) -> void:
 			h.heat = _view.heat_sprite(1.0)
 		_room_root.add_child(h)
 	_limit_warned = false
+	# A new room starts with the camera already where it wants to be.
+	lead_side = detective.facing
+	_turning = 0.0
+	cam_lead = fight_lead()
+	_zoom.settle(fight_view_width())
+	_view.set_view_width(_zoom.value)
 	var line: String = Mind.room_line(randf(), randi())
 	if id == "market" and not _seen_market:
 		_seen_market = true
@@ -320,21 +332,22 @@ func update_lead(delta: float) -> void:
 			_turning = 0.0
 	else:
 		_turning = 0.0
-	# A critically damped spring (as in Game Programming Gems 4, 1.10).
-	var target: float = fight_lead()
-	var omega: float = 2.0 / LEAD_SMOOTH_SECONDS
-	var x: float = omega * delta
-	var decay: float = 1.0 / (1.0 + x + 0.48 * x * x + 0.235 * x * x * x)
-	var max_step: float = LEAD_MAX_SPEED * LEAD_SMOOTH_SECONDS
-	var change: float = clampf(cam_lead - target, -max_step, max_step)
-	var temp: float = (_lead_speed + omega * change) * delta
-	_lead_speed = (_lead_speed - omega * temp) * decay
-	var next: float = (cam_lead - change) + (change + temp) * decay
-	# Don't overshoot the target.
-	if (target - cam_lead > 0.0) == (next > target):
-		next = target
-		_lead_speed = 0.0
-	cam_lead = next
+	_lead.step(fight_lead(), delta)
+
+
+## How wide the view wants to be (native px): in a fight in a room that can
+## zoom, as much of the room as fits, up to PixelView.MAX_VIEW; the 640 px
+## frame otherwise. A small arena stays tight; a wide one shows half again
+## as much.
+func fight_view_width() -> float:
+	if room == "" or not _scene().fight_zoom or not Case.hostiles_left(room):
+		return float(PixelView.NATIVE.x)
+	return clampf(float(_scene().width), float(PixelView.NATIVE.x), float(PixelView.MAX_VIEW.x))
+
+
+## Moves the zoom on by `delta` seconds towards fight_view_width().
+func update_zoom(delta: float) -> void:
+	_view.set_view_width(_zoom.step(fight_view_width(), delta))
 
 
 ## True while something is up in front of the room.
@@ -350,7 +363,8 @@ func _process(delta: float) -> void:
 	if not get_tree().paused:
 		_check_edges()
 	update_lead(delta)
-	var cam: float = _scene().cam_x(detective.position.x, roundf(cam_lead))
+	update_zoom(delta)
+	var cam: float = _scene().cam_x(detective.position.x, roundf(cam_lead), _view.view_size.x)
 	_actors.position = Vector2(-cam, 0)
 	_scene().update(cam, _time, fog)
 	_update_heat()

@@ -21,6 +21,9 @@ var outdoors: bool = false
 ## now.
 var lamp_x: float = 0.0
 var lamp_on: bool = true
+## A fight here can zoom the view out (World.fight_view_width): the room is
+## drawn past the 640 x 360 frame, out to PixelView.MAX_VIEW around it.
+var fight_zoom: bool = false
 
 var view: PixelView
 var back: Node2D
@@ -53,9 +56,12 @@ func set_shown(on: bool) -> void:
 
 
 ## Where the camera sits for the detective at `x`: centred on him (or `lead`
-## px in front of him), held inside the room, on whole pixels.
-func cam_x(x: float, lead: float = 0.0) -> float:
-	return floorf(clampf(x + lead - PixelView.NATIVE.x * 0.5, 0.0, float(maxi(0, width - PixelView.NATIVE.x))))
+## px in front of him), held inside the room, on whole pixels. `view_w` is how
+## wide the view is (wider when a fight zooms out); the camera returned is
+## still the base frame's left edge, which sits in the middle of a wider view.
+func cam_x(x: float, lead: float = 0.0, view_w: float = PixelView.NATIVE.x) -> float:
+	var left: float = clampf(x + lead - view_w * 0.5, 0.0, maxf(0.0, float(width) - view_w))
+	return floorf(left + (view_w - PixelView.NATIVE.x) * 0.5)
 
 
 ## Moves the room for the camera and the clock. `fog` is a Fog. Overridden.

@@ -13,6 +13,25 @@ func test_the_camera_follows_the_detective_but_stays_in_the_room() -> void:
 	# Looking ahead moves the camera by the lead, still held inside the room.
 	assert_float(market.cam_x(640.0, 110.0)).is_equal(430.0)
 	assert_float(market.cam_x(0.0, -110.0)).is_equal(0.0)
+	# A wider view still returns the base frame's left edge, which sits in
+	# its middle: here the view is 960 wide and against the room's left wall.
+	assert_float(market.cam_x(0.0, 0.0, 960.0)).is_equal(160.0)
+	assert_float(market.cam_x(5000.0, 0.0, 960.0)).is_equal(float(MarketArt.ROOM.x - 960 + 160))
+
+
+func test_the_view_zooms_out_around_the_frame() -> void:
+	var view: PixelView = auto_free(PixelView.new())
+	add_child(view)
+	await get_tree().process_frame
+	assert_object(view.region()).is_equal(Rect2(Vector2(PixelView.MARGIN), Vector2(PixelView.NATIVE)))
+	assert_float(view.pixel_scale()).is_equal(float(view.zoom))
+	view.set_view_width(5000.0)
+	assert_object(view.region()).is_equal(Rect2(Vector2.ZERO, Vector2(PixelView.MAX_VIEW)))
+	assert_float(view.pixel_scale()).is_equal(float(view.zoom) * 2.0 / 3.0)
+	# The frame's corner moves in from the picture's corner as the view grows.
+	assert_object(view.to_window(Vector2.ZERO)).is_equal(view.offset + Vector2(PixelView.MARGIN) * view.pixel_scale())
+	view.set_view_width(0.0)
+	assert_object(view.view_size).is_equal(Vector2(PixelView.NATIVE))
 
 
 func test_a_cast_sprite_stands_with_its_feet_where_it_is_placed() -> void:

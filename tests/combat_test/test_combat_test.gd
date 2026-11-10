@@ -153,3 +153,35 @@ func test_the_look_ahead_eases_without_jumps_or_overshoot() -> void:
 	# Never faster than the cap, and settled within three seconds.
 	assert_float(biggest).is_less_equal(World.LEAD_MAX_SPEED / 60.0 + 0.01)
 	assert_float(test.cam_lead).is_equal_approx(-World.FIGHT_LEAD, 0.5)
+
+
+func test_a_fight_zooms_out_as_far_as_the_arena_allows() -> void:
+	assert_float(test.fight_view_width()).is_equal(float(PixelView.NATIVE.x))
+	test.spawn("thug")
+	# The arena is wider than the most a view shows, so it's the most.
+	assert_float(test.fight_view_width()).is_equal(float(PixelView.MAX_VIEW.x))
+	test.clear()
+	assert_float(test.fight_view_width()).is_equal(float(PixelView.NATIVE.x))
+
+
+func test_the_zoom_eases_out_and_settles() -> void:
+	test.spawn("thug")
+	var last: float = test._view.view_size.x
+	for i: int in 240:
+		test.update_zoom(1.0 / 60.0)
+		assert_float(test._view.view_size.x).is_greater_equal(last)
+		assert_float(test._view.view_size.x - last).is_less_equal(World.ZOOM_MAX_SPEED / 60.0 + 0.01)
+		last = test._view.view_size.x
+	assert_float(test._view.view_size.x).is_equal_approx(float(PixelView.MAX_VIEW.x), 0.5)
+	# Stays 16:9 all the way.
+	assert_float(test._view.view_size.y).is_equal_approx(test._view.view_size.x * 9.0 / 16.0, 0.01)
+	test.clear()
+	for i: int in 240:
+		test.update_zoom(1.0 / 60.0)
+	assert_float(test._view.view_size.x).is_equal_approx(float(PixelView.NATIVE.x), 0.5)
+
+
+func test_a_room_that_is_drawn_never_zooms() -> void:
+	assert_bool(MarketScene.new().fight_zoom).is_false()
+	assert_bool(StallScene.new().fight_zoom).is_false()
+	assert_bool(test._scene().fight_zoom).is_true()
