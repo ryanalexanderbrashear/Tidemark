@@ -51,7 +51,9 @@ The case's rules live in `game/case/` and are covered by tests that play the cle
 
 ## The combat test ground
 
-`scenes/combat_test.tscn` is the sandbox for fights, as the art test is for the look. It's the game itself (`CombatTest` extends `World`) set in one stand-in arena that isn't part of the case: open floor, a step of low ledges, and a far ledge that takes a jump out of a dash to reach. The detective, thugs, drones and bolts are the game's own, so tuning a fight here tunes the case's fights too. Keys: 1 spawns a thug, 2 a drone, 3 a wave (a thug from each side and a drone), C clears the room, R refills his health, B shows hit boxes (his body turns cyan while a dash lets hits through; the amber box is how close a thug has to get), I makes him unhurtable, M runs the world at quarter speed. The status line shows his health, the dash cooldown, what hit him last, and how many hits his dashes slipped. Getting downed puts him back at the start with full health, and whoever he was fighting stays. Open the scene and press F6.
+`scenes/combat_test.tscn` is the sandbox for fights, as the art test is for the look. It's the game itself (`CombatTest` extends `World`) set in one stand-in arena that isn't part of the case: open floor, a step of low ledges, and a far ledge that takes a jump out of a dash to reach. The detective, thugs, drones and bolts are the game's own, so tuning a fight here tunes the case's fights too. Keys: 1 spawns a thug, 2 a drone, 3 a wave (a thug from each side and a drone), C clears the room, R refills his health, B shows hit boxes (his body turns cyan while a dash lets hits through; the amber box is how close a thug has to get), I makes him unhurtable, M runs the world at quarter speed. The status line shows his health, the dash cooldown, what hit him last, and how many hits his dashes slipped. Getting downed puts him back at the start with full health, and whoever he was fighting stays.
+
+It also holds the loopers (`Looper`, from the Combat section of Gameplay and Production), which the case doesn't use until case 2: 4 spawns a brawler (closes in, winds up, then charges; a dash slips the charge), 5 an alarm (runs from him and screams, waking the loopers around it; never hits), 6 a grabber (shuffles in and holds on: he can't move until the hold runs out, struggling frees him sooner, and the hold flashes someone else's memory into him without costing health or leaving a symptom), 7 a crowd of four asleep in their loops. Loopers sway until he comes close, one is shot, or an alarm screams. The stun pistol drops one in three shots; it stays down, and E pulls its rig, so for a moment they're themselves and say one line of their own. Their looks, lines and numbers are placeholders. Open the scene and press F6.
 
 ## The art test
 
@@ -120,7 +122,7 @@ game/
   data/      resource schemas: Clue, Theory, StoryBeat, Reading, MindTuning
   mind/      the detective's mind across cases (the Mind autoload): bleed-through, passengers, pills
   case/      the running case (the Case autoload), the board's check, dialogue (Talk), the Drowned Market's rooms and spots
-  world/     the main scene (World), where everything stands (RoomLayout), the detective, hostiles, bolts
+  world/     the main scene (World), where everything stands (RoomLayout), the detective, hostiles, loopers, bolts
   art/       code-drawn pixel art: palette, drawing kit, the 8-head cast, the market and stall, fog, rain, shaders
   view/      the pixel view (640x360 viewports, thermal, reading, fade), drawn and stand-in rooms, cast sprites
   ui/        talk box, case board, inner voice, on-screen notices, intro and summary screens, bleed-through overlay

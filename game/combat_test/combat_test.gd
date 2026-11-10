@@ -8,6 +8,9 @@ extends World
 ##
 ## - 1 a thug, 2 a drone, 3 a wave (a thug from each side and a drone),
 ##   C clears the room, R refills his health.
+## - Loopers (Looper): 4 a brawler, 5 an alarm, 6 a grabber, 7 a crowd (two
+##   brawlers, a grabber and an alarm, asleep in their loops). E pulls a
+##   downed looper's rig.
 ## - B shows hit boxes: his body (cyan while a dash lets hits through), each
 ##   hostile's, and in amber how close a thug has to get to land a blow (the
 ##   box around the thug's feet that the tick at his own feet must be inside).
@@ -101,7 +104,7 @@ func _layout(native: Vector2i, zoom: int, offset: Vector2) -> void:
 
 func _process(delta: float) -> void:
 	super._process(delta)
-	_keys.text = "A/D move   Shift dash (+S slide)   W/Space jump   F stun pistol   T thermal\n1 thug   2 drone   3 wave   C clear   R refill health   B hit boxes   I unhurtable   M slow motion   H hide"
+	_keys.text = "A/D move   Shift dash (+S slide)   W/Space jump   F stun pistol   T thermal   E pull a rig\n1 thug   2 drone   3 wave   4 brawler   5 alarm   6 grabber   7 looper crowd   C clear\nR refill health   B hit boxes   I unhurtable   M slow motion   H hide"
 	_boxes.visible = show_boxes
 	_boxes.queue_redraw()
 
@@ -112,6 +115,8 @@ func _update_status() -> void:
 	var wait: float = detective.dash_wait()
 	parts.append("DASH " + ("ready" if wait <= 0.0 else "%.2fs" % wait))
 	parts.append("HOSTILES %d" % hostiles().size())
+	if detective.held > 0.0:
+		parts.append("HELD %.1fs" % detective.held)
 	parts.append("LAST HIT " + (last_hit if last_hit != "" else "-"))
 	parts.append("SLIPPED %d  DOWNED %d" % [slipped_count, downed_count])
 	var modes: PackedStringArray = []
@@ -136,6 +141,14 @@ func _sandbox_key(key: InputEventKey) -> bool:
 			spawn("drone")
 		KEY_3:
 			wave()
+		KEY_4:
+			spawn("brawler")
+		KEY_5:
+			spawn("alarm")
+		KEY_6:
+			spawn("grabber")
+		KEY_7:
+			crowd()
 		KEY_C:
 			clear()
 		KEY_R:
@@ -157,7 +170,7 @@ func _sandbox_key(key: InputEventKey) -> bool:
 
 # ---------- hostiles ----------
 
-## Puts a hostile of `kind` ("thug" or "drone") in the arena, SPAWN_AHEAD in
+## Puts a hostile of `kind` ("thug", "drone", or a Looper kind) in the arena, SPAWN_AHEAD in
 ## front of him (behind him when that's past the wall), or `side` px off his
 ## position when given.
 func spawn(kind: String, side: float = 0.0) -> Hostile:
@@ -168,8 +181,12 @@ func spawn(kind: String, side: float = 0.0) -> Hostile:
 		x = detective.position.x - off
 	x = clampf(x, EDGE * 3.0, width - EDGE * 3.0)
 	var y: float = RoomLayout.WALK_Y - (DRONE_HEIGHT if kind == "drone" else 0.0)
-	var h: Hostile = Hostile.make(kind, ARENA, Vector2(x, y))
-	if kind == "thug":
+	var h: Hostile
+	if Looper.KINDS.has(kind):
+		h = Looper.make_looper(kind, ARENA, Vector2(x, y), width)
+	else:
+		h = Hostile.make(kind, ARENA, Vector2(x, y))
+	if kind != "drone":
 		h.heat = _view.heat_sprite(1.0)
 	_room_root.add_child(h)
 	Case.spawn_hostiles(ARENA, hostiles().size())
@@ -181,6 +198,16 @@ func wave() -> void:
 	spawn("thug", SPAWN_AHEAD)
 	spawn("thug", -SPAWN_AHEAD)
 	spawn("drone", SPAWN_AHEAD * 0.5)
+
+
+## Loopers asleep in their loops ahead of him: two brawlers, a grabber, and
+## an alarm at the back that wakes the rest.
+func crowd() -> void:
+	var ahead: float = detective.facing
+	spawn("brawler", ahead * 200.0)
+	spawn("grabber", ahead * 250.0)
+	spawn("brawler", ahead * 300.0)
+	spawn("alarm", ahead * 380.0)
 
 
 ## Takes every hostile and bolt out of the room.
@@ -201,7 +228,7 @@ func hostiles() -> Array[Hostile]:
 	var out: Array[Hostile] = []
 	for c: Node in _room_root.get_children():
 		var h: Hostile = c as Hostile
-		if h != null and not h.is_queued_for_deletion():
+		if h != null and not h.is_queued_for_deletion() and not (h is Looper and (h as Looper).is_down()):
 			out.append(h)
 	return out
 

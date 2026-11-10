@@ -21,6 +21,8 @@ const FADE_TIME: float = 0.3
 ## The legacy screens (intro, summary) and the bleed-through overlay are laid
 ## out for this size and scaled to the picture.
 const LEGACY_SIZE: Vector2 = Vector2(960, 540)
+## How far the white comes in when a looper's hold flashes its loop into him.
+const GRAB_WHITE: float = 0.7
 
 var market: DrownedMarket
 var layout: RoomLayout
@@ -97,6 +99,7 @@ func _build() -> void:
 	_actors.add_child(_room_root)
 	detective = Detective.new()
 	detective.downed.connect(Case.player_downed)
+	detective.grabbed.connect(_on_grabbed)
 	_actors.add_child(detective)
 	_detective_heat = _view.heat_sprite(1.0)
 
@@ -322,6 +325,7 @@ func _mirror(src: Sprite2D, heat: Sprite2D) -> void:
 	heat.texture = src.texture
 	heat.position = src.global_position
 	heat.flip_h = src.flip_h
+	heat.rotation = src.global_rotation
 
 
 ## A reading's white comes in while its words are up: part way for a surface
@@ -337,6 +341,10 @@ func nearest_spot() -> Spot:
 
 
 func _update_prompt(cam: float) -> void:
+	var l: Looper = null if busy() else nearest_rig()
+	if l != null:
+		_notices.prompt(_view, "E  Pull the rig", Vector2(l.position.x - cam, RoomLayout.PROMPT_Y_LOW))
+		return
 	var s: Spot = null if busy() else nearest_spot()
 	if s == null:
 		_notices.prompt(_view, "")
@@ -390,8 +398,27 @@ func _unhandled_input(event: InputEvent) -> void:
 			_notices.toast("Playtest: symptoms, pills and passengers reset")
 
 
-## E: uses the spot the detective is standing at.
+## A downed looper by him whose rig he can pull, nearest first, or null.
+func nearest_rig() -> Looper:
+	var best: Looper = null
+	for node: Node in get_tree().get_nodes_in_group("loopers"):
+		var l: Looper = node as Looper
+		if l == null or not l.can_pull() or absf(l.position.y - detective.position.y) > RoomLayout.REACH_Y:
+			continue
+		var d: float = absf(l.position.x - detective.position.x)
+		if d <= Looper.RIG_REACH and (best == null or d < absf(best.position.x - detective.position.x)):
+			best = l
+	return best
+
+
+## E: pulls a downed looper's rig if he's by one: the loop ends, and for a
+## moment they're themselves. Otherwise uses the spot he's standing at.
 func interact() -> void:
+	var l: Looper = nearest_rig()
+	if l != null:
+		_sound.play("catch")
+		_show_talk(Talk.say("Looper", l.pull_rig()))
+		return
 	var s: Spot = nearest_spot()
 	if s == null:
 		return
@@ -447,6 +474,20 @@ func _on_detail_found(it: ExamineItem) -> void:
 	if it.id == "chip":
 		_voice.unsay(DrownedMarket.CHIP_HINT)
 		_voice.unsay(DrownedMarket.CHIP_REMINDER)
+
+
+## A looper's hold pushes its loop into him: a flash of someone else's
+## memory (the reading's white, and the memory in his inner voice). It leaves
+## no lasting symptom; those come only from readings he chooses.
+func _on_grabbed(_by: String) -> void:
+	var grip: Looper = null
+	for node: Node in get_tree().get_nodes_in_group("loopers"):
+		var l: Looper = node as Looper
+		if l != null and l.kind == "grabber" and (grip == null or absf(l.position.x - detective.position.x) < absf(grip.position.x - detective.position.x)):
+			grip = l
+	reading_amount = maxf(reading_amount, GRAB_WHITE)
+	if grip != null:
+		_voice.say(grip.flash_line())
 
 
 func _announce(who: String, text: String, at: String) -> void:
