@@ -458,7 +458,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		Mind.take_dose()
 	elif event.is_action_pressed("examine"):
 		examine()
-	elif event.is_action_pressed("case_tablet"):
+	elif event.is_action_pressed("case_board"):
 		_sound.play("board")
 		_tablet.open()
 		get_viewport().set_input_as_handled()
