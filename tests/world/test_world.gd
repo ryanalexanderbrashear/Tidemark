@@ -62,8 +62,45 @@ func test_the_world_freezes_while_he_talks() -> void:
 	assert_bool(world.busy()).is_true()
 
 
+func test_the_tablet_key_raises_the_tablet() -> void:
+	# Let the walk into the lab finish fading in.
+	for i: int in range(120):
+		if not world.busy():
+			break
+		await get_tree().process_frame
+	assert_bool(world.busy()).is_false()
+	var press: InputEventAction = InputEventAction.new()
+	press.action = "case_board"
+	press.pressed = true
+	world._unhandled_input(press)
+	assert_bool(world._tablet.is_open()).is_true()
+	assert_bool(world.busy()).is_true()
+
+
 func test_the_game_finds_the_etching_by_examining_the_chip() -> void:
 	assert_bool(world.market.etching_by_examining).is_true()
 	assert_array(world._pockets()).is_empty()
 	Case.set_flag("has_chip")
 	assert_str(world._pockets()[0].id).is_equal("chip")
+
+
+## Every input action a script asks for is in the project's input map, so a
+## renamed action can't silently leave a key doing nothing.
+func test_every_action_the_game_reads_exists() -> void:
+	var pattern: RegEx = RegEx.create_from_string("is_action_(?:just_)?(?:pressed|released)\\(\"([a-z_]+)\"")
+	var missing: Array[String] = []
+	for path: String in _scripts("res://game"):
+		for m: RegExMatch in pattern.search_all(FileAccess.get_file_as_string(path)):
+			if not InputMap.has_action(m.get_string(1)):
+				missing.append("%s in %s" % [m.get_string(1), path])
+	assert_array(missing).is_empty()
+
+
+func _scripts(dir: String) -> Array[String]:
+	var out: Array[String] = []
+	for f: String in DirAccess.get_files_at(dir):
+		if f.ends_with(".gd"):
+			out.append(dir.path_join(f))
+	for d: String in DirAccess.get_directories_at(dir):
+		out.append_array(_scripts(dir.path_join(d)))
+	return out
