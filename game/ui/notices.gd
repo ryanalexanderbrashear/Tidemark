@@ -79,7 +79,7 @@ func update_toast(view: PixelView, delta: float, only_clues: bool = false) -> vo
 		if toasts.is_empty():
 			_toast.visible = false
 			return
-	_toast.visible = not only_clues or toasts[0].begins_with("New clue")
+	_toast.visible = not only_clues or toasts[0].begins_with("Captured")
 	_toast.text = toasts[0]
 	var width: float = minf(view.shown.x * 0.7, 1200.0)
 	_toast.size = Vector2(width, 0)

@@ -84,7 +84,7 @@ func hint() -> String:
 		return "You're off the badge readers. Work the people in the market instead: the fixer, the techs. And figure out that etching."
 	if Case.has_fact("catalog"):
 		return "If the etching is a catalog number, find what it points to. The flood tunnels are full of old panels."
-	return "Open the case board (Tab). Two clues that hold together make a fact. Facts open doors, and a bad theory costs you time."
+	return "Raise your tablet (Tab). Two captures that hold together make a fact once you file it. Facts open doors, and a bad theory costs you time."
 
 
 # ---------- rooms ----------
