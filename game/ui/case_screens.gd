@@ -10,9 +10,9 @@ static func intro(on_start: Callable) -> Control:
 	box.add_child(UiTheme.label("CASE 01  ·  PROTOTYPE", 12, UiTheme.DIM))
 	box.add_child(UiTheme.label("The Drowned Market", 30, UiTheme.NEON))
 	box.add_child(UiTheme.label("Ines Vale, a memory broker, is dead inside her own sealed stall. There's a blank chip in her hand, wiped clean and etched with a string of characters. The night runs on a timeline of events, and some of them only happen because of what you choose."))
-	box.add_child(UiTheme.label("Find clues, then commit theories on the case board. A theory needs at least two clues that back it up and nothing that doesn't belong. Facts open doors. Wrong theories are allowed, and acting on one has consequences."))
+	box.add_child(UiTheme.label("Find clues, then file theories on your tablet. A theory needs at least two clues that back it up and nothing that doesn't belong. Facts open doors. Wrong theories are allowed, and acting on one has consequences."))
 	box.add_child(UiTheme.label("Some things can be read through your neural port. A surface reading is safe. A deep reading shows more, and what you see stays with you, from case to case. Pills hold the symptoms back, for a price."))
-	box.add_child(UiTheme.label("Move: A/D or arrows.  Dash: Shift (hold S or Down to slide).  Jump: W, Space or Up.  Use: E.  Examine what you carry: X.  Stun pistol: F.  Thermal optic: T (once you have it).  Case board: Tab or C.  Take a pill: Q.", 13, UiTheme.WARN))
+	box.add_child(UiTheme.label("Move: A/D or arrows.  Dash: Shift (hold S or Down to slide).  Jump: W, Space or Up.  Use: E.  Examine what you carry: X.  Stun pistol: F.  Thermal optic: T (once you have it).  Evidence tablet: Tab or C.  Take a pill: Q.", 13, UiTheme.WARN))
 	if Mind.bleed > 0 or Mind.doses_taken > 0:
 		box.add_child(UiTheme.label("Carried over: bleed-through %d/%d, %d pill(s) left%s." % [Mind.bleed, Mind.tuning.bleed_max, Mind.pills,
 			(", passengers: " + ", ".join(PackedStringArray(Mind.passengers))) if not Mind.passengers.is_empty() else ""], 13, THOUGHT))

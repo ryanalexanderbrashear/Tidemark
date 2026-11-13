@@ -16,7 +16,7 @@ extends World
 ## - H hides the key list.
 ##
 ## It opens on a caption, and walks onto the market floor; everything else
-## (rooms, people, readings, the board, sound) is the game's.
+## (rooms, people, readings, the tablet, sound) is the game's.
 ##
 ## Screenshots: run with `-- --shots=<dir>` and it saves a fixed set and quits;
 ## `--only=<prefix>` saves only those whose names start with it.
@@ -206,7 +206,7 @@ func _take_shots(dir: String) -> void:
 ## (plain and thermal), a surface and a deep reading of the body, Vale's
 ## passenger at the fog's edge afterwards (plain and thermal, where she shows
 ## no heat and the heat-sealed door shows), talking to Osk, the fixer and the
-## tech, and the case board before and after a theory holds.
+## tech, and the evidence tablet before and after a theory is filed.
 func _take_scene_shots(dir: String, only: String) -> void:
 	fog = RoomScene.Fog.STEPPED
 	var plan: Array[Array] = [
@@ -223,8 +223,10 @@ func _take_scene_shots(dir: String, only: String) -> void:
 		["scene-talk-osk", "market", 484.0, 1, "talk"],
 		["scene-talk-fixer", "market", 876.0, 1, "fixer"],
 		["scene-talk-tech", "market", 1160.0, 1, "talk"],
-		["scene-board", "market", 880.0, 1, "board"],
-		["scene-board-committed", "market", 880.0, 1, "commit"],
+		["scene-tablet-boot", "market", 880.0, 1, "boot"],
+		["scene-tablet-captures", "market", 880.0, 1, "board"],
+		["scene-tablet-statements", "market", 880.0, 1, "statements"],
+		["scene-tablet-filed", "market", 880.0, 1, "commit"],
 	]
 	for shot: Array in plan:
 		if not String(shot[0]).begins_with(only):
@@ -250,15 +252,21 @@ func _take_scene_shots(dir: String, only: String) -> void:
 			"surface", "deep":
 				var t: Talk = market.spot("body").use()
 				_show_talk(t.choose("Surface reading" if what == "surface" else "Deep reading"))
-			"board", "commit":
-				for id: String in ["ledger", "chip", "rival", "fixerfmt"]:
+			"boot", "board", "statements", "commit":
+				for id: String in ["ledger", "thermal", "chip", "rival", "fixerfmt", "tech"]:
 					Case.find_clue(id)
-				_board.open()
-				_board.selected.assign(["ledger", "rival"])
-				_board.theory = "stolen"
-				_board.refresh()
+				_tablet.boot_next_open = what == "boot"
+				_tablet.open()
+				if what != "boot":
+					_tablet.skip_boot()
+				_tablet.selected.assign(["ledger", "rival"])
+				_tablet.theory = "stolen"
+				_tablet.show_tab(CaseTablet.Tab.STATEMENTS if what == "statements" else CaseTablet.Tab.CAPTURES)
+				if what == "statements":
+					_tablet.view_clue("rival")
 				if what == "commit":
-					_board.commit()
+					_tablet.show_tab(CaseTablet.Tab.THEORIES)
+					_tablet.commit()
 		_talk.finish_typing()
 		_notices.clear_toasts()
 		await _hold(shot[2], shot[3])
@@ -267,7 +275,7 @@ func _take_scene_shots(dir: String, only: String) -> void:
 		_view.set_reading(reading_amount, _time)
 		await _save(dir, shot[0])
 	_talk.hide()
-	_board.hide()
+	_tablet.hide()
 	Mind.reset()
 
 
@@ -275,9 +283,9 @@ func _take_scene_shots(dir: String, only: String) -> void:
 func _reset_scene(id: String, x: float) -> void:
 	arrive(id, x)
 	_talk.hide()
-	_board.hide()
-	_board.selected.clear()
-	_board.theory = ""
+	_tablet.hide()
+	_tablet.selected.clear()
+	_tablet.theory = ""
 	_voice.narration = ""
 	_voice.said = ""
 	_voice.quiet = true

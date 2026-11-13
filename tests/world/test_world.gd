@@ -18,7 +18,7 @@ func before_test() -> void:
 
 func after_test() -> void:
 	world._talk.hide()
-	world._board.hide()
+	world._tablet.hide()
 	get_tree().paused = false
 
 

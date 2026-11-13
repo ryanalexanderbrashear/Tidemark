@@ -5,12 +5,12 @@ extends Node
 ## drawn rooms (MarketScene, StallScene), every other room as a stand-in
 ## (StandInScene) until it's drawn. The detective (on the 8-head cast) walks,
 ## dashes, jumps and fights in it; the room's spots (DrownedMarket, placed by
-## RoomLayout) open dialogue in the talk box; Tab opens the cork case board; X
+## RoomLayout) open dialogue in the talk box; Tab raises the evidence tablet; X
 ## holds up what's in his pockets; T switches the thermal optic. His inner
 ## voice types over his head, and readings bring their white in like fog.
 ##
 ## The world freezes (the tree pauses) while anything is up in front of it: a
-## dialogue, the board, a close-up, a door's fade, the case screens. The room's
+## dialogue, the tablet, a close-up, a door's fade, the case screens. The room's
 ## own life (rain, lamps, sound) runs on.
 
 const P = preload("res://game/art/art_palette.gd")
@@ -60,7 +60,7 @@ var _voice: InnerVoice
 var _notices: Notices
 var _examine: ExamineView
 var _talk: TalkBox
-var _board: CaseBoard
+var _tablet: CaseTablet
 var _sound: ArtAmbience
 var _bleed_root: Control
 var _screen_root: Control
@@ -147,10 +147,10 @@ func _build() -> void:
 	_examine.detail_found.connect(_on_detail_found)
 	_talk = TalkBox.new()
 	add_child(_talk)
-	_board = CaseBoard.new()
-	add_child(_board)
-	_board.closed.connect(func() -> void: _sound.play("board"))
-	_board.committed.connect(func(_id: String) -> void: _sound.play("found"))
+	_tablet = CaseTablet.new()
+	add_child(_tablet)
+	_tablet.closed.connect(func() -> void: _sound.play("board"))
+	_tablet.committed.connect(func(_id: String) -> void: _sound.play("found"))
 	_screen_root = _legacy_root()
 	_sound = ArtAmbience.new()
 	add_child(_sound)
@@ -169,7 +169,7 @@ func _legacy_root() -> Control:
 func _layout(native: Vector2i, zoom: int, offset: Vector2) -> void:
 	_examine.layout(native, zoom, offset)
 	_talk.layout(native, zoom, offset)
-	_board.layout(native, zoom, offset)
+	_tablet.layout(native, zoom, offset)
 	for c: Control in [_bleed_root, _screen_root]:
 		c.position = offset
 		c.scale = Vector2.ONE * (_view.shown.x / LEGACY_SIZE.x)
@@ -352,7 +352,7 @@ func update_zoom(delta: float) -> void:
 
 ## True while something is up in front of the room.
 func busy() -> bool:
-	return _screen != null or _examine.is_open() or _talk.visible or _board.is_open() or _next_room != ""
+	return _screen != null or _examine.is_open() or _talk.visible or _tablet.is_open() or _next_room != ""
 
 
 func _process(delta: float) -> void:
@@ -458,9 +458,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		Mind.take_dose()
 	elif event.is_action_pressed("examine"):
 		examine()
-	elif event.is_action_pressed("case_board"):
+	elif event.is_action_pressed("case_tablet"):
 		_sound.play("board")
-		_board.open()
+		_tablet.open()
 		get_viewport().set_input_as_handled()
 	elif event is InputEventKey and (event as InputEventKey).pressed and not (event as InputEventKey).echo \
 			and (event as InputEventKey).keycode in [KEY_F2, KEY_F3]:
@@ -578,7 +578,7 @@ func _show_talk(t: Talk) -> void:
 func _show_screen(c: Control) -> void:
 	_clear_screen()
 	_talk.hide()
-	_board.hide()
+	_tablet.hide()
 	if _examine.is_open():
 		_examine.close()
 	_screen = c

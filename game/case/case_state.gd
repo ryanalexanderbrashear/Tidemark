@@ -131,7 +131,7 @@ func find_clue(id: String) -> bool:
 	clues.append(id)
 	var c: Clue = CaseCatalog.clue(id)
 	clue_found.emit(c)
-	notice.emit("New clue: %s  (Tab opens the case board)" % c.title)
+	notice.emit("Captured: %s  (Tab raises the tablet)" % c.title)
 	return true
 
 
