@@ -9,7 +9,7 @@ extends RefCounted
 ##
 ## Their looks are placeholders, not canon: the design docs don't describe what
 ## anyone looks like. What each look leans on is in its comment, so it's easy
-## to see what to change.
+## to see what to change. DESIGN-TBD: Q9
 ##
 ## Every character has named animations (idle, walk, and a few of their own).
 ## frames() draws them; the exporter (editor/art/export_sprites.gd) writes them

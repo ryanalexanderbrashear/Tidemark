@@ -2,7 +2,7 @@
 
 A cyberpunk detective game: a 2D metroidvania where a detective chases a serial killer through Halcyon Reach, a flooded city. Investigation comes first. Doors open on what you can do (abilities, a badge) and on what you've worked out (deductions on a case board). You can be wrong, and being wrong costs you, but it never locks you out.
 
-This repo holds a prototype of one case, **the Drowned Market**, built to test that core loop. It plays in the game's look: code-drawn pixel art at 640x360 with the cast on a realistic 8-head body. The market floor and Vale's stall are drawn; the other rooms are pixel stand-ins (flat shapes on the grey-box layout) until they're drawn. The design for the case is in the Claude Doc "Sample case: the Drowned Market" (https://claude.ai/artifact/Uh6hoH5xQ3CpE1qABNQ89h).
+This repo holds a prototype of one case, **the Drowned Market**, built to test that core loop. It plays in the game's look: code-drawn pixel art at 640x360 with the cast on a realistic 8-head body. The market floor and Vale's stall are drawn; the other rooms are pixel stand-ins (flat shapes on the grey-box layout) until they're drawn. The design for the case is in the Google Doc "Sample case: the Drowned Market" (https://docs.google.com/document/d/123v6-DNYvTd8ZJW3lDSQ45lpRpRVPjWUQ3DZLNyzx3E/edit). The rest of the design docs are listed in `CLAUDE.md`, and the questions the code has for them, with the placeholder each one stands in for, are in `design/questions.md`.
 
 ## What you need
 
@@ -25,11 +25,11 @@ Open `project.godot` in Godot and press F5.
 | T | Thermal optic, once the lab has calibrated it |
 | Q | Take a pill (the suppressant) |
 | F2 / F3 | Playtest only: add 2 bleed-through / clear symptoms, pills and passengers |
-| Tab or C | Case board |
+| Tab or C | Evidence tablet (the case board) |
 | 1 to 9 | Pick a dialogue choice |
 | Esc | Close a message or the board |
 
-**How it looks and plays.** `World` (the main scene) draws each room in a `PixelView`: the market floor (`MarketScene`: fog, neon, rain, the water, Osk, the fixer and the tech) and Vale's stall (`StallScene`) as drawn, and every other room as a stand-in (`StandInScene`): a sky and far skyline in the room's colours, the floor on the same walkway, the grey-box ledges, doors and objects as lit shapes, panels with their codes, and people as flat silhouettes in their spot's colour. `RoomLayout` places everything in native pixels: drawn rooms where the art puts them, stand-ins at two thirds of the grey-box layout. The detective moves at a brisk jog, the pace his run cycle is drawn for, dashes and slides on his reinforced legs (the dash slips through bolts and blows, the slide ducks under chest-high shots; both drawn as code poses for review), jumps a little over his own height, and fights with the stun pistol; his jump, fall and aim are placeholder poses until they're drawn. Thugs are red silhouettes and drones small pixel hulls, placeholders too. Dialogue types out in the talk box, Tab opens the cork case board, readings bring their white in from the edges, the thermal optic turns the room to heat, his inner voice types over his head, and the first time he steps onto the market floor a caption opens the scene. The world freezes while anything is up in front of it.
+**How it looks and plays.** `World` (the main scene) draws each room in a `PixelView`: the market floor (`MarketScene`: fog, neon, rain, the water, Osk, the fixer and the tech) and Vale's stall (`StallScene`) as drawn, and every other room as a stand-in (`StandInScene`): a sky and far skyline in the room's colours, the floor on the same walkway, the grey-box ledges, doors and objects as lit shapes, panels with their codes, and people as flat silhouettes in their spot's colour. `RoomLayout` places everything in native pixels: drawn rooms where the art puts them, stand-ins at two thirds of the grey-box layout. The detective moves at a brisk jog, the pace his run cycle is drawn for, dashes and slides on his reinforced legs (the dash slips through bolts and blows, the slide ducks under chest-high shots; both drawn as code poses for review), jumps a little over his own height, and fights with the stun pistol; his jump, fall and aim are placeholder poses until they're drawn. Thugs are red silhouettes and drones small pixel hulls, placeholders too. Dialogue types out in the talk box, Tab opens the evidence tablet, readings bring their white in from the edges, the thermal optic turns the room to heat, his inner voice types over his head, and the first time he steps onto the market floor a caption opens the scene. The world freezes while anything is up in front of it.
 
 ### The loop being tested
 
@@ -134,4 +134,6 @@ data/        clues/, theories/, beats/ and readings/ as .tres, one per id; mind/
 scenes/      main.tscn, art_test.tscn, combat_test.tscn
 tests/       gdUnit4 tests
 editor/ci/   CI-only scripts
+editor/validation/  the check on design/questions.md and its DESIGN-TBD stand-ins
+design/      questions.md: what the code needs that the design docs don't answer yet
 ```

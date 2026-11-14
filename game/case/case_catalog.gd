@@ -70,6 +70,7 @@ static func all_readings() -> Array[Reading]:
 
 
 ## Leftover clues bleed-through can plant, in the order it plants them.
+## DESIGN-TBD: Q2 (case 1's leftover_* clues in data/clues/ are placeholders)
 static func leftovers() -> Array[String]:
 	_ensure_loaded()
 	var out: Array[String] = []

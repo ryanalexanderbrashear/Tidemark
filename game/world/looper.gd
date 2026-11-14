@@ -19,7 +19,7 @@ extends Hostile
 ##
 ## Placeholder: the looks (cast bodies as flat silhouettes, the rig a lit dot
 ## at the temple), the lines, and every number below are for trying out, not
-## canon.
+## canon. DESIGN-TBD: Q7
 
 const KINDS: Array[String] = ["brawler", "alarm", "grabber"]
 ## How close he has to come to wake one (native px).
@@ -45,7 +45,7 @@ const REGRIP_SECONDS: float = 1.6
 ## How close he has to be to pull a downed looper's rig.
 const RIG_REACH: float = 26.0
 ## Placeholder lines, not canon: what a looper says, back as themselves for
-## a moment after the rig comes off.
+## a moment after the rig comes off. DESIGN-TBD: Q6
 const OWN_LINES: Array[String] = [
 	"Is it still raining? It was raining when I sat down.",
 	"I used to fix radios. I was good at it. Wasn't I?",
@@ -53,6 +53,7 @@ const OWN_LINES: Array[String] = [
 	"That wasn't mine. None of that was mine.",
 ]
 ## Placeholder lines, not canon: the flash a grabber's hold pushes into him.
+## DESIGN-TBD: Q6
 const FLASHES: Array[String] = [
 	"A kitchen, warm. A hand over mine. Not my hand. Not my kitchen.",
 	"Someone singing in the next room. I know every word. I've never heard it.",
