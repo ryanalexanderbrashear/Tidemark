@@ -21,7 +21,7 @@ enum Tier { CLEAR, MILD, STRONG, SEVERE }
 const TUNING_PATH: String = "res://data/mind/tuning.tres"
 const TIER_NAMES: Array[String] = ["clear", "mild", "strong", "severe"]
 ## Placeholder inner-voice lines for walking into a room with symptoms, per tier.
-## Not canon: written to make the tiers felt in a playtest.
+## Not canon: written to make the tiers felt in a playtest. DESIGN-TBD: Q5
 const BLEED_LINES: Array[Array] = [
 	[],
 	["Someone else's hands for a second. Then yours again.", "A smell of salt that isn't here.", "You know this corridor. You've never been in it."],

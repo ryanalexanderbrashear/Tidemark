@@ -19,7 +19,7 @@ const PHOTO: Array[Color] = [Color("050b0e"), Color("0f3a46"), Color("1f8ea0"), 
 const PICK: Color = P.MAGENTA
 const NOTE: Color = P.AMBER
 ## Placeholder names on the boot screen (Alex, 2026-11-13: the maker is
-## Diligence; the model name is for now).
+## Diligence; the model name is for now). DESIGN-TBD: Q8
 const MAKER: String = "DILIGENCE"
 const MODEL: String = "CASEBOOK FIELD SLATE MK IV"
 const ISSUED: String = "ISSUED TO TRACER G. HASKELL"

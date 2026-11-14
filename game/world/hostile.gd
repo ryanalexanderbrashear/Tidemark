@@ -4,7 +4,7 @@ extends Node2D
 ## drones float, drift toward him and fire slow bolts. Contact hurts.
 ##
 ## Placeholder looks: thugs are flat red silhouettes on the cast's body,
-## drones a small pixel hull with a magenta eye.
+## drones a small pixel hull with a magenta eye. DESIGN-TBD: Q7
 
 const P = preload("res://game/art/art_palette.gd")
 ## A little under his walking pace, so he can always walk away from one.

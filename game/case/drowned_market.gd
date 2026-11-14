@@ -28,6 +28,7 @@ const DROP_PANEL: String = "CS-14-07"
 const VALE: String = "Ines Vale"
 ## Where Vale's passenger points, first unfound clue first. Placeholder lines,
 ## not canon: they test whether a passenger's help feels worth the symptoms.
+## DESIGN-TBD: Q3
 const VALE_POINTS: Array[Array] = [
 	["tag", "toward the back of the market, where the cold comes from"],
 	["footage", "up at the camera over the floor"],
@@ -49,7 +50,7 @@ var etching_by_examining: bool = false
 const CHIP_HINT: String = "Something's scratched into that chip. Take it out and turn it over. (X)"
 const CHIP_REMINDER: String = "That chip in my pocket. I still haven't looked at what's scratched on it. (X)"
 ## Narration the first time he steps onto the market floor, in the caption
-## box. Placeholder, not canon.
+## box. Placeholder, not canon. DESIGN-TBD: Q4
 const MARKET_OPENING: String = "The Drowned Market. Ines Vale's stall is taped off, the shutter's sealed, and the badge reader by it is waiting for me."
 var spots: Array[Spot] = []
 

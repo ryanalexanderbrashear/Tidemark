@@ -18,7 +18,7 @@ enum Source { RECORDING, DEAD, LIVING }
 @export var source: Source = Source.RECORDING
 ## DEAD only: the last time ("HH:MM") the body can still be read.
 @export var readable_until: String = ""
-## What a surface reading shows.
+## What a surface reading shows. DESIGN-TBD: Q1 (case 1's texts in data/readings/ are placeholders)
 @export_multiline var surface_text: String = ""
 ## A clue the surface reading gives, or "".
 @export var surface_clue: String = ""

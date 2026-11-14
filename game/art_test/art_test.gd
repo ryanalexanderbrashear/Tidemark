@@ -31,7 +31,7 @@ const START_X: float = 60.0
 const START_WITH_OPTIC: bool = true
 
 ## Placeholder lines for the test. They lean on what the docs settle (Vale, the
-## market, the badge), but they're not canon dialogue.
+## market, the badge), but they're not canon dialogue. DESIGN-TBD: Q4
 const THOUGHTS: Array[String] = [
 	"Ines Vale sold other people's memories for a living. Somebody took the last one she had.",
 	"The rain never stops down here. It just finds new ways in.",
